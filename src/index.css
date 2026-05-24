@@ -1,0 +1,165 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 65 20% 78%;
+    --foreground: 0 0% 0%;
+
+    --card: 90 8% 64%;
+    --card-foreground: 0 0% 0%;
+
+    --popover: 90 8% 64%;
+    --popover-foreground: 0 0% 0%;
+
+    --primary: 90 8% 48%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 90 10% 85%;
+    --secondary-foreground: 90 15% 30%;
+
+    --muted: 90 10% 85%;
+    --muted-foreground: 90 5% 40%;
+
+    --accent: 90 15% 40%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 40%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 90 8% 55%;
+    --input: 90 8% 55%;
+    --ring: 90 8% 48%;
+
+    --radius: 1rem;
+
+    --lavender: 270 20% 85%;
+    --lavender-deep: 270 15% 50%;
+    --gold: 42 60% 55%;
+    --gold-light: 42 50% 80%;
+    --warm-white: 65 20% 78%;
+    --cream: 65 15% 85%;
+
+    --sidebar-background: 65 20% 80%;
+    --sidebar-foreground: 0 0% 0%;
+    --sidebar-primary: 90 8% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 90 10% 75%;
+    --sidebar-accent-foreground: 0 0% 0%;
+    --sidebar-border: 90 8% 55%;
+    --sidebar-ring: 90 8% 48%;
+    --a11y-font-scale: 1;
+    --a11y-line-height: 1.5;
+    --a11y-letter-spacing: 0px;
+    --a11y-filter-contrast: none;
+    --a11y-filter-colorblind: none;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    font-size: calc(100% * var(--a11y-font-scale));
+    filter: var(--a11y-filter-contrast) var(--a11y-filter-colorblind);
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    line-height: var(--a11y-line-height);
+    letter-spacing: var(--a11y-letter-spacing);
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif;
+  }
+}
+
+html.a11y-readable-font body {
+  font-family: Inter, Arial, sans-serif !important;
+}
+
+html.a11y-bold-text body,
+html.a11y-bold-text p,
+html.a11y-bold-text span,
+html.a11y-bold-text a,
+html.a11y-bold-text li,
+html.a11y-bold-text label,
+html.a11y-bold-text input,
+html.a11y-bold-text textarea,
+html.a11y-bold-text button {
+  font-weight: 600 !important;
+}
+
+html.a11y-hide-images img,
+html.a11y-hide-images picture,
+html.a11y-hide-images svg[role="img"],
+html.a11y-hide-images video {
+  visibility: hidden !important;
+}
+
+html.a11y-highlight-links a {
+  text-decoration: underline !important;
+  text-underline-offset: 3px;
+  outline: 1px dashed currentColor;
+  outline-offset: 2px;
+}
+
+html.a11y-highlight-content main,
+html.a11y-highlight-content section,
+html.a11y-highlight-content article,
+html.a11y-highlight-content nav,
+html.a11y-highlight-content aside {
+  box-shadow: inset 0 0 0 2px hsl(var(--accent) / 0.45);
+}
+
+html.a11y-stop-animations *,
+html.a11y-stop-animations *::before,
+html.a11y-stop-animations *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+html.a11y-large-cursor,
+html.a11y-large-cursor * {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Ccircle cx='14' cy='14' r='8' fill='black'/%3E%3Ccircle cx='14' cy='14' r='4' fill='white'/%3E%3C/svg%3E") 14 14, auto !important;
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-card/60 backdrop-blur-xl border-border/40 shadow-lg;
+  }
+  .glass-card-dark {
+    @apply bg-black/20 backdrop-blur-xl border border-white/10;
+  }
+  .glow-gold {
+    box-shadow: 0 0 40px hsl(var(--gold) / 0.15), 0 0 80px hsl(var(--gold) / 0.05);
+  }
+  .glow-lavender {
+    box-shadow: 0 0 40px hsl(var(--lavender) / 0.2), 0 0 80px hsl(var(--lavender) / 0.08);
+  }
+  .gradient-spiritual {
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.8) 0%, hsl(var(--card)) 100%);
+  }
+  .gradient-cta {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+  }
+  .section-reveal {
+    @apply opacity-0 translate-y-5;
+    transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1), filter 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    filter: blur(4px);
+  }
+  .section-reveal.visible {
+    @apply opacity-100 translate-y-0;
+    filter: blur(0px);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}

@@ -1,0 +1,550 @@
+export type Language = "en" | "fr" | "nl" | "ar" | "zh" | "ru" | "es";
+
+export const languageLabels: Record<Language, string> = {
+  en: "English",
+  fr: "Français",
+  nl: "Nederlands",
+  ar: "العربية",
+  zh: "中文",
+  ru: "Русский",
+  es: "Español",
+};
+
+export const rtlLanguages: Language[] = ["ar"];
+
+export type Translations = typeof translations.en;
+
+export const translations = {
+  en: {
+    nav: {
+      home: "Home",
+      about: "About",
+      services: "Services",
+      pricing: "Pricing",
+      contact: "Contact",
+    },
+    hero: {
+      heading: "Discover the Destination Within Yourself",
+      subtext:
+        'Mijn Levenspad is an online platform focused on personal growth, inner peace, and finding meaning. Through coaching, content, and training, Mijn Levenspad helps people (re)discover their true selves. With the slogan "discover the destiny within yourself," it aims for deep, sustainable transformation from within.',
+      cta1: "Start Your Journey",
+      cta2: "Book a Session",
+      cta3: "Book a coach",
+    },
+    about: {
+      label: "About Us",
+      heading: "Your Path To Inner Peace",
+      p1: "At Mijn Levenspad we guide you on a transformative journey of self-discovery. Through spiritual coaching and energetic guidance, we help you connect with your inner strength and find the peace you seek.",
+      p2: "Our approach combines ancient wisdom with modern insights, so that you can grow toward the best version of yourself in a safe and loving way.",
+      link: "Discover our services →",
+    },
+    services: {
+      label: "Services",
+      heading: "What We Offer",
+      items: [
+        { title: "Live Chat with a Medium", desc: "Ask all your questions in a direct, secure chat with one of our spiritual mediums. About love, loss, the future, or personal growth - you choose the topic, the medium, and how long you want to talk. You pay per minute with your credits." },
+        { title: "Spiritual Coaching", desc: "Together with a spiritual coach, you work on self-development, emotional recovery, or conscious living. Coaching takes place via chat, email, or video call. You book sessions using credits and receive tailored guidance." },
+        { title: "Energy Training", desc: "Would you like to learn how to work with energy, intuition, or spiritual protection yourself? Our training courses are available online and can be purchased with credits or paid for directly via the webshop." },
+        { title: "Personal Consultation by Appointment", desc: "Would you prefer one-on-one guidance with calm and depth?\nThen book a private consultation at a time that suits you — via chat, phone, or video.\nThese sessions can be booked with credits or by individual payment." },
+      ],
+      explore: "Explore →",
+    },
+    whyChoose: {
+      label: "Why Us",
+      heading: "Why Choose Us",
+      introTagline: "Personal, safe, and intuitive guidance on your life path",
+      items: [
+        { title: "Self Development", desc: "Unlock your potential through guided spiritual practices and personal growth." },
+        { title: "Freedom of Choice", desc: "Your journey, your pace. We honour your unique path with flexible guidance." },
+        { title: "Safe Space", desc: "A judgement-free environment where you can explore and heal with confidence." },
+      ],
+    },
+    pricing: {
+      label: "Pricing",
+      heading: "Choose Your Session",
+      popular: "Popular",
+      bookNow: "Book Now",
+      plans: [
+        { features: ["Quick guidance session", "One focused question", "Energy reading"] },
+        { features: ["In-depth consultation", "Multiple questions", "Energy healing", "Follow-up notes"] },
+        { features: ["Comprehensive session", "Unlimited questions", "Full energy work", "Personal action plan"] },
+      ],
+    },
+    testimonials: {
+      label: "Experiences",
+      heading: "What Others Say",
+      worldwideCaption: "Community voices in several languages—scroll to see more.",
+      items: [
+        { name: "Marieke de Vries", text: "The sessions helped me reconnect with myself. A wonderful experience." },
+        { name: "Thomas Bakker", text: "I felt at ease right away. The guidance was warm, honest, and exactly what I needed." },
+        { name: "Lotte Jansen", text: "After just one session I already felt more calm and clarity. Truly recommended for everyone." },
+        { name: "Erik Mulder", text: "A safe place where you can truly be yourself. The coaching changed my life." },
+        { name: "Sophie Klein", text: "Professional and loving. I always come here with a peaceful heart." },
+        { name: "Daan Visser", text: "The energetic trainings gave me new insights about myself that I couldn't find anywhere else." },
+      ],
+    },
+    cta: {
+      heading: "Start Your Spiritual Journey Today",
+      subtext: "Take the first step toward inner peace and self-discovery. We're here to guide you every step of the way.",
+      button: "Get Started",
+    },
+    footer: {
+      description: "Your partner on the journey toward inner peace, self-discovery and spiritual growth.",
+      quickLinks: "Quick Links",
+      contactTitle: "Contact",
+      contactCountry: "Netherlands",
+      rights: "All rights reserved.",
+    },
+  },
+  fr: {
+    nav: { home: "Accueil", about: "À propos", services: "Services", pricing: "Tarifs", contact: "Contact" },
+    hero: {
+      heading: "Découvrez la destination en vous-même",
+      subtext:
+        "Mijn Levenspad est une plateforme en ligne axée sur le développement personnel, la paix intérieure et la recherche de sens. Grâce au coaching, aux contenus et aux formations, Mijn Levenspad aide chacun à (re)découvrir son véritable moi. Sous la devise « découvrez le destin en vous-même », elle vise une transformation profonde et durable de l’intérieur.",
+      cta1: "Commencez Votre Voyage",
+      cta2: "Réservez une Séance",
+      cta3: "Réserver un coach",
+    },
+    about: {
+      label: "À Propos",
+      heading: "Votre Chemin Vers La Paix Intérieure",
+      p1: "Chez Mijn Levenspad, nous vous guidons dans un voyage transformateur de découverte de soi. Grâce au coaching spirituel et à l'accompagnement énergétique, nous vous aidons à vous connecter à votre force intérieure.",
+      p2: "Notre approche combine la sagesse ancienne avec des perspectives modernes, pour que vous puissiez grandir vers la meilleure version de vous-même de manière sûre et bienveillante.",
+      link: "Découvrez nos services →",
+    },
+    services: {
+      label: "Services",
+      heading: "Ce Que Nous Offrons",
+      items: [
+        { title: "Chat en Direct avec Médium", desc: "Connectez-vous avec des médiums expérimentés pour des conseils spirituels en temps réel." },
+        { title: "Coaching Spirituel", desc: "Des séances de coaching personnel pour vous guider vers la conscience de soi et la paix." },
+        { title: "Formations Énergétiques", desc: "Travail énergétique en groupe et individuel pour restaurer l'équilibre et la vitalité." },
+        { title: "Consultation Personnelle", desc: "Des séances individuelles adaptées à votre chemin unique et vos besoins spirituels." },
+      ],
+      explore: "Explorer →",
+    },
+    whyChoose: {
+      label: "Pourquoi Nous",
+      heading: "Pourquoi Nous Choisir",
+      introTagline:
+        "Un accompagnement personnel, sûr et intuitif sur votre chemin de vie",
+      items: [
+        { title: "Développement Personnel", desc: "Libérez votre potentiel grâce à des pratiques spirituelles guidées et à la croissance personnelle." },
+        { title: "Liberté de Choix", desc: "Votre voyage, votre rythme. Nous honorons votre chemin unique avec une guidance flexible." },
+        { title: "Espace Sûr", desc: "Un environnement sans jugement où vous pouvez explorer et guérir en toute confiance." },
+      ],
+    },
+    pricing: {
+      label: "Tarifs",
+      heading: "Choisissez Votre Séance",
+      popular: "Populaire",
+      bookNow: "Réserver",
+      plans: [
+        { features: ["Séance de guidance rapide", "Une question ciblée", "Lecture énergétique"] },
+        { features: ["Consultation approfondie", "Questions multiples", "Guérison énergétique", "Notes de suivi"] },
+        { features: ["Séance complète", "Questions illimitées", "Travail énergétique complet", "Plan d'action personnel"] },
+      ],
+    },
+    testimonials: {
+      label: "Témoignages",
+      heading: "Ce Que Disent Les Autres",
+      worldwideCaption: "Des témoignages dans plusieurs langues—faites défiler pour en voir d'autres.",
+      items: [
+        { name: "Marieke de Vries", text: "Les séances m'ont aidée à me reconnecter avec moi-même. Une expérience magnifique." },
+        { name: "Thomas Bakker", text: "Je me suis senti à l'aise immédiatement. L'accompagnement était chaleureux et honnête." },
+        { name: "Lotte Jansen", text: "Après une seule séance, je ressentais déjà plus de calme et de clarté." },
+        { name: "Erik Mulder", text: "Un endroit sûr où l'on peut vraiment être soi-même. Le coaching a changé ma vie." },
+        { name: "Sophie Klein", text: "Professionnel et bienveillant. Je viens toujours ici le cœur serein." },
+        { name: "Daan Visser", text: "Les formations énergétiques m'ont donné de nouvelles perspectives sur moi-même." },
+      ],
+    },
+    cta: {
+      heading: "Commencez Votre Voyage Spirituel Aujourd'hui",
+      subtext: "Faites le premier pas vers la paix intérieure et la découverte de soi. Nous sommes là pour vous guider.",
+      button: "Commencer",
+    },
+    footer: {
+      description: "Votre partenaire dans le voyage vers la paix intérieure, la découverte de soi et la croissance spirituelle.",
+      quickLinks: "Liens Rapides",
+      contactTitle: "Contact",
+      contactCountry: "Pays-Bas",
+      rights: "Tous droits réservés.",
+    },
+  },
+  nl: {
+    nav: { home: "Home", about: "Over Ons", services: "Diensten", pricing: "Prijzen", contact: "Contact" },
+    hero: {
+      heading: "Ontdek de bestemming in jezelf",
+      subtext:
+        "Mijn Levenspad is een online platform gericht op persoonlijke groei, innerlijke rust en het vinden van betekenis. Via coaching, content en training helpt Mijn Levenspad mensen hun ware zelf (opnieuw) te ontdekken. Met de slogan « ontdek het lot in jezelf » streeft het naar diepe, duurzame transformatie van binnenuit.",
+      cta1: "Start Je Reis",
+      cta2: "Boek een Sessie",
+      cta3: "Boek een coach",
+    },
+    about: {
+      label: "Over Ons",
+      heading: "Jouw Pad Naar Innerlijke Rust",
+      p1: "Bij Mijn Levenspad begeleiden wij je op een transformatieve reis van zelfontdekking. Door spirituele coaching en energetische begeleiding helpen wij je om in contact te komen met je innerlijke kracht en de rust te vinden die je zoekt.",
+      p2: "Onze aanpak combineert eeuwenoude wijsheid met moderne inzichten, zodat je op een veilige en liefdevolle manier kunt groeien naar de beste versie van jezelf.",
+      link: "Ontdek onze diensten →",
+    },
+    services: {
+      label: "Diensten",
+      heading: "Wat Wij Bieden",
+      items: [
+        { title: "Live Chat met Medium", desc: "Verbind met ervaren mediums voor real-time spirituele begeleiding en helderheid." },
+        { title: "Spirituele Coaching", desc: "Persoonlijke coachingsessies om je reis naar zelfbewustzijn en rust te begeleiden." },
+        { title: "Energetische Trainingen", desc: "Groeps- en individueel energiewerk om balans en vitaliteit te herstellen." },
+        { title: "Persoonlijk Consult", desc: "Eén-op-één sessies afgestemd op jouw unieke pad en spirituele behoeften." },
+      ],
+      explore: "Ontdek →",
+    },
+    whyChoose: {
+      label: "Waarom Ons",
+      heading: "Waarom Kiezen Voor Ons",
+      introTagline: "Persoonlijke, veilige en intuïtieve begeleiding op jouw levenspad",
+      items: [
+        { title: "Zelfontwikkeling", desc: "Ontgrendel je potentieel door begeleide spirituele praktijken en persoonlijke groei." },
+        { title: "Vrijheid van Keuze", desc: "Jouw reis, jouw tempo. Wij eren jouw unieke pad met flexibele begeleiding." },
+        { title: "Veilige Ruimte", desc: "Een oordeelvrije omgeving waar je met vertrouwen kunt ontdekken en helen." },
+      ],
+    },
+    pricing: {
+      label: "Prijzen",
+      heading: "Kies Jouw Sessie",
+      popular: "Populair",
+      bookNow: "Boek Nu",
+      plans: [
+        { features: ["Snelle begeleidingssessie", "Eén gerichte vraag", "Energielezing"] },
+        { features: ["Diepgaand consult", "Meerdere vragen", "Energetische healing", "Follow-up notities"] },
+        { features: ["Uitgebreide sessie", "Onbeperkte vragen", "Volledig energiewerk", "Persoonlijk actieplan"] },
+      ],
+    },
+    testimonials: {
+      label: "Ervaringen",
+      heading: "Wat Anderen Zeggen",
+      worldwideCaption: "Stemmen in meerdere talen—scroll om meer te zien.",
+      items: [
+        { name: "Marieke de Vries", text: "De sessies hebben mij geholpen om weer in contact te komen met mezelf. Een prachtige ervaring." },
+        { name: "Thomas Bakker", text: "Ik voelde mij direct op mijn gemak. De begeleiding was warm, eerlijk en precies wat ik nodig had." },
+        { name: "Lotte Jansen", text: "Na één sessie voelde ik al meer rust en helderheid. Echt aanrader voor iedereen." },
+        { name: "Erik Mulder", text: "Een veilige plek waar je echt jezelf kunt zijn. De coaching heeft mijn leven veranderd." },
+        { name: "Sophie Klein", text: "Professioneel en liefdevol. Ik kom hier altijd met een gerust hart naartoe." },
+        { name: "Daan Visser", text: "De energetische trainingen gaven mij nieuwe inzichten over mezelf die ik nergens anders vond." },
+      ],
+    },
+    cta: {
+      heading: "Begin Vandaag Aan Jouw Spirituele Reis",
+      subtext: "Zet de eerste stap naar innerlijke rust en zelfontdekking. Wij zijn hier om je bij elke stap te begeleiden.",
+      button: "Aan de Slag",
+    },
+    footer: {
+      description: "Jouw partner op de reis naar innerlijke rust, zelfontdekking en spirituele groei.",
+      quickLinks: "Snelle Links",
+      contactTitle: "Contact",
+      contactCountry: "Nederland",
+      rights: "Alle rechten voorbehouden.",
+    },
+  },
+  ar: {
+    nav: { home: "الرئيسية", about: "عنّا", services: "الخدمات", pricing: "الأسعار", contact: "اتصل بنا" },
+    hero: {
+      heading: "اكتشف الوجهة في داخلك",
+      subtext:
+        "منصة Mijn Levenspad الإلكترونية تركز على النمو الشخصي والسلام الداخلي وإيجاد المعنى. من خلال التدريب والمحتوى والجلسات، تساعد المنصة الناس على (إعادة) اكتشاف ذواتهم الحقيقية. وبهدف «اكتشف القدر بداخلك» تسعى إلى تحول عميق ومستدام من الداخل.",
+      cta1: "ابدأ رحلتك",
+      cta2: "احجز جلسة",
+      cta3: "احجز مدربًا",
+    },
+    about: {
+      label: "عنّا",
+      heading: "طريقك نحو السلام الداخلي",
+      p1: "في Mijn Levenspad نرشدك في رحلة تحويلية لاكتشاف الذات. من خلال التدريب الروحي والتوجيه الطاقي، نساعدك على التواصل مع قوتك الداخلية وإيجاد السلام الذي تبحث عنه.",
+      p2: "نهجنا يجمع بين الحكمة القديمة والرؤى الحديثة، حتى تتمكن من النمو نحو أفضل نسخة من نفسك بطريقة آمنة ومحبة.",
+      link: "اكتشف خدماتنا ←",
+    },
+    services: {
+      label: "الخدمات",
+      heading: "ما نقدمه",
+      items: [
+        { title: "دردشة مباشرة مع وسيط", desc: "تواصل مع وسطاء ذوي خبرة للحصول على إرشادات روحية فورية." },
+        { title: "التدريب الروحي", desc: "جلسات تدريب شخصية لتوجيه رحلتك نحو الوعي الذاتي والسلام." },
+        { title: "تدريبات طاقية", desc: "عمل طاقي جماعي وفردي لاستعادة التوازن والحيوية في حياتك." },
+        { title: "استشارة شخصية", desc: "جلسات فردية مصممة لمسارك الفريد واحتياجاتك الروحية." },
+      ],
+      explore: "← استكشف",
+    },
+    whyChoose: {
+      label: "لماذا نحن",
+      heading: "لماذا تختارنا",
+      introTagline: "إرشاد شخصي وآمن وحدسي على مسار حياتك",
+      items: [
+        { title: "تطوير الذات", desc: "أطلق إمكاناتك من خلال الممارسات الروحية الموجهة والنمو الشخصي." },
+        { title: "حرية الاختيار", desc: "رحلتك، وتيرتك. نحن نحترم مسارك الفريد مع توجيه مرن." },
+        { title: "مساحة آمنة", desc: "بيئة خالية من الأحكام حيث يمكنك الاستكشاف والشفاء بثقة." },
+      ],
+    },
+    pricing: {
+      label: "الأسعار",
+      heading: "اختر جلستك",
+      popular: "الأكثر شعبية",
+      bookNow: "احجز الآن",
+      plans: [
+        { features: ["جلسة إرشاد سريعة", "سؤال واحد مركّز", "قراءة طاقية"] },
+        { features: ["استشارة معمّقة", "أسئلة متعددة", "شفاء طاقي", "ملاحظات متابعة"] },
+        { features: ["جلسة شاملة", "أسئلة غير محدودة", "عمل طاقي كامل", "خطة عمل شخصية"] },
+      ],
+    },
+    testimonials: {
+      label: "التجارب",
+      heading: "ماذا يقول الآخرون",
+      worldwideCaption: "أصوات من المجتمع بعدة لغات—مرّر لرؤية المزيد.",
+      items: [
+        { name: "ماريكه دي فريس", text: "ساعدتني الجلسات على إعادة التواصل مع نفسي. تجربة رائعة." },
+        { name: "توماس باكر", text: "شعرت بالراحة على الفور. كان التوجيه دافئاً وصادقاً." },
+        { name: "لوته يانسن", text: "بعد جلسة واحدة فقط شعرت بالمزيد من الهدوء والوضوح." },
+        { name: "إريك مولدر", text: "مكان آمن حيث يمكنك أن تكون نفسك حقاً. غيّر التدريب حياتي." },
+        { name: "صوفي كلاين", text: "محترف ومحب. أعود دائماً هنا بقلب مطمئن." },
+        { name: "دان فيسر", text: "منحتني التدريبات الطاقية رؤى جديدة عن نفسي لم أجدها في أي مكان آخر." },
+      ],
+    },
+    cta: {
+      heading: "ابدأ رحلتك الروحية اليوم",
+      subtext: "اتخذ الخطوة الأولى نحو السلام الداخلي واكتشاف الذات. نحن هنا لإرشادك في كل خطوة.",
+      button: "ابدأ الآن",
+    },
+    footer: {
+      description: "شريكك في الرحلة نحو السلام الداخلي واكتشاف الذات والنمو الروحي.",
+      quickLinks: "روابط سريعة",
+      contactTitle: "اتصل بنا",
+      contactCountry: "هولندا",
+      rights: "جميع الحقوق محفوظة.",
+    },
+  },
+  zh: {
+    nav: { home: "首页", about: "关于", services: "服务", pricing: "价格", contact: "联系" },
+    hero: {
+      heading: "发现内心的目的地",
+      subtext:
+        "Mijn Levenspad 是一个专注于个人成长、内心平静与意义探索的在线平台。通过教练、内容与培训，帮助人们（重新）发现真实的自己。以「发现你内在的命运」为理念，致力于由内而外的深度、可持续转变。",
+      cta1: "开始您的旅程",
+      cta2: "预约课程",
+      cta3: "预约教练",
+    },
+    about: {
+      label: "关于我们",
+      heading: "通往内心平静之路",
+      p1: "在 Mijn Levenspad，我们引导您踏上自我发现的变革之旅。通过灵性辅导和能量指导，我们帮助您连接内在力量，找到您寻求的平静。",
+      p2: "我们的方法将古老智慧与现代洞察相结合，让您能够以安全和充满爱的方式成长为最好的自己。",
+      link: "探索我们的服务 →",
+    },
+    services: {
+      label: "服务",
+      heading: "我们的服务",
+      items: [
+        { title: "与灵媒在线交流", desc: "与经验丰富的灵媒实时连接，获取精神指导和清晰的方向。" },
+        { title: "灵性辅导", desc: "个人辅导课程，引导您走向自我意识和内心平静。" },
+        { title: "能量训练", desc: "团体和个人能量疗愈，恢复生活中的平衡与活力。" },
+        { title: "个人咨询", desc: "为您的独特道路和精神需求量身定制的一对一课程。" },
+      ],
+      explore: "探索 →",
+    },
+    whyChoose: {
+      label: "为何选择我们",
+      heading: "为何选择我们",
+      introTagline: "在您的人生之路上，以个人化、安心且直观的方式相伴同行",
+      items: [
+        { title: "自我发展", desc: "通过引导式灵性修行和个人成长释放您的潜力。" },
+        { title: "选择自由", desc: "您的旅程，您的节奏。我们以灵活的指导尊重您的独特之路。" },
+        { title: "安全空间", desc: "一个无评判的环境，让您自信地探索和疗愈。" },
+      ],
+    },
+    pricing: {
+      label: "价格",
+      heading: "选择您的课程",
+      popular: "热门",
+      bookNow: "立即预约",
+      plans: [
+        { features: ["快速指导课程", "一个重点问题", "能量解读"] },
+        { features: ["深度咨询", "多个问题", "能量疗愈", "后续笔记"] },
+        { features: ["全面课程", "无限问题", "完整能量疗愈", "个人行动计划"] },
+      ],
+    },
+    testimonials: {
+      label: "体验",
+      heading: "他们怎么说",
+      worldwideCaption: "多语种用户心声—滑动查看更多。",
+      items: [
+        { name: "Marieke de Vries", text: "课程帮助我重新与自己连接。一次美妙的体验。" },
+        { name: "Thomas Bakker", text: "我立刻感到很自在。指导温暖、真诚，正是我所需要的。" },
+        { name: "Lotte Jansen", text: "仅一次课程后，我就感到更加平静和清晰。强烈推荐给每个人。" },
+        { name: "Erik Mulder", text: "一个可以真正做自己的安全之地。辅导改变了我的生活。" },
+        { name: "Sophie Klein", text: "专业而充满爱。我总是怀着平静的心情来到这里。" },
+        { name: "Daan Visser", text: "能量训练给了我在别处找不到的关于自己的新见解。" },
+      ],
+    },
+    cta: {
+      heading: "今天开始您的灵性之旅",
+      subtext: "迈出通往内心平静和自我发现的第一步。我们在这里引导您的每一步。",
+      button: "开始",
+    },
+    footer: {
+      description: "您通往内心平静、自我发现和精神成长旅程的伙伴。",
+      quickLinks: "快速链接",
+      contactTitle: "联系方式",
+      contactCountry: "荷兰",
+      rights: "版权所有。",
+    },
+  },
+  ru: {
+    nav: { home: "Главная", about: "О нас", services: "Услуги", pricing: "Цены", contact: "Контакт" },
+    hero: {
+      heading: "Откройте предназначение внутри себя",
+      subtext:
+        "Mijn Levenspad — онлайн-платформа о личностном росте, внутреннем покое и поиске смысла. Через коучинг, контент и обучение она помогает людям (заново) открыть свою истинную суть. Девиз «открой судьбу внутри себя» ведёт к глубоким и устойчивым переменам изнутри.",
+      cta1: "Начните Путешествие",
+      cta2: "Запишитесь на Сеанс",
+      cta3: "Записаться к коучу",
+    },
+    about: {
+      label: "О Нас",
+      heading: "Ваш Путь К Внутреннему Покою",
+      p1: "В Mijn Levenspad мы направляем вас в трансформирующем путешествии самопознания. Через духовный коучинг и энергетическое руководство мы помогаем вам соединиться с внутренней силой и обрести покой.",
+      p2: "Наш подход сочетает древнюю мудрость с современными знаниями, чтобы вы могли безопасно и с любовью расти к лучшей версии себя.",
+      link: "Узнайте о наших услугах →",
+    },
+    services: {
+      label: "Услуги",
+      heading: "Что Мы Предлагаем",
+      items: [
+        { title: "Чат с Медиумом", desc: "Свяжитесь с опытными медиумами для духовного руководства в реальном времени." },
+        { title: "Духовный Коучинг", desc: "Персональные коуч-сессии для вашего пути к самосознанию и покою." },
+        { title: "Энергетические Тренинги", desc: "Групповая и индивидуальная энергетическая работа для восстановления баланса." },
+        { title: "Личная Консультация", desc: "Индивидуальные сессии, адаптированные к вашему уникальному пути и потребностям." },
+      ],
+      explore: "Подробнее →",
+    },
+    whyChoose: {
+      label: "Почему Мы",
+      heading: "Почему Выбирают Нас",
+      introTagline: "Личное, надёжное и интуитивное сопровождение на вашем жизненном пути",
+      items: [
+        { title: "Саморазвитие", desc: "Раскройте свой потенциал через духовные практики и личностный рост." },
+        { title: "Свобода Выбора", desc: "Ваше путешествие, ваш темп. Мы уважаем ваш уникальный путь." },
+        { title: "Безопасное Пространство", desc: "Среда без осуждения, где вы можете исследовать и исцеляться с уверенностью." },
+      ],
+    },
+    pricing: {
+      label: "Цены",
+      heading: "Выберите Сеанс",
+      popular: "Популярный",
+      bookNow: "Забронировать",
+      plans: [
+        { features: ["Быстрая консультация", "Один вопрос", "Энергетическое чтение"] },
+        { features: ["Глубокая консультация", "Несколько вопросов", "Энергетическое исцеление", "Заметки"] },
+        { features: ["Комплексный сеанс", "Неограниченные вопросы", "Полная энергоработа", "Персональный план"] },
+      ],
+    },
+    testimonials: {
+      label: "Отзывы",
+      heading: "Что Говорят Другие",
+      worldwideCaption: "Голоса сообщества на разных языках—пролистайте, чтобы увидеть больше.",
+      items: [
+        { name: "Марике де Фрис", text: "Сеансы помогли мне восстановить связь с собой. Прекрасный опыт." },
+        { name: "Томас Баккер", text: "Я сразу почувствовал себя комфортно. Руководство было тёплым и честным." },
+        { name: "Лотте Янсен", text: "После одного сеанса я уже ощутила больше покоя и ясности." },
+        { name: "Эрик Мюлдер", text: "Безопасное место, где можно быть собой. Коучинг изменил мою жизнь." },
+        { name: "Софи Кляйн", text: "Профессионально и с любовью. Я всегда прихожу сюда со спокойным сердцем." },
+        { name: "Даан Виссер", text: "Энергетические тренинги дали мне новые знания о себе." },
+      ],
+    },
+    cta: {
+      heading: "Начните Свой Духовный Путь Сегодня",
+      subtext: "Сделайте первый шаг к внутреннему покою и самопознанию. Мы здесь, чтобы направлять вас.",
+      button: "Начать",
+    },
+    footer: {
+      description: "Ваш партнёр на пути к внутреннему покою, самопознанию и духовному росту.",
+      quickLinks: "Быстрые Ссылки",
+      contactTitle: "Контакт",
+      contactCountry: "Нидерланды",
+      rights: "Все права защищены.",
+    },
+  },
+  es: {
+    nav: { home: "Inicio", about: "Acerca de", services: "Servicios", pricing: "Precios", contact: "Contacto" },
+    hero: {
+      heading: "Descubre el destino dentro de ti",
+      subtext:
+        "Mijn Levenspad es una plataforma en línea centrada en el crecimiento personal, la paz interior y encontrar sentido. A través de coaching, contenido y formación, ayuda a las personas a (re)descubrir su verdadero yo. Con el lema «descubre el destino en ti mismo», apunta a una transformación profunda y sostenible desde dentro.",
+      cta1: "Comienza Tu Viaje",
+      cta2: "Reserva una Sesión",
+      cta3: "Reservar un coach",
+    },
+    about: {
+      label: "Sobre Nosotros",
+      heading: "Tu Camino Hacia La Paz Interior",
+      p1: "En Mijn Levenspad te guiamos en un viaje transformador de autodescubrimiento. A través del coaching espiritual y la guía energética, te ayudamos a conectar con tu fuerza interior y encontrar la paz que buscas.",
+      p2: "Nuestro enfoque combina la sabiduría ancestral con perspectivas modernas, para que puedas crecer hacia la mejor versión de ti mismo de manera segura y amorosa.",
+      link: "Descubre nuestros servicios →",
+    },
+    services: {
+      label: "Servicios",
+      heading: "Lo Que Ofrecemos",
+      items: [
+        { title: "Chat en Vivo con Médium", desc: "Conéctate con médiums experimentados para orientación espiritual en tiempo real." },
+        { title: "Coaching Espiritual", desc: "Sesiones de coaching personal para guiar tu camino hacia la autoconciencia y la paz." },
+        { title: "Entrenamientos Energéticos", desc: "Trabajo energético grupal e individual para restaurar el equilibrio y la vitalidad." },
+        { title: "Consulta Personal", desc: "Sesiones individuales adaptadas a tu camino único y necesidades espirituales." },
+      ],
+      explore: "Explorar →",
+    },
+    whyChoose: {
+      label: "Por Qué Nosotros",
+      heading: "Por Qué Elegirnos",
+      introTagline: "Orientación personal, segura e intuitiva en tu camino de vida",
+      items: [
+        { title: "Desarrollo Personal", desc: "Desbloquea tu potencial a través de prácticas espirituales guiadas y crecimiento personal." },
+        { title: "Libertad de Elección", desc: "Tu viaje, tu ritmo. Honramos tu camino único con orientación flexible." },
+        { title: "Espacio Seguro", desc: "Un entorno libre de juicios donde puedes explorar y sanar con confianza." },
+      ],
+    },
+    pricing: {
+      label: "Precios",
+      heading: "Elige Tu Sesión",
+      popular: "Popular",
+      bookNow: "Reservar",
+      plans: [
+        { features: ["Sesión de guía rápida", "Una pregunta enfocada", "Lectura energética"] },
+        { features: ["Consulta profunda", "Múltiples preguntas", "Sanación energética", "Notas de seguimiento"] },
+        { features: ["Sesión completa", "Preguntas ilimitadas", "Trabajo energético completo", "Plan de acción personal"] },
+      ],
+    },
+    testimonials: {
+      label: "Experiencias",
+      heading: "Lo Que Dicen Otros",
+      worldwideCaption: "Voces en varios idiomas—desplázate para ver más.",
+      items: [
+        { name: "Marieke de Vries", text: "Las sesiones me ayudaron a reconectarme conmigo misma. Una experiencia maravillosa." },
+        { name: "Thomas Bakker", text: "Me sentí cómodo de inmediato. La orientación fue cálida, honesta y exactamente lo que necesitaba." },
+        { name: "Lotte Jansen", text: "Después de una sola sesión ya sentí más calma y claridad. Realmente recomendado." },
+        { name: "Erik Mulder", text: "Un lugar seguro donde puedes ser tú mismo. El coaching cambió mi vida." },
+        { name: "Sophie Klein", text: "Profesional y amoroso. Siempre vengo aquí con el corazón tranquilo." },
+        { name: "Daan Visser", text: "Los entrenamientos energéticos me dieron nuevas perspectivas sobre mí mismo." },
+      ],
+    },
+    cta: {
+      heading: "Comienza Tu Viaje Espiritual Hoy",
+      subtext: "Da el primer paso hacia la paz interior y el autodescubrimiento. Estamos aquí para guiarte en cada paso.",
+      button: "Comenzar",
+    },
+    footer: {
+      description: "Tu compañero en el viaje hacia la paz interior, el autodescubrimiento y el crecimiento espiritual.",
+      quickLinks: "Enlaces Rápidos",
+      contactTitle: "Contacto",
+      contactCountry: "Países Bajos",
+      rights: "Todos los derechos reservados.",
+    },
+  },
+} as const;

@@ -1,0 +1,147 @@
+from datetime import datetime  # noqa: TC003 — used by MentorAccountOut
+from decimal import Decimal
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+
+class MentorLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class MentorRegister(BaseModel):
+    full_name: str
+    email: EmailStr
+    phone_number: str
+    password: str = Field(min_length=8)
+    headline: str | None = None
+    bio: str | None = None
+    headline_i18n: dict[str, str] | None = None
+    bio_i18n: dict[str, str] | None = None
+    profile_image: str | None = Field(default=None, max_length=512)
+    agreement_accepted: bool = False
+    agreement_version: str | None = None
+    agreement_text_snapshot: str | None = None
+
+
+class MentorCreate(BaseModel):
+    """Internal / admin-style create."""
+
+    full_name: str
+    email: EmailStr
+    phone_number: str
+    password: str
+    headline: str | None = None
+    bio: str | None = None
+    languages_spoken: list[str] | None = None
+    years_of_experience: int = 0
+
+
+class MentorPublicOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    full_name: str
+    country_code: str | None = None
+    timezone: str = "UTC"
+    headline: str | None
+    current_company: str | None = None
+    profile_image: str | None
+    banner_image: str | None = None
+    languages_spoken: list[Any] | None
+    years_of_experience: int
+    expertise_areas: list[Any] | None
+    skills: list[Any] | None
+    average_rating: Decimal
+    total_reviews: int
+    total_sessions_completed: int
+    is_verified: bool
+    chat_price_per_minute: Decimal = Decimal("0")
+    chat_currency: str = "EUR"
+    chat_min_purchase_minutes: int = 1
+    chat_available: bool = False
+    is_online: bool = False
+    last_seen_at: datetime | None = None
+    status: str
+    created_at: datetime
+    badges: list[str] = Field(default_factory=list)
+    # Global session pricing active and mentor approved + active — show 10/20/30 packages
+    session_packages_available: bool = False
+
+
+class MentorDetailOut(MentorPublicOut):
+    bio: str | None
+    current_company: str | None
+    previous_companies: list[Any] | None
+    education: list[Any] | None
+    certifications: list[Any] | None
+    tools_technologies: list[Any] | None
+    session_modes: list[Any] | None
+
+
+class MentorAccountOut(MentorDetailOut):
+    """Logged-in mentor's own profile (includes contact fields)."""
+
+    email: str
+    phone_number: str
+    is_approved: bool
+    is_verified: bool
+    email_verified: bool
+    updated_at: datetime
+
+
+class MentorRegisterResponse(MentorAccountOut):
+    """Register response; `dev_verification_code` is set only when SMTP is not configured (local dev)."""
+
+    dev_verification_code: str | None = None
+
+
+class MentorUpdate(BaseModel):
+    full_name: str | None = None
+    country_code: str | None = None
+    timezone: str | None = None
+    profile_image: str | None = None
+    banner_image: str | None = None
+    headline: str | None = None
+    headline_i18n: dict[str, str] | None = None
+    bio: str | None = None
+    bio_i18n: dict[str, str] | None = None
+    languages_spoken: list[Any] | None = None
+    years_of_experience: int | None = None
+    current_company: str | None = None
+    previous_companies: list[Any] | None = None
+    education: list[Any] | None = None
+    certifications: list[Any] | None = None
+    expertise_areas: list[Any] | None = None
+    skills: list[Any] | None = None
+    tools_technologies: list[Any] | None = None
+    session_modes: list[Any] | None = None
+    chat_price_per_minute: Decimal | None = None
+    chat_currency: str | None = None
+    chat_min_purchase_minutes: int | None = None
+
+
+class PlatformPricingPublicOut(BaseModel):
+    price_5_min: Decimal
+    price_10_min: Decimal
+    price_20_min: Decimal
+    price_30_min: Decimal
+    currency: str
+    is_active: bool
+
+
+class MentorPayoutBankDetailsIn(BaseModel):
+    account_holder_name: str = Field(min_length=2, max_length=255)
+    iban: str = Field(min_length=15, max_length=42)
+    bic: str | None = Field(default=None, max_length=11)
+
+
+class MentorPayoutBankDetailsOut(BaseModel):
+    has_bank_details: bool
+    account_holder_name: str | None = None
+    iban_masked: str | None = None
+    bic_masked: str | None = None
+    status: str = "none"
+    verified_at: datetime | None = None
+    updated_at: datetime | None = None
