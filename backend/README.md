@@ -82,6 +82,29 @@ Change this password or remove this row before production. See `.env.example` fo
   - `GET /api/v1/chat/invoices/{session_id}` — user only; full invoice (line items from `chat_purchases`, bill-to, mentor, totals, session wall-clock duration).
   - `GET /api/v1/chat/invoices/{session_id}/pdf` — user only; **PDF download** (`application/pdf`, ReportLab).
 - **WebSocket**: `WS /api/v1/ws/chat/{session_id}?token=<access_jwt>` — same participant rules as REST. Server pushes JSON `{ type: "new_message" | "session", data: ... }` after REST writes (in-process hub; single-server MVP). **Text only** — do not send raw audio over this socket.
+
+#### Production reverse proxy (required for live chat)
+
+REST works through nginx/ALB, but **WebSockets need an explicit upgrade**. Without this, browsers show `WebSocket closed: 1006` and chat falls back to polling only.
+
+Example nginx location (adjust upstream name):
+
+```nginx
+location /api/v1/ws/ {
+    proxy_pass http://127.0.0.1:8000;   # your uvicorn/gunicorn upstream
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 86400;
+}
+```
+
+Also ensure the deployed API includes `api/v1/chat_ws.py` (route `GET /api/v1/ws/chat/{session_id}` upgraded to WebSocket). After deploy, a bad token should return **403** (route exists), not **404**.
+
 - **Expiry**: sends are rejected when time has elapsed (`time_expired`); lazy `active` → `paused` transition on session reads. **Disconnect**: time keeps running (by design).
 
 ### Meetings (LiveKit WebRTC)

@@ -52,7 +52,7 @@ export const translations = {
     whyChoose: {
       label: "Why Us",
       heading: "Why Choose Us",
-      introTagline: "Personal, safe, and intuitive guidance on your life path",
+      introTagline: "Personal, safe and intuitive guidance on your life path",
       items: [
         { title: "Self Development", desc: "Unlock your potential through guided spiritual practices and personal growth." },
         { title: "Freedom of Choice", desc: "Your journey, your pace. We honour your unique path with flexible guidance." },

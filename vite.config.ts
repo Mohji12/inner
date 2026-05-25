@@ -5,14 +5,14 @@ import path from "path";
 // https://vitejs.dev/config/
 export default defineConfig({
   server: {
-    port: 8080,
+    port: 8081,
     hmr: {
       overlay: false,
     },
     proxy: {
       // Same-origin `/api/*` in dev → FastAPI (avoids CORS during local work).
       "/api": {
-        target: "http://127.0.0.1:8000",
+        target: "http://127.0.0.1:8002",
         changeOrigin: true,
         ws: true,
       },

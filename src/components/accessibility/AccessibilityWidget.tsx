@@ -1,4 +1,5 @@
-import { Accessibility, AlignLeft, Eye, Languages, MousePointer2, RefreshCw, Type } from "lucide-react";
+import { AlignLeft, Eye, Languages, MousePointer2, RefreshCw, Type } from "lucide-react";
+import { AccessibilityAdjustmentIcon } from "@/components/accessibility/AccessibilityAdjustmentIcon";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -19,10 +20,11 @@ export default function AccessibilityWidget() {
       <SheetTrigger asChild>
         <Button
           type="button"
-          className="fixed bottom-5 right-5 z-[2147483647] flex h-20 w-20 items-center justify-center rounded-full border-[3px] border-foreground bg-primary p-0 text-primary-foreground shadow-xl [&_svg]:h-10 [&_svg]:w-10"
+          variant="ghost"
+          className="fixed bottom-5 right-5 z-[2147483647] h-24 w-24 rounded-full p-0 shadow-xl hover:bg-transparent hover:opacity-90 [&_svg]:!size-full"
           title={a.openPanel}
         >
-          <Accessibility className="h-10 w-10 shrink-0" aria-hidden />
+          <AccessibilityAdjustmentIcon className="size-full shrink-0" />
           <span className="sr-only">{a.openPanel}</span>
         </Button>
       </SheetTrigger>

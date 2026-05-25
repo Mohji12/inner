@@ -6,6 +6,8 @@ import type { ChatMessage } from "@/api/types";
 
 type ConnectionStatus = "connected" | "connecting" | "reconnecting" | "disconnected" | "auth_missing";
 
+const MAX_RECONNECT_ATTEMPTS = 8;
+
 interface UseChatWebSocketOptions {
   sessionId: string;
   token: string | null;
@@ -55,13 +57,11 @@ export const useChatWebSocket = ({ sessionId, token, onMessage, role }: UseChatW
 
     const url = getChatWebSocketUrl(sessionId, token);
 
-    console.log(`Connecting to WebSocket: ${url}`);
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
     ws.onopen = () => {
       if (socketGeneration !== wsGenerationRef.current) return;
-      console.log("WebSocket connected");
       setStatus("connected");
       reconnectAttemptsRef.current = 0;
 
@@ -109,7 +109,6 @@ export const useChatWebSocket = ({ sessionId, token, onMessage, role }: UseChatW
     };
 
     ws.onclose = (ev) => {
-      console.log(`WebSocket closed: ${ev.code} ${ev.reason}`);
       if (pingIntervalRef.current) {
         clearInterval(pingIntervalRef.current);
         pingIntervalRef.current = null;
@@ -118,6 +117,12 @@ export const useChatWebSocket = ({ sessionId, token, onMessage, role }: UseChatW
         return;
       }
       wsRef.current = null;
+
+      if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
+        setStatus("disconnected");
+        return;
+      }
+
       setStatus("reconnecting");
 
       const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
@@ -130,7 +135,6 @@ export const useChatWebSocket = ({ sessionId, token, onMessage, role }: UseChatW
     };
 
     ws.onerror = () => {
-      console.error("WebSocket error");
       ws.close();
     };
   }, [sessionId, token, queryClient, role]);

@@ -25,7 +25,7 @@ export const ConnectionStatusBar = ({ status }: ConnectionStatusBarProps) => {
       ) : (
         <>
           <WifiOff className="h-3 w-3" />
-          <span>Disconnected.</span>
+          <span>Live sync unavailable — messages still refresh every few seconds.</span>
         </>
       )}
     </div>
