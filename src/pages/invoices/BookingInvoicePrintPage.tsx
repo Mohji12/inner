@@ -21,6 +21,11 @@ function BookingInvoiceBody({ inv }: { inv: BookingInvoice }) {
     <div className="space-y-8 text-sm leading-relaxed">
       <header className="flex flex-col gap-4 border-b border-border/60 pb-6 sm:flex-row sm:items-start sm:justify-between">
         <div>
+          <img
+            src="/lifepath%20logo.png"
+            alt="Mijn Levenspad"
+            className="mb-3 h-14 w-auto max-w-[220px] object-contain object-left"
+          />
           <p className="text-xs uppercase tracking-[0.2em] text-accent">{t.app.invoice.invoice}</p>
           <p className="font-serif text-3xl font-semibold tracking-tight text-foreground">{inv.platform_legal_name}</p>
           <p className="mt-1 text-muted-foreground">{inv.platform_contact_email}</p>

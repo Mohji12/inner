@@ -18,6 +18,7 @@ from models.chat_session import ChatSession
 from models.mentor import Mentor
 from models.user import User
 from services.chat_invoice_service import aggregate_purchases
+from services.pdf_branding import BRAND_NAME, brand_header_story, branded_pdf_callbacks
 
 
 def _fmt_dt(dt: datetime) -> str:
@@ -73,16 +74,17 @@ def build_chat_invoice_pdf(
         pagesize=A4,
         rightMargin=18 * mm,
         leftMargin=18 * mm,
-        topMargin=18 * mm,
+        topMargin=22 * mm,
         bottomMargin=18 * mm,
     )
+    on_first, on_later = branded_pdf_callbacks()
     styles = getSampleStyleSheet()
     title = ParagraphStyle(name="InvTitle", parent=styles["Heading1"], fontSize=18, spaceAfter=12)
     h2 = ParagraphStyle(name="InvH2", parent=styles["Heading2"], fontSize=11, spaceBefore=10, spaceAfter=6)
     body = styles["Normal"]
     story: list = []
-
-    story.append(Paragraph(f"<b>Invoice {_esc(invoice_number)}</b>", title))
+    story.extend(brand_header_story())
+    story.append(Paragraph(f"<b>{BRAND_NAME} — Invoice {_esc(invoice_number)}</b>", title))
     story.append(
         Paragraph(
             f"Issued: {_esc(_fmt_dt(issued))} &nbsp;|&nbsp; Payment: <b>paid</b>",
@@ -179,5 +181,5 @@ def build_chat_invoice_pdf(
         )
     )
 
-    doc.build(story)
+    doc.build(story, onFirstPage=on_first, onLaterPages=on_later)
     return buf.getvalue()

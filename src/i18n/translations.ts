@@ -24,9 +24,9 @@ export const translations = {
       contact: "Contact",
     },
     hero: {
-      heading: "Discover the Destination Within Yourself",
+      heading: "Discover. Grow. Live your path.",
       subtext:
-        'Mijn Levenspad is an online platform focused on personal growth, inner peace, and finding meaning. Through coaching, content, and training, Mijn Levenspad helps people (re)discover their true selves. With the slogan "discover the destiny within yourself," it aims for deep, sustainable transformation from within.',
+        'Mijn Levenspad helps people discover their true selves through personal growth and inner transformation. Its vision, "discover the destiny within yourself," inspires a meaningful and peaceful life.',
       cta1: "Start Your Journey",
       cta2: "Book a Session",
       cta3: "Book a coach",

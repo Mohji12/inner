@@ -6,7 +6,7 @@ const SERVICE_CARD_IMAGES = [
   encodeURI("/Create_a_bright,_inspiring,_and_202605102259.jpeg"),
   encodeURI("/Create_a_bright,_inspiring,_and_202605102301.jpeg"),
   encodeURI("/Create_a_bright,_inspiring,_and_202605102302.jpeg"),
-  encodeURI("/Create_a_bright,_inspiring,_and_202605102307.jpeg"),
+  "/images/personal-consultation.png",
 ];
 
 const ServicesSection = () => {

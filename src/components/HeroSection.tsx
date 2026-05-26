@@ -7,7 +7,7 @@ const HeroSection = () => {
   return (
     <section
       id="hero"
-      className="relative flex min-h-screen items-start justify-center overflow-hidden bg-transparent pt-24 sm:pt-28 md:pt-32 lg:pt-36"
+      className="relative flex min-h-screen items-start justify-center overflow-hidden bg-transparent pt-36 sm:pt-40 md:pt-44 lg:pt-48"
     >
       <div className="pointer-events-none absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-gold/20 blur-3xl animate-float" />
       <div
@@ -19,7 +19,7 @@ const HeroSection = () => {
         <h1 className="font-serif text-3xl font-bold leading-tight text-foreground sm:text-4xl md:text-5xl">
           {t.hero.heading}
         </h1>
-        <p className="mt-6 max-w-2xl text-pretty text-base leading-relaxed text-foreground/90 sm:text-lg">
+        <p className="mt-6 max-w-2xl text-pretty text-center text-base font-bold leading-relaxed text-white sm:text-lg">
           {t.hero.subtext}
         </p>
         <div className="mt-10 flex w-full max-w-xl flex-col flex-wrap justify-center gap-4 sm:flex-row sm:justify-center">

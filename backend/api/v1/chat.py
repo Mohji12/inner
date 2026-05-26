@@ -12,10 +12,11 @@ from core.limiter import limiter
 from models.chat_message import ChatMessage
 from models.chat_bridge_session import ChatBridgeSession
 from models.chat_purchase import ChatPurchase
+from models.chat_session import ChatSession
 from models.mentor import Mentor
 from models.user import User
 from core.security import new_uuid
-from core.chat_states import CHAT_SENDER_USER
+from core.chat_states import CHAT_SENDER_MENTOR, CHAT_SENDER_USER
 from core.config import settings
 from schemas.chat import (
     ChatCallTokenOut,
@@ -73,6 +74,7 @@ from services.chat_invoice_service import (
     list_user_chat_invoice_sessions,
 )
 from services.i18n_service import resolve_i18n_text, to_i18n_map
+from db.session import SessionLocal
 
 logger = logging.getLogger(__name__)
 
@@ -105,14 +107,42 @@ async def _ws_push_session(session_id: str, session) -> None:
 
 
 async def _ws_push_message(session_id: str, msg) -> None:
-    data = ChatMessageOut.model_validate(msg).model_dump(mode="json")
-    data["body"] = resolve_i18n_text(getattr(msg, "body_i18n", None), msg.body, "en")
-    await chat_hub.broadcast(session_id, {"type": "new_message", "data": data})
+    db = SessionLocal()
+    try:
+        user, mentor = _session_participants(db, session_id)
+        out = _chat_message_out(msg, "en", user=user, mentor=mentor)
+        await chat_hub.broadcast(session_id, {"type": "new_message", "data": out.model_dump(mode="json")})
+    finally:
+        db.close()
 
 
-def _chat_message_out(msg: ChatMessage, lang: str) -> ChatMessageOut:
+def _session_participants(db: Session, session_id: str) -> tuple[User | None, Mentor | None]:
+    sess = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+    if not sess:
+        return None, None
+    user = db.query(User).filter(User.id == sess.user_id).first()
+    mentor = db.query(Mentor).filter(Mentor.id == sess.mentor_id).first()
+    return user, mentor
+
+
+def _sender_display_name(msg: ChatMessage, user: User | None, mentor: Mentor | None) -> str:
+    if msg.sender_role == CHAT_SENDER_USER:
+        return (user.full_name if user and user.full_name else "User").strip()
+    if msg.sender_role == CHAT_SENDER_MENTOR:
+        return (mentor.full_name if mentor and mentor.full_name else "Coach").strip()
+    return msg.sender_role or "Participant"
+
+
+def _chat_message_out(
+    msg: ChatMessage,
+    lang: str,
+    *,
+    user: User | None = None,
+    mentor: Mentor | None = None,
+) -> ChatMessageOut:
     data = ChatMessageOut.model_validate(msg).model_dump()
     data["body"] = resolve_i18n_text(getattr(msg, "body_i18n", None), msg.body, lang)
+    data["sender_display_name"] = _sender_display_name(msg, user, mentor)
     return ChatMessageOut.model_validate(data)
 
 
@@ -699,7 +729,8 @@ def send_chat_message(
     except ChatError as e:
         raise _chat_http(e) from e
     background_tasks.add_task(_ws_push_message, session_id, msg)
-    return _chat_message_out(msg, lang)
+    user, mentor = _session_participants(db, session_id)
+    return _chat_message_out(msg, lang, user=user, mentor=mentor)
 
 
 @router.get("/sessions/{session_id}/messages", response_model=list[ChatMessageOut])
@@ -718,7 +749,8 @@ def get_chat_messages(
     except ChatError as e:
         raise _chat_http(e) from e
     rows = list_messages(db, session_id=session_id, after_id=since_id, limit=limit)
-    return [_chat_message_out(m, lang) for m in rows]
+    user, mentor = _session_participants(db, session_id)
+    return [_chat_message_out(m, lang, user=user, mentor=mentor) for m in rows]
 
 
 @router.post("/sessions/{session_id}/end", response_model=ChatSessionOut)
@@ -825,7 +857,7 @@ def list_my_chat_invoices(db: DbSession, me: CurrentUser, lang: RequestLang) -> 
                 session_id=session.id,
                 invoice_number=_invoice_number(session.id),
                 mentor_name=mentor.full_name,
-                customer_display_name=None,
+                customer_display_name=me.full_name,
                 total_amount=str(total.quantize(Decimal("0.01"))),
                 currency=currency,
                 total_minutes_purchased=minutes,

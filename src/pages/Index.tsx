@@ -9,7 +9,7 @@ import TestimonialsSection from "@/components/TestimonialsSection";
 import Footer from "@/components/Footer";
 import ScrollProgress from "@/components/ScrollProgress";
 
-const HOME_BG_IMAGE = "/Remove_the_text_and_logo_202605102023.jpeg";
+const HOME_BG_IMAGE = "/home-background.jpeg";
 
 const Index = () => {
   return (

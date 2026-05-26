@@ -10,6 +10,7 @@ from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from schemas.platform_invoice import BookingInvoiceOut
+from services.pdf_branding import BRAND_NAME, brand_header_story, branded_pdf_callbacks
 
 
 def _esc(value: object | None) -> str:
@@ -25,9 +26,10 @@ def build_booking_invoice_pdf_from_out(data: BookingInvoiceOut) -> bytes:
         pagesize=A4,
         rightMargin=18 * mm,
         leftMargin=18 * mm,
-        topMargin=18 * mm,
+        topMargin=22 * mm,
         bottomMargin=18 * mm,
     )
+    on_first, on_later = branded_pdf_callbacks()
     styles = getSampleStyleSheet()
     title = ParagraphStyle(name="BkInvTitle", parent=styles["Heading1"], fontSize=18, spaceAfter=10)
     h2 = ParagraphStyle(name="BkInvH2", parent=styles["Heading2"], fontSize=11, spaceBefore=8, spaceAfter=4)
@@ -35,7 +37,8 @@ def build_booking_invoice_pdf_from_out(data: BookingInvoiceOut) -> bytes:
     small = ParagraphStyle(name="BkInvSmall", parent=styles["Normal"], fontSize=9, textColor=colors.grey)
 
     story: list = []
-    story.append(Paragraph(f"<b>{_esc(data.platform_legal_name)} — Invoice</b>", title))
+    story.extend(brand_header_story())
+    story.append(Paragraph(f"<b>{_esc(data.platform_legal_name or BRAND_NAME)} — Invoice</b>", title))
     story.append(
         Paragraph(
             f"<b>{_esc(data.invoice_number)}</b> &nbsp;|&nbsp; Issued: {_esc(data.issued_at.strftime('%Y-%m-%d'))} "
@@ -105,5 +108,5 @@ def build_booking_invoice_pdf_from_out(data: BookingInvoiceOut) -> bytes:
     )
     story.append(Paragraph(f"<i>Booking id: {_esc(data.booking_id)}</i>", small))
 
-    doc.build(story)
+    doc.build(story, onFirstPage=on_first, onLaterPages=on_later)
     return buf.getvalue()

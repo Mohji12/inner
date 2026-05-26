@@ -1,4 +1,4 @@
-import { Leaf, Compass, Link as LinkIcon, UserCheck, Zap, Handshake } from "lucide-react";
+import { Leaf, Compass, Link as LinkIcon, UserCheck, Zap } from "lucide-react";
 import aboutImg from "@/assets/about-img.jpg";
 import { useLanguage } from "@/i18n/LanguageContext";
 import type { Language } from "@/i18n/translations";
@@ -234,13 +234,18 @@ const whyChooseCopy: Record<Language, [WhyChooseBlock, WhyChooseBlock, WhyChoose
 const WhyChooseSection = () => {
   const { language } = useLanguage();
   const blocks = whyChooseCopy[language] ?? whyChooseCopy.en;
-  const selfDevelopmentImg = "/images.jpeg";
+  const selfDevelopmentImg = "/self-development.jpeg";
   const freedomOfChoiceImg = "/change_the_image_of_man_202605130804.jpeg";
   const blockImages = [selfDevelopmentImg, freedomOfChoiceImg, aboutImg] as const;
   const blockIcons = [
     [Leaf, Compass],
     [LinkIcon, UserCheck],
-    [Zap, Handshake],
+    [Zap, null],
+  ] as const;
+  const blockCustomIcons = [
+    [null, null],
+    [null, null],
+    [null, "/images/handshake-shield.png"],
   ] as const;
 
   return (
@@ -263,10 +268,20 @@ const WhyChooseSection = () => {
               <div className="grid sm:grid-cols-2 gap-6">
                 {block.cards.map((card, i) => {
                   const Icon = blockIcons[index][i];
+                  const customIcon = blockCustomIcons[index][i];
                   return (
                     <div key={i} className="bg-white rounded-3xl p-8 text-center shadow-sm hover:shadow-md transition-shadow duration-300">
                       <div className="mx-auto mb-6 flex items-center justify-center">
-                        <Icon className="w-12 h-12 text-foreground/70" />
+                        {customIcon ? (
+                          <img
+                            src={customIcon}
+                            alt=""
+                            className="h-24 w-24 max-w-none object-contain"
+                            aria-hidden
+                          />
+                        ) : Icon ? (
+                          <Icon className="h-12 w-12 text-foreground/70" />
+                        ) : null}
                       </div>
                       <h3 className="text-2xl font-serif font-semibold mb-4 text-foreground/80">{card.title}</h3>
                       <p className="text-foreground/60 leading-relaxed text-[15px]">{card.desc}</p>
@@ -275,24 +290,19 @@ const WhyChooseSection = () => {
                 })}
               </div>
 
-              {/* Right: Slanted Image */}
+              {/* Right: Image */}
               <div className="relative h-[350px] lg:h-[450px] w-full hidden md:block">
-                {/* Shadow polygon */}
-                <div 
-                  className="absolute inset-0 w-full h-full bg-[#7a8570]"
-                  style={{ 
-                    clipPath: "polygon(20% 0%, 100% 0%, 80% 100%, 0% 100%)",
-                    transform: "translate(25px, 20px)"
-                  }}
-                ></div>
-                {/* Main image */}
-                <div 
-                  className="absolute inset-0 w-full h-full"
-                  style={{ 
-                    clipPath: "polygon(20% 0%, 100% 0%, 80% 100%, 0% 100%)",
-                  }}
-                >
-                  <img src={blockImages[index]} alt={block.title} className="w-full h-full object-cover" />
+                <div
+                  className="absolute inset-0 w-full h-full rounded-3xl bg-[#7a8570]"
+                  style={{ transform: "translate(12px, 12px)" }}
+                  aria-hidden
+                />
+                <div className="absolute inset-0 w-full h-full overflow-hidden rounded-3xl shadow-lg">
+                  <img
+                    src={blockImages[index]}
+                    alt={block.title}
+                    className="h-full w-full object-cover object-center"
+                  />
                 </div>
               </div>
             </div>

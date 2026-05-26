@@ -3,12 +3,12 @@ import { Link } from "react-router-dom";
 import { useLanguage } from "@/i18n/LanguageContext";
 import type { Language } from "@/i18n/translations";
 
-/** Card header images (5 → 30 min), from `public/`. */
+/** Card header images (5 → 30 min), from `public/images/`. */
 const PACKAGE_CARD_IMAGES = [
-  "/ipad.jpeg",
-  "/mobile.jpeg",
-  "/laptop.jpeg",
-  "/I_want_image_were_man_202605130824.jpeg",
+  "/images/tablet.png",
+  "/images/mobile.png",
+  "/images/desktop.png",
+  "/images/laptop.png",
 ] as const;
 
 type PackageCard = { title: string; description: string; price: string };

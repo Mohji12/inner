@@ -40,7 +40,7 @@ const Navbar = () => {
           href="#hero"
           className="flex items-center transition-opacity hover:opacity-80"
         >
-          <img src="/lifepath%20logo.png" alt="Mijn Levenspad Logo" className="h-16 w-auto object-contain drop-shadow-sm" />
+          <img src="/lifepath%20logo.png" alt="Mijn Levenspad Logo" className="h-20 w-auto object-contain drop-shadow-sm md:h-24" />
         </a>
 
         <div className="hidden md:flex items-center gap-8">

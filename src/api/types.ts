@@ -309,6 +309,7 @@ export interface ChatMessage {
   id: string;
   session_id: string;
   sender_role: "user" | "mentor" | string;
+  sender_display_name?: string;
   body: string;
   read_at: string | null;
   created_at: string;

@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     cors_origins: str = (
         "http://localhost:5173,http://127.0.0.1:5173,"
         "http://localhost:8080,http://127.0.0.1:8080,"
-        "https://staging.dsib62wvchuui.amplifyapp.com"
+        "https://staging.dutgt85z7f3h6.amplifyapp.com"
     )
 
     cookie_secure: bool = False

@@ -21,7 +21,7 @@ export default function AccessibilityWidget() {
         <Button
           type="button"
           variant="ghost"
-          className="fixed bottom-5 right-5 z-[2147483647] h-24 w-24 rounded-full p-0 shadow-xl hover:bg-transparent hover:opacity-90 [&_svg]:!size-full"
+          className="fixed bottom-4 right-4 z-[2147483647] h-14 w-14 rounded-full p-0 shadow-lg hover:bg-transparent hover:opacity-90 md:bottom-5 md:right-5 md:h-20 md:w-20 lg:h-24 lg:w-24 [&_svg]:!size-full"
           title={a.openPanel}
         >
           <AccessibilityAdjustmentIcon className="size-full shrink-0" />

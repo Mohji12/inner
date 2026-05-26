@@ -6,6 +6,23 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class BookingInvoiceSummaryOut(BaseModel):
+    """List row for user transaction history (completed booking sessions)."""
+
+    kind: str = Field(default="booking_session")
+    booking_id: str
+    invoice_number: str
+    mentor_name: str
+    customer_name: str
+    customer_email: str
+    total_amount: str
+    currency: str
+    payment_status: str
+    duration_minutes: int
+    promo_applied: bool = False
+    issued_at: datetime
+
+
 class BookingInvoiceOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

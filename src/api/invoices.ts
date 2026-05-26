@@ -1,5 +1,20 @@
 import { apiFetch, apiFetchBlob } from "./client";
 
+export interface BookingInvoiceSummary {
+  kind: "booking_session";
+  booking_id: string;
+  invoice_number: string;
+  mentor_name: string;
+  customer_name: string;
+  customer_email: string;
+  total_amount: string;
+  currency: string;
+  payment_status: string;
+  duration_minutes: number;
+  promo_applied: boolean;
+  issued_at: string;
+}
+
 export interface BookingInvoice {
   kind: string;
   invoice_number: string;
@@ -22,6 +37,10 @@ export interface BookingInvoice {
   payment_amount: string;
   amount_base_eur: string | null;
   transaction_id: string | null;
+}
+
+export function listUserBookingInvoices(): Promise<BookingInvoiceSummary[]> {
+  return apiFetch<BookingInvoiceSummary[]>("/invoices/bookings");
 }
 
 export function fetchUserBookingInvoice(bookingId: string): Promise<BookingInvoice> {

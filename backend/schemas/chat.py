@@ -103,6 +103,7 @@ class ChatMessageOut(BaseModel):
     id: str
     session_id: str
     sender_role: str
+    sender_display_name: str = ""
     body: str
     read_at: datetime | None = None
     created_at: datetime

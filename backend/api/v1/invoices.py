@@ -5,11 +5,19 @@ from database import get_db
 from api.deps import get_current_mentor, get_current_user
 from models.mentor import Mentor
 from models.user import User
-from schemas.platform_invoice import BookingInvoiceOut
+from schemas.platform_invoice import BookingInvoiceOut, BookingInvoiceSummaryOut
 from services.invoice_service import InvoiceError, generate_invoice_pdf, generate_invoice_pdf_for_mentor
-from services.platform_invoice_service import load_booking_invoice
+from services.platform_invoice_service import list_user_booking_invoice_summaries, load_booking_invoice
 
 router = APIRouter(prefix="/invoices", tags=["Invoices"])
+
+
+@router.get("/bookings", response_model=list[BookingInvoiceSummaryOut])
+def list_my_booking_invoices(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[BookingInvoiceSummaryOut]:
+    return list_user_booking_invoice_summaries(db, current_user.id)
 
 
 @router.get("/bookings/{booking_id}", response_model=BookingInvoiceOut)

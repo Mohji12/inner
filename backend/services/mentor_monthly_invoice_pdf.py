@@ -12,6 +12,7 @@ from xml.sax.saxutils import escape as xml_escape
 
 from models.mentor import Mentor
 from models.mentor_monthly_invoice import MentorMonthlyInvoice
+from services.pdf_branding import BRAND_NAME, brand_header_story, branded_pdf_callbacks
 
 
 def _esc(value: object | None) -> str:
@@ -27,9 +28,10 @@ def build_mentor_monthly_invoice_pdf(*, invoice: MentorMonthlyInvoice, mentor: M
         pagesize=A4,
         rightMargin=18 * mm,
         leftMargin=18 * mm,
-        topMargin=18 * mm,
+        topMargin=22 * mm,
         bottomMargin=18 * mm,
     )
+    on_first, on_later = branded_pdf_callbacks()
     styles = getSampleStyleSheet()
     title = ParagraphStyle(name="InvTitle", parent=styles["Heading1"], fontSize=18, spaceAfter=12)
     h2 = ParagraphStyle(name="InvH2", parent=styles["Heading2"], fontSize=11, spaceBefore=10, spaceAfter=6)
@@ -40,7 +42,8 @@ def build_mentor_monthly_invoice_pdf(*, invoice: MentorMonthlyInvoice, mentor: M
     mentor_email = mentor.email if mentor else "-"
 
     story: list = []
-    story.append(Paragraph(f"<b>Mentor Monthly Invoice { _esc(month_label) }</b>", title))
+    story.extend(brand_header_story())
+    story.append(Paragraph(f"<b>{BRAND_NAME} — Mentor Monthly Invoice {_esc(month_label)}</b>", title))
     story.append(
         Paragraph(
             f"Status: <b>{_esc(invoice.status)}</b> &nbsp;|&nbsp; Currency: <b>{_esc(invoice.currency)}</b>",
@@ -88,5 +91,5 @@ def build_mentor_monthly_invoice_pdf(*, invoice: MentorMonthlyInvoice, mentor: M
         )
     )
 
-    doc.build(story)
+    doc.build(story, onFirstPage=on_first, onLaterPages=on_later)
     return buf.getvalue()

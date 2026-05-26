@@ -136,8 +136,18 @@ export function ChatPanel({ sessionId, session }: Props) {
               const mine =
                 (role === "user" && m.sender_role === "user") ||
                 (role === "mentor" && m.sender_role === "mentor");
+              const senderLabel =
+                m.sender_display_name?.trim() ||
+                (m.sender_role === "user" ? "User" : "Coach");
               return (
                 <div key={m.id} className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
+                  <p
+                    className={`mb-1 px-1 text-[11px] font-semibold ${
+                      mine ? "text-primary/80" : "text-muted-foreground"
+                    }`}
+                  >
+                    {senderLabel}
+                  </p>
                   <div
                     className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
                       mine
