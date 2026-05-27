@@ -71,7 +71,7 @@ async def _read_image_upload(file: UploadFile) -> bytes:
     if len(contents) > MAX_IMAGE_BYTES:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            f"Image must be at most {MAX_IMAGE_BYTES // (1024 * 1024)} MB",
+            "Image is more than 2 MB.",
         )
     if len(contents) == 0:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Empty file")

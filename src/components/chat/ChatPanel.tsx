@@ -15,6 +15,7 @@ import { useEffectiveTimeZone } from "@/hooks/useEffectiveTimeZone";
 import { mediaUrlFromApi } from "@/lib/mediaUrl";
 
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+const IMAGE_TOO_LARGE_MESSAGE = "Image is more than 2 MB.";
 
 type Props = {
   sessionId: string;
@@ -150,7 +151,10 @@ export function ChatPanel({ sessionId, session }: Props) {
     mutationFn: ({ file, caption }: { file: File; caption: string }) =>
       sendChatImageMessage(sessionId, file, caption),
     onSuccess: onSendSuccess,
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      const msg = e.message.toLowerCase().includes("2 mb") ? IMAGE_TOO_LARGE_MESSAGE : e.message;
+      toast.error(msg);
+    },
   });
 
   const isSending = sendTextMut.isPending || sendImageMut.isPending;
@@ -166,12 +170,13 @@ export function ChatPanel({ sessionId, session }: Props) {
 
   const onImageSelected = (file: File | undefined) => {
     if (!file) return;
+    if (fileInputRef.current) fileInputRef.current.value = "";
     if (!file.type.startsWith("image/")) {
       toast.error("Please choose an image file.");
       return;
     }
     if (file.size > MAX_IMAGE_BYTES) {
-      toast.error("Image must be 2 MB or smaller.");
+      toast.error(IMAGE_TOO_LARGE_MESSAGE);
       return;
     }
     setPendingImage(file);
@@ -180,6 +185,11 @@ export function ChatPanel({ sessionId, session }: Props) {
   const onSend = useCallback(() => {
     const caption = draft.trim();
     if (pendingImage) {
+      if (pendingImage.size > MAX_IMAGE_BYTES) {
+        toast.error(IMAGE_TOO_LARGE_MESSAGE);
+        clearPendingImage();
+        return;
+      }
       sendImageMut.mutate({ file: pendingImage, caption });
       return;
     }
