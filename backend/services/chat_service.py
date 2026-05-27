@@ -352,10 +352,16 @@ def post_message(
     sender_user_id: str | None,
     sender_mentor_id: str | None,
     body: str,
+    attachment_url: str | None = None,
+    attachment_type: str | None = None,
+    attachment_filename: str | None = None,
+    attachment_size_bytes: int | None = None,
 ) -> ChatMessage:
-    if not body or not body.strip():
-        raise ChatError("Message body is required", "empty_body")
-    if len(body) > MAX_MESSAGE_BODY_LEN:
+    body_stripped = (body or "").strip()
+    has_attachment = bool(attachment_url)
+    if not body_stripped and not has_attachment:
+        raise ChatError("Message body or image is required", "empty_body")
+    if len(body_stripped) > MAX_MESSAGE_BODY_LEN:
         raise ChatError("Message too long", "body_too_long")
 
     session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
@@ -386,8 +392,12 @@ def post_message(
         id=new_uuid(),
         session_id=session_id,
         sender_role=role,
-        body=body.strip(),
-        body_i18n=to_i18n_map(body.strip()),
+        body=body_stripped,
+        body_i18n=to_i18n_map(body_stripped) if body_stripped else None,
+        attachment_url=attachment_url,
+        attachment_type=attachment_type,
+        attachment_filename=attachment_filename,
+        attachment_size_bytes=attachment_size_bytes,
         created_at=now,
     )
     db.add(msg)

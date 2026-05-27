@@ -2,12 +2,13 @@ import logging
 from datetime import timezone
 from decimal import Decimal
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from api.deps import AnyActorDep, ChatActorDep, CurrentMentor, CurrentUser, DbSession, RequestLang
+from api.v1.file_upload import _read_image_upload, store_chat_image
 from core.limiter import limiter
 from models.chat_message import ChatMessage
 from models.chat_bridge_session import ChatBridgeSession
@@ -131,6 +132,15 @@ def _sender_display_name(msg: ChatMessage, user: User | None, mentor: Mentor | N
     if msg.sender_role == CHAT_SENDER_MENTOR:
         return (mentor.full_name if mentor and mentor.full_name else "Coach").strip()
     return msg.sender_role or "Participant"
+
+
+def _message_preview(body: str | None, attachment_url: str | None) -> str | None:
+    text = (body or "").strip()
+    if text:
+        return text
+    if attachment_url:
+        return "[Image]"
+    return None
 
 
 def _chat_message_out(
@@ -651,19 +661,27 @@ def list_my_chat_sessions(db: DbSession, actor: ChatActorDep) -> ChatInboxOut:
         else:
             partner = db.query(User.full_name, User.profile_image).filter(User.id == s.user_id).first()
             
-        # Get last message body
-        last_msg = db.query(ChatMessage.body, ChatMessage.sender_role).filter(
-            ChatMessage.session_id == s.id
-        ).order_by(ChatMessage.created_at.desc()).first()
-        
+        # Get last message preview
+        last_msg = (
+            db.query(ChatMessage.body, ChatMessage.sender_role, ChatMessage.attachment_url)
+            .filter(ChatMessage.session_id == s.id)
+            .order_by(ChatMessage.created_at.desc())
+            .first()
+        )
+
         base = _session_out(s, db)
-        out.append(ChatInboxSessionOut(
-            **base.model_dump(),
-            partner_name=partner[0] if partner else "Unknown",
-            partner_profile_image=partner[1] if partner else None,
-            last_message_body=last_msg[0] if last_msg else None,
-            last_message_role=last_msg[1] if last_msg else None,
-        ))
+        out.append(
+            ChatInboxSessionOut(
+                **base.model_dump(),
+                partner_name=partner[0] if partner else "Unknown",
+                partner_profile_image=partner[1] if partner else None,
+                last_message_body=_message_preview(
+                    last_msg[0] if last_msg else None,
+                    last_msg[2] if last_msg else None,
+                ),
+                last_message_role=last_msg[1] if last_msg else None,
+            )
+        )
         
     return ChatInboxOut(sessions=out)
 
@@ -713,12 +731,15 @@ def send_chat_message(
     if not uid and not mid:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not authenticated")
     try:
+        text = resolve_i18n_text(payload.body_i18n, payload.body, lang) or payload.body
+        if not (text or "").strip():
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail={"message": "Message body is required", "code": "empty_body"})
         msg = post_message(
             db,
             session_id=session_id,
             sender_user_id=uid,
             sender_mentor_id=mid,
-            body=resolve_i18n_text(payload.body_i18n, payload.body, lang) or payload.body,
+            body=text,
         )
         if payload.body_i18n:
             msg.body_i18n = payload.body_i18n
@@ -726,6 +747,54 @@ def send_chat_message(
             msg.body_i18n = to_i18n_map(payload.body, lang)
         db.commit()
         db.refresh(msg)
+    except ChatError as e:
+        raise _chat_http(e) from e
+    background_tasks.add_task(_ws_push_message, session_id, msg)
+    user, mentor = _session_participants(db, session_id)
+    return _chat_message_out(msg, lang, user=user, mentor=mentor)
+
+
+@router.post(
+    "/sessions/{session_id}/messages/image",
+    response_model=ChatMessageOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def send_chat_image_message(
+    session_id: str,
+    db: DbSession,
+    actor: ChatActorDep,
+    background_tasks: BackgroundTasks,
+    lang: RequestLang,
+    file: UploadFile = File(...),
+    body: str = Form(default=""),
+) -> ChatMessageOut:
+    uid = actor.user.id if actor.user else None
+    mid = actor.mentor.id if actor.mentor else None
+    if not uid and not mid:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not authenticated")
+    contents = await _read_image_upload(file)
+    file_url = store_chat_image(
+        contents,
+        session_id=session_id,
+        original_name=file.filename or "image.png",
+    )
+    caption = (body or "").strip()
+    try:
+        msg = post_message(
+            db,
+            session_id=session_id,
+            sender_user_id=uid,
+            sender_mentor_id=mid,
+            body=caption,
+            attachment_url=file_url,
+            attachment_type=file.content_type or "image/jpeg",
+            attachment_filename=file.filename,
+            attachment_size_bytes=len(contents),
+        )
+        if caption:
+            msg.body_i18n = to_i18n_map(caption, lang)
+            db.commit()
+            db.refresh(msg)
     except ChatError as e:
         raise _chat_http(e) from e
     background_tasks.add_task(_ws_push_message, session_id, msg)

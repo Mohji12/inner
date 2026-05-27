@@ -14,7 +14,7 @@ from core.config import settings
 
 logger = logging.getLogger(__name__)
 
-Kind = Literal["avatar", "banner"]
+Kind = Literal["avatar", "banner", "chat"]
 
 
 def _configure() -> None:
@@ -26,13 +26,17 @@ def _configure() -> None:
     )
 
 
-def upload_image_bytes(contents: bytes, *, kind: Kind) -> str:
+def upload_image_bytes(contents: bytes, *, kind: Kind, session_id: str | None = None) -> str:
     """Upload raw image bytes; returns HTTPS URL (secure_url)."""
     if not settings.cloudinary_configured:
         raise RuntimeError("Cloudinary is not configured; set CLOUDINARY_CLOUD_NAME, API_KEY, and API_SECRET")
     _configure()
-    folder = "profiles/avatars" if kind == "avatar" else "profiles/banners"
-    public_id = f"{kind}_{uuid4().hex}"
+    if kind == "chat":
+        folder = f"chat/{session_id}" if session_id else "chat"
+        public_id = f"chat_{uuid4().hex}"
+    else:
+        folder = "profiles/avatars" if kind == "avatar" else "profiles/banners"
+        public_id = f"{kind}_{uuid4().hex}"
     try:
         result = cloudinary.uploader.upload(
             io.BytesIO(contents),

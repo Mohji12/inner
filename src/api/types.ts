@@ -311,6 +311,10 @@ export interface ChatMessage {
   sender_role: "user" | "mentor" | string;
   sender_display_name?: string;
   body: string;
+  attachment_url?: string | null;
+  attachment_type?: string | null;
+  attachment_filename?: string | null;
+  attachment_size_bytes?: number | null;
   read_at: string | null;
   created_at: string;
 }

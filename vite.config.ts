@@ -12,7 +12,7 @@ export default defineConfig({
     proxy: {
       // Same-origin `/api/*` in dev → FastAPI (avoids CORS during local work).
       "/api": {
-        target: "http://127.0.0.1:8002",
+        target: "http://127.0.0.1:8000",
         changeOrigin: true,
         ws: true,
       },

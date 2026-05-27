@@ -43,8 +43,25 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _booking_eligible_for_invoice(booking: Booking, now: datetime) -> bool:
-    payment = booking.payment
+def _resolve_booking_payment(db: Session, booking: Booking) -> Payment | None:
+    """Pick the succeeded payment for a booking (handles duplicate payment rows)."""
+    if booking.payment_id:
+        linked = db.query(Payment).filter(Payment.id == booking.payment_id).first()
+        if linked:
+            return linked
+    return (
+        db.query(Payment)
+        .filter(Payment.booking_id == booking.id, Payment.status == PAYMENT_RECORD_SUCCEEDED)
+        .order_by(Payment.created_at.desc())
+        .first()
+        or db.query(Payment)
+        .filter(Payment.booking_id == booking.id)
+        .order_by(Payment.created_at.desc())
+        .first()
+    )
+
+
+def _booking_eligible_for_invoice(booking: Booking, payment: Payment | None, now: datetime) -> bool:
     if not payment:
         return False
     if str(payment.status) != PAYMENT_RECORD_SUCCEEDED:
@@ -64,18 +81,16 @@ def list_user_booking_invoice_summaries(db: Session, user_id: str) -> list[Booki
     now = _utcnow()
     bookings = (
         db.query(Booking)
-        .options(joinedload(Booking.user), joinedload(Booking.mentor), joinedload(Booking.payment))
+        .options(joinedload(Booking.user), joinedload(Booking.mentor))
         .filter(Booking.user_id == user_id)
         .order_by(Booking.start_at_utc.desc())
         .all()
     )
     out: list[BookingInvoiceSummaryOut] = []
     for booking in bookings:
-        if not _booking_eligible_for_invoice(booking, now):
+        payment = _resolve_booking_payment(db, booking)
+        if not _booking_eligible_for_invoice(booking, payment, now):
             continue
-        payment = booking.payment
-        if not payment:
-            payment = db.query(Payment).filter(Payment.booking_id == booking.id).first()
         if not payment:
             continue
         user: User = booking.user
@@ -113,7 +128,7 @@ def load_booking_invoice(
 
     booking = (
         db.query(Booking)
-        .options(joinedload(Booking.user), joinedload(Booking.mentor), joinedload(Booking.payment))
+        .options(joinedload(Booking.user), joinedload(Booking.mentor))
         .filter(Booking.id == booking_id)
         .first()
     )
@@ -124,10 +139,7 @@ def load_booking_invoice(
     if mentor_id and booking.mentor_id != mentor_id:
         raise InvoiceError("Forbidden")
 
-    payment = booking.payment
-    if not payment:
-        pay_row = db.query(Payment).filter(Payment.booking_id == booking_id).first()
-        payment = pay_row
+    payment = _resolve_booking_payment(db, booking)
     if not payment:
         raise InvoiceError("Payment record not found for this booking")
 

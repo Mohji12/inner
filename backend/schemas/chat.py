@@ -93,7 +93,7 @@ class ChatPhoneBridgeOut(BaseModel):
 
 
 class ChatMessageIn(BaseModel):
-    body: str = Field(min_length=1, max_length=8000)
+    body: str = Field(default="", max_length=8000)
     body_i18n: dict[str, str] | None = None
 
 
@@ -105,6 +105,10 @@ class ChatMessageOut(BaseModel):
     sender_role: str
     sender_display_name: str = ""
     body: str
+    attachment_url: str | None = None
+    attachment_type: str | None = None
+    attachment_filename: str | None = None
+    attachment_size_bytes: int | None = None
     read_at: datetime | None = None
     created_at: datetime
 

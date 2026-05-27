@@ -22,18 +22,21 @@ def _ensure_upload_dir() -> None:
     os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
-def _save_upload_local(contents: bytes, original_name: str) -> str:
+def _save_upload_local(contents: bytes, original_name: str, *, subdir: str | None = None) -> str:
     import os
 
     ext = original_name.split(".")[-1] if "." in original_name else "png"
     filename = f"{uuid4().hex}.{ext}"
-    file_path = os.path.join(UPLOAD_DIR, filename)
+    target_dir = os.path.join(UPLOAD_DIR, subdir) if subdir else UPLOAD_DIR
+    os.makedirs(target_dir, exist_ok=True)
+    file_path = os.path.join(target_dir, filename)
     try:
         with open(file_path, "wb") as buffer:
             buffer.write(contents)
     except Exception:
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Could not save file") from None
-    return f"/uploads/{filename}"
+    rel = f"{subdir}/{filename}" if subdir else filename
+    return f"/uploads/{rel.replace(chr(92), '/')}"
 
 
 def _store_image(contents: bytes, *, kind: Literal["avatar", "banner"], original_name: str) -> str:
@@ -46,6 +49,19 @@ def _store_image(contents: bytes, *, kind: Literal["avatar", "banner"], original
                 "Image storage service failed. Try again or contact support.",
             ) from e
     return _save_upload_local(contents, original_name)
+
+
+def store_chat_image(contents: bytes, *, session_id: str, original_name: str) -> str:
+    """Store a chat attachment image; returns public URL path or Cloudinary HTTPS URL."""
+    if settings.cloudinary_configured:
+        try:
+            return upload_image_bytes(contents, kind="chat", session_id=session_id)
+        except Exception as e:
+            raise HTTPException(
+                status.HTTP_502_BAD_GATEWAY,
+                "Image storage service failed. Try again or contact support.",
+            ) from e
+    return _save_upload_local(contents, original_name, subdir=f"chat/{session_id}")
 
 
 async def _read_image_upload(file: UploadFile) -> bytes:

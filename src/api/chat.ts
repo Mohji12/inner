@@ -96,10 +96,27 @@ export function postChatCallBridge(body: ChatPhoneBridgeIn): Promise<ChatPhoneBr
   });
 }
 
-export function sendChatMessage(sessionId: string, body: { body: string }): Promise<ChatMessage> {
+export function sendChatMessage(
+  sessionId: string,
+  body: { body: string; body_i18n?: Record<string, string> | null },
+): Promise<ChatMessage> {
   return apiFetch<ChatMessage>(`/chat/sessions/${sessionId}/messages`, {
     method: "POST",
     body: JSON.stringify(body),
+  });
+}
+
+export function sendChatImageMessage(
+  sessionId: string,
+  file: File,
+  caption?: string,
+): Promise<ChatMessage> {
+  const form = new FormData();
+  form.append("file", file);
+  if (caption?.trim()) form.append("body", caption.trim());
+  return apiFetch<ChatMessage>(`/chat/sessions/${sessionId}/messages/image`, {
+    method: "POST",
+    body: form,
   });
 }
 
