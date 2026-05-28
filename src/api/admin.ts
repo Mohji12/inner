@@ -490,3 +490,76 @@ export interface AdminMentorBankDetailsPrivate {
 export function getAdminMentorPayoutBankDetails(mentorId: string) {
   return apiFetch<AdminMentorBankDetailsPrivate>(`/admin/mentors/${mentorId}/payout-bank-details`);
 }
+
+export interface AdminBookingInvoiceRow {
+  booking_id: string;
+  invoice_number: string;
+  customer_name: string;
+  customer_email: string;
+  mentor_name: string;
+  total_amount: string;
+  currency: string;
+  payment_status: string;
+  duration_minutes: number;
+  issued_at: string;
+}
+
+export interface AdminBookingInvoiceList {
+  items: AdminBookingInvoiceRow[];
+  total: number;
+  skip: number;
+  limit: number;
+}
+
+export interface AdminOnboardingInvoiceRow {
+  payment_id: string;
+  invoice_number: string;
+  mentor_name: string;
+  mentor_email: string;
+  total_amount: string;
+  currency: string;
+  payment_status: string;
+  issued_at: string;
+}
+
+export interface AdminOnboardingInvoiceList {
+  items: AdminOnboardingInvoiceRow[];
+  total: number;
+  skip: number;
+  limit: number;
+}
+
+export interface AdminTransactionRow {
+  id: string;
+  transaction_type: string;
+  reference_id: string | null;
+  party_name: string;
+  party_email: string | null;
+  amount: string;
+  currency: string;
+  status: string;
+  created_at: string;
+}
+
+export interface AdminTransactionList {
+  items: AdminTransactionRow[];
+  total: number;
+  skip: number;
+  limit: number;
+}
+
+export function fetchAdminBookingInvoices(skip = 0, limit = 50) {
+  return apiFetch<AdminBookingInvoiceList>(`/admin/booking-invoices?skip=${skip}&limit=${limit}`);
+}
+
+export function downloadAdminBookingInvoicePdf(bookingId: string) {
+  return apiFetchBlob(`/admin/booking-invoices/${bookingId}/pdf`);
+}
+
+export function fetchAdminOnboardingInvoices(skip = 0, limit = 50) {
+  return apiFetch<AdminOnboardingInvoiceList>(`/admin/onboarding-invoices?skip=${skip}&limit=${limit}`);
+}
+
+export function fetchAdminTransactions(skip = 0, limit = 100) {
+  return apiFetch<AdminTransactionList>(`/admin/transactions?skip=${skip}&limit=${limit}`);
+}

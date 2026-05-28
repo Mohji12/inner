@@ -14,8 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        serif: ['"Times New Roman"', "Times", "serif"],
-        sans: ['"Times New Roman"', "Times", "serif"],
+        display: ['"Cormorant Garamond"', "Georgia", "serif"],
+        serif: ['"Cormorant Garamond"', "Georgia", "serif"],
+        sans: ['"Cormorant Garamond"', "Georgia", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -60,6 +61,10 @@ export default {
           light: "hsl(var(--gold-light))",
         },
         cream: "hsl(var(--cream))",
+        heading: {
+          DEFAULT: "#5B554E",
+          foreground: "#5B554E",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

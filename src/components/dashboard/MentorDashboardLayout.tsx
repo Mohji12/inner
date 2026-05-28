@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { NotificationBell } from "@/components/NotificationBell";
+import { OnlineStatusBadge } from "@/components/OnlineStatusBadge";
 import { DashboardContentArea } from "@/components/dashboard/DashboardContentArea";
 import {
   dashboardBrandCardClass,
@@ -51,7 +53,7 @@ export function MentorDashboardLayout() {
       <Sidebar collapsible="icon" variant="floating">
         <SidebarHeader className="border-b border-sidebar-border/60 px-4 py-4">
           <div className={dashboardBrandCardClass}>
-            <p className="font-serif text-4xl font-semibold tracking-tight break-words">Mijn Levenspad</p>
+            <p className="font-serif text-4xl font-semibold tracking-tight break-words text-heading">Mijn Levenspad</p>
             <p className="text-xs text-muted-foreground break-words">{d.role}</p>
           </div>
         </SidebarHeader>
@@ -143,7 +145,9 @@ export function MentorDashboardLayout() {
         <header className="relative z-10 flex h-16 items-center gap-2 border-b border-border/60 bg-background/80 backdrop-blur transition-colors duration-200 px-6">
           <SidebarTrigger className="transition-transform duration-200 hover:scale-105 active:scale-95" />
           <Separator orientation="vertical" className="h-6" />
-          <span className="text-sm text-muted-foreground">{d.hub}</span>
+          <span className="text-sm text-muted-foreground flex-1">{d.hub}</span>
+          <OnlineStatusBadge />
+          <NotificationBell />
         </header>
         <div className="relative z-10 flex-1 overflow-auto p-6">
           <DashboardContentArea />

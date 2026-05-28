@@ -122,6 +122,27 @@ def mentor_presence_heartbeat(db: DbSession, me: CurrentMentor) -> Response:
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+class MentorPresenceStatusOut(BaseModel):
+    is_online: bool
+    chat_busy: bool
+    status: str
+
+
+@router.get("/presence-status", response_model=MentorPresenceStatusOut)
+def mentor_presence_status(db: DbSession, me: CurrentMentor) -> MentorPresenceStatusOut:
+    from services.chat_service import mentor_chat_busy
+
+    online = presence_service.is_online(me.id, "mentor")
+    busy = mentor_chat_busy(db, me.id)
+    if busy:
+        status_label = "busy"
+    elif online:
+        status_label = "online"
+    else:
+        status_label = "offline"
+    return MentorPresenceStatusOut(is_online=online, chat_busy=busy, status=status_label)
+
+
 @router.patch("", response_model=MentorAccountOut)
 def mentor_update(db: DbSession, me: CurrentMentor, payload: MentorUpdate, lang: RequestLang) -> MentorAccountOut:
     data = payload.model_dump(exclude_unset=True)

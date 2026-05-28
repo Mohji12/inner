@@ -61,3 +61,15 @@ export interface UserSpendingSeries {
 export function getUserSpendingSeries(period: AnalyticsPeriod): Promise<UserSpendingSeries> {
   return apiFetch<UserSpendingSeries>(`/users/me/spending-series?period=${period}`);
 }
+
+export function heartbeatUserPresence(): Promise<void> {
+  return apiFetch<void>("/users/me/presence", { method: "POST" });
+}
+
+export interface UserPresenceStatus {
+  is_online: boolean;
+}
+
+export function getUserPresenceStatus(): Promise<UserPresenceStatus> {
+  return apiFetch<UserPresenceStatus>("/users/me/presence-status");
+}

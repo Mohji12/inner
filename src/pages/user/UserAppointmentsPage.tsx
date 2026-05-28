@@ -30,10 +30,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CheckoutCurrencySelect } from "@/components/CheckoutCurrencySelect";
+import { SuccessBurst } from "@/components/ui/SuccessBurst";
 import { guessCheckoutCurrencyFromLocale } from "@/lib/checkoutCurrencyGuess";
 import { formatDateLocal, formatTimeLocal } from "@/lib/timeZone";
 import { chatSessionCardCaption } from "@/lib/chatSessionCardCaption";
 import { useEffectiveTimeZone } from "@/hooks/useEffectiveTimeZone";
+import { SessionBookingDetails } from "@/components/SessionBookingDetails";
 import {
   clearPendingMolliePaymentId,
   peekPendingMolliePaymentId,
@@ -60,6 +62,7 @@ const UserAppointmentsPage = () => {
   const highlightedBookingId = (searchParams.get("bookingId") || "").trim();
   const [isConfirmingSession, setIsConfirmingSession] = useState(false);
   const bookingToastShownRef = useRef(false);
+  const [paymentSuccessVisible, setPaymentSuccessVisible] = useState(false);
   const sessionReadyToastShownRef = useRef(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewBooking, setReviewBooking] = useState<Booking | null>(null);
@@ -247,13 +250,14 @@ const UserAppointmentsPage = () => {
     const hit = bookings.some((b) => b.id === highlightedBookingId);
     if (hit && !bookingToastShownRef.current) {
       bookingToastShownRef.current = true;
-      toast.success("Payment received. Your booking is below — use Start Session when you're ready to join.");
-      return;
+      setPaymentSuccessVisible(true);
+      const hideTimer = window.setTimeout(() => setPaymentSuccessVisible(false), 8000);
+      return () => window.clearTimeout(hideTimer);
     }
-    const timer = window.setTimeout(() => {
+    const pollTimer = window.setTimeout(() => {
       void queryClient.invalidateQueries({ queryKey: ["bookings", "me"] });
     }, 1500);
-    return () => window.clearTimeout(timer);
+    return () => window.clearTimeout(pollTimer);
   }, [bookings, highlightedBookingId, queryClient]);
 
   useEffect(() => {
@@ -328,6 +332,22 @@ const UserAppointmentsPage = () => {
         ) : null}
       </div>
 
+      {paymentSuccessVisible ? (
+        <Card className="border-primary/40 bg-primary/5 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+          <CardContent className="flex flex-col items-center gap-2 p-6 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+            <SuccessBurst
+              size="sm"
+              label="Payment successful"
+              description="Your booking is below — use Start Session when you're ready to join."
+              className="sm:items-start sm:text-left"
+            />
+            <Button type="button" variant="ghost" size="sm" onClick={() => setPaymentSuccessVisible(false)}>
+              Dismiss
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {highlightedSessionId && isConfirmingSession ? (
         <Card className="border-border/60">
           <CardContent className="p-4 text-sm text-muted-foreground">
@@ -364,6 +384,7 @@ const UserAppointmentsPage = () => {
                       {cap.secondaryLine ? (
                         <p className="mt-1 text-xs text-muted-foreground">{cap.secondaryLine}</p>
                       ) : null}
+                      {s.booking ? <SessionBookingDetails booking={s.booking} variant="compact" className="mt-2" /> : null}
                       {s.last_message_body ? (
                         <p className="mt-1 text-xs text-muted-foreground">{s.last_message_body}</p>
                       ) : null}

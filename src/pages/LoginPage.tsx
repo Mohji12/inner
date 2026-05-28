@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AuthSuccessOverlay } from "@/components/ui/SuccessBurst";
 import { toast } from "sonner";
 import { GoogleSignIn } from "@/components/auth/GoogleSignIn";
 import { loginUser2FA, loginMentor2FA } from "@/api/auth";
@@ -14,6 +15,7 @@ import { ShieldAlert, ArrowLeft } from "lucide-react";
 
 type Role = "user" | "mentor" | "admin";
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
+const AUTH_SUCCESS_DELAY_MS = 1200;
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -30,11 +32,24 @@ const LoginPage = () => {
   const [is2FARequired, setIs2FARequired] = useState(false);
   const [twoFactorCode, setTwoFactorCode] = useState("");
   const [tempToken, setTempToken] = useState("");
+  const [authSuccess, setAuthSuccess] = useState<{ to: string; message: string } | null>(null);
 
   useEffect(() => {
     const r = searchParams.get("role");
     if (r === "mentor" || r === "user" || r === "admin") setRole(r);
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!authSuccess) return;
+    const timer = window.setTimeout(() => {
+      navigate(authSuccess.to, { replace: true });
+    }, AUTH_SUCCESS_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [authSuccess, navigate]);
+
+  const finishLogin = (to: string, message: string) => {
+    setAuthSuccess({ to, message });
+  };
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -51,7 +66,7 @@ const LoginPage = () => {
           setTempToken(res.temp_token!);
           return;
         }
-        navigate("/user/appointments", { replace: true });
+        finishLogin("/user/appointments", "Welcome back!");
         return;
       }
       if (role === "mentor") {
@@ -61,11 +76,11 @@ const LoginPage = () => {
           setTempToken(res.temp_token!);
           return;
         }
-        navigate("/mentor/appointments", { replace: true });
+        finishLogin("/mentor/appointments", "Welcome back, Coach!");
         return;
       }
       await loginAdminSession({ email: email.trim(), password });
-      navigate("/admin", { replace: true });
+      finishLogin("/admin", "Welcome back!");
     } catch (e) {
       const msg = e instanceof Error ? e.message : a.errFailed;
       setError(msg);
@@ -93,8 +108,10 @@ const LoginPage = () => {
       if (role === 'user') setUserSession(res.access_token);
       else setMentorSession(res.access_token);
 
-      toast.success("Logged in successfully");
-      navigate(role === 'user' ? "/user/appointments" : "/mentor/appointments", { replace: true });
+      finishLogin(
+        role === 'user' ? "/user/appointments" : "/mentor/appointments",
+        role === 'user' ? "Welcome back!" : "Welcome back, Coach!",
+      );
     } catch (e) {
       const msg = e instanceof Error ? e.message : "2FA verification failed";
       toast.error(msg);
@@ -140,6 +157,7 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      {authSuccess ? <AuthSuccessOverlay message={authSuccess.message} description="Taking you to your dashboard…" /> : null}
       <AppPageHeader />
       <main className="container mx-auto px-6 py-10">
         <Card className="mx-auto max-w-xl border-border/60 shadow-xl overflow-hidden">
@@ -236,7 +254,13 @@ const LoginPage = () => {
                       on2FARequired={(token) => {
                         setIs2FARequired(true);
                         setTempToken(token);
-                      }} 
+                      }}
+                      onAuthenticated={(authRole) => {
+                        finishLogin(
+                          authRole === "user" ? "/user/appointments" : "/mentor/appointments",
+                          authRole === "user" ? "Welcome back!" : "Welcome back, Coach!",
+                        );
+                      }}
                     />
                   </>
                 )}

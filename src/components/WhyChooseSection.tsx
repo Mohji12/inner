@@ -283,7 +283,7 @@ const WhyChooseSection = () => {
                           <Icon className="h-12 w-12 text-foreground/70" />
                         ) : null}
                       </div>
-                      <h3 className="text-2xl font-serif font-semibold mb-4 text-foreground/80">{card.title}</h3>
+                      <h3 className="mb-4 text-2xl font-serif font-semibold">{card.title}</h3>
                       <p className="text-foreground/60 leading-relaxed text-[15px]">{card.desc}</p>
                     </div>
                   );

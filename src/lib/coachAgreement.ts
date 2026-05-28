@@ -10,3 +10,14 @@ By registering as a coach on this platform, you agree to the following payment t
 You acknowledge and accept these terms at the time of registration.
 `;
 
+export const COACH_MEDICAL_GUIDELINES = [
+  "Coaches must not act as medical doctors or healthcare professionals unless officially licensed.",
+  "Coaches are not permitted to provide medical advice, diagnosis, prescriptions, or treatment recommendations.",
+  "Coaches must avoid making any clinical or health-related claims to users.",
+  "All guidance provided should be limited to mentoring, motivation, wellness support, and personal development.",
+  "Users with medical concerns, symptoms, or emergencies must be referred to a qualified healthcare professional immediately.",
+  "Coaches must not suggest stopping, starting, or changing any medication or medical treatment.",
+  "Any health-related discussion should be clearly communicated as non-medical and informational only.",
+  "Violation of these guidelines may result in suspension or removal from the platform.",
+] as const;
+

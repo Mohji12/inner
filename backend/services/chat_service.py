@@ -22,8 +22,10 @@ from services.chat_payment_service import create_chat_purchase_checkout
 from services.session_billing_service import finalize_session_billing
 from services.live_session_service import (
     communication_mode_for_session,
-    remaining_seconds,
+    join_deadline_expired,
     require_active_meeting_access,
+    session_allows_messaging,
+    session_remaining_seconds,
     sync_session_time_state,
 )
 from services.presence_service import presence_service
@@ -379,9 +381,11 @@ def post_message(
     else:
         raise ChatError("Forbidden", "forbidden")
 
-    if session.status != CHAT_SESSION_ACTIVE:
+    if not session_allows_messaging(session):
+        if join_deadline_expired(session):
+            raise ChatError("Join window has expired", "time_expired")
         raise ChatError("Session is not active", "session_not_active")
-    if remaining_seconds(session.ends_at) <= 0:
+    if session_remaining_seconds(session) <= 0:
         session.status = CHAT_SESSION_PAUSED
         session.updated_at = _utcnow()
         db.commit()

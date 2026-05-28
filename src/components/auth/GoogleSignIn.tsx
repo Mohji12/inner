@@ -7,9 +7,10 @@ import { toast } from 'sonner';
 interface GoogleLoginButtonProps {
   role: 'user' | 'mentor';
   on2FARequired: (tempToken: string) => void;
+  onAuthenticated?: (role: 'user' | 'mentor') => void;
 }
 
-export const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({ role, on2FARequired }) => {
+export const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({ role, on2FARequired, onAuthenticated }) => {
   const { setUserSession, setMentorSession } = useAuth();
 
   const handleSuccess = async (credentialResponse: any) => {
@@ -29,7 +30,7 @@ export const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({ role, on2F
 
       if (role === "user") setUserSession(res.access_token);
       else setMentorSession(res.access_token);
-      toast.success('Logged in successfully');
+      onAuthenticated?.(role);
     } catch (error: any) {
       console.error('Google Login Error:', error);
       toast.error(error.message || 'Google Login failed');

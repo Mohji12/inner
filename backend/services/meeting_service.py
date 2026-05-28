@@ -4,9 +4,9 @@ from core.config import settings
 from schemas.meeting import MeetingOut, MeetingTokenOut
 from services.chat_service import ChatError
 from services.live_session_service import (
-    remaining_seconds,
     require_active_meeting_access,
     resolve_live_session,
+    session_remaining_seconds,
 )
 from services.livekit_call_token import livekit_room_name_for_session, mint_livekit_join_token
 
@@ -33,6 +33,9 @@ def meeting_out_for_session(
         ends_at=ctx.session.ends_at,
         remaining_seconds=ctx.remaining_seconds,
         can_join=ctx.can_join,
+        timer_started=ctx.timer_started,
+        waiting_for=ctx.waiting_for,
+        allocated_duration_minutes=ctx.allocated_duration_minutes,
     )
 
 
@@ -51,7 +54,7 @@ def mint_meeting_token(
         )
 
     session = require_active_meeting_access(db, chat_session_id, user_id, mentor_id)
-    rem = remaining_seconds(session.ends_at)
+    rem = session_remaining_seconds(session)
     room_name = livekit_room_name_for_session(chat_session_id)
 
     if user_id:

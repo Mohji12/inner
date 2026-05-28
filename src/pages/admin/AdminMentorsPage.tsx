@@ -1,8 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchAdminMentors, updateMentorApproval } from "@/api/admin";
+import { fetchAdminMentors, getAdminMentorPayoutBankDetails, updateMentorApproval } from "@/api/admin";
+import type { AdminMentorBankDetailsPrivate } from "@/api/admin";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useLanguage } from "@/i18n/LanguageContext";
@@ -15,6 +23,9 @@ export default function AdminMentorsPage() {
   const queryClient = useQueryClient();
   const [limit, setLimit] = useState(50);
   const [q, setQ] = useState("");
+  const [bankMentorId, setBankMentorId] = useState<string | null>(null);
+  const [bankDetails, setBankDetails] = useState<AdminMentorBankDetailsPrivate | null>(null);
+  const [bankLoading, setBankLoading] = useState(false);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["admin", "mentors", limit, q],
@@ -38,6 +49,21 @@ export default function AdminMentorsPage() {
   const onReject = (mentorId: string) => {
     const reason = window.prompt(d.mentorRejectPrompt) || undefined;
     approvalMut.mutate({ mentorId, action: "reject", reason });
+  };
+
+  const openBankDetails = async (mentorId: string) => {
+    setBankMentorId(mentorId);
+    setBankLoading(true);
+    setBankDetails(null);
+    try {
+      const details = await getAdminMentorPayoutBankDetails(mentorId);
+      setBankDetails(details);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not load bank details");
+      setBankMentorId(null);
+    } finally {
+      setBankLoading(false);
+    }
   };
 
   if (isLoading || !data) {
@@ -89,7 +115,10 @@ export default function AdminMentorsPage() {
                 <TableCell>{m.email_verified ? "Yes" : "No"}</TableCell>
                 <TableCell className="text-muted-foreground">{new Date(m.created_at).toLocaleString()}</TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button size="sm" variant="secondary" onClick={() => void openBankDetails(m.id)}>
+                      Bank details
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"
@@ -118,6 +147,43 @@ export default function AdminMentorsPage() {
           </Button>
         ) : null}
       </CardContent>
+
+      <Dialog open={Boolean(bankMentorId)} onOpenChange={(open) => !open && setBankMentorId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-serif">Coach bank details</DialogTitle>
+            <DialogDescription>Payout account information submitted by the coach</DialogDescription>
+          </DialogHeader>
+          {bankLoading ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : bankDetails?.has_bank_details ? (
+            <dl className="space-y-2 text-sm">
+              <div>
+                <dt className="text-muted-foreground">Account holder</dt>
+                <dd className="font-medium">{bankDetails.account_holder_name ?? "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">IBAN</dt>
+                <dd className="font-mono">{bankDetails.iban ?? "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">BIC</dt>
+                <dd className="font-mono">{bankDetails.bic ?? "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Status</dt>
+                <dd>{bankDetails.status}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Provider</dt>
+                <dd>{bankDetails.provider_name || "—"}</dd>
+              </div>
+            </dl>
+          ) : (
+            <p className="text-sm text-muted-foreground">No bank details on file for this coach.</p>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

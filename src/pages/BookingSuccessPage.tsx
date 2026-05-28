@@ -8,6 +8,7 @@ import { slotPriceForDuration } from "@/api/types";
 import { CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SuccessBurst } from "@/components/ui/SuccessBurst";
 import { formatDateLocal, formatTimeLocal } from "@/lib/timeZone";
 import { useEffectiveTimeZone } from "@/hooks/useEffectiveTimeZone";
 
@@ -55,9 +56,15 @@ const BookingSuccessPage = () => {
       <AppPageHeader />
       <main className="container mx-auto px-6 py-10">
         <Card className="mx-auto max-w-2xl border-border/60">
-          <CardHeader>
+          <CardHeader className="items-center text-center">
+            <SuccessBurst
+              size="lg"
+              label="Payment successful"
+              description="Your session is confirmed"
+              className="mb-2"
+            />
             <p className="text-sm uppercase tracking-widest text-accent">Booking confirmed</p>
-            <CardTitle className="font-serif text-4xl">Payment successful</CardTitle>
+            <CardTitle className="font-serif text-3xl">Thank you</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {booking && mentor ? (

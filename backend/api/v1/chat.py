@@ -52,9 +52,15 @@ from services.chat_service import (
     list_sessions_for_participant,
     mark_session_as_read,
     post_message,
-    remaining_seconds,
     require_session_for_voice_call,
     start_session_checkout,
+)
+from services.live_session_service import (
+    record_participant_join,
+    session_booking_meta,
+    session_remaining_seconds,
+    timer_started as session_timer_started,
+    waiting_for_participant,
 )
 from livekit.api import TwirpError
 
@@ -206,13 +212,25 @@ def start_instant_session(
 
 
 def _session_out(session, db: Session | None = None) -> ChatSessionOut:
+    booking = None
+    if db is not None:
+        meta = session_booking_meta(db, session.id)
+        if meta:
+            from schemas.chat import SessionBookingMetaOut
+
+            booking = SessionBookingMetaOut.model_validate(meta)
     return ChatSessionOut(
         id=session.id,
         user_id=session.user_id,
         mentor_id=session.mentor_id,
         status=session.status,
         ends_at=session.ends_at,
-        remaining_seconds=remaining_seconds(session.ends_at),
+        remaining_seconds=session_remaining_seconds(session),
+        timer_started=session_timer_started(session),
+        waiting_for=waiting_for_participant(session),
+        allocated_duration_minutes=session.allocated_duration_minutes,
+        partner_is_online=None,
+        booking=booking,
         created_at=session.created_at,
         updated_at=session.updated_at,
         last_message_at=session.last_message_at,
@@ -315,7 +333,49 @@ def get_chat_session(session_id: str, db: DbSession, actor: ChatActorDep) -> Cha
         session = get_session_for_participant(db, session_id, uid, mid)
     except ChatError as e:
         raise _chat_http(e) from e
-    return _session_out(session, db)
+    from services.chat_service import mentor_chat_busy
+    from services.presence_service import presence_service
+
+    if actor.user:
+        partner_online = presence_service.is_online(session.mentor_id, "mentor") and not mentor_chat_busy(db, session.mentor_id)
+    else:
+        partner_online = presence_service.is_online(session.user_id, "user")
+    out = _session_out(session, db)
+    out.partner_is_online = partner_online
+    return out
+
+
+@router.post("/sessions/{session_id}/join", response_model=ChatSessionOut)
+def join_chat_session(
+    session_id: str,
+    db: DbSession,
+    actor: ChatActorDep,
+    background_tasks: BackgroundTasks,
+) -> ChatSessionOut:
+    """Record that the participant entered the room; starts billed timer when both user and coach have joined."""
+    uid = actor.user.id if actor.user else None
+    mid = actor.mentor.id if actor.mentor else None
+    try:
+        get_session_for_participant(db, session_id, uid, mid)
+    except ChatError as e:
+        raise _chat_http(e) from e
+
+    role = "user" if actor.user else "mentor"
+    timer_just_started = record_participant_join(db, session_id, role)
+    session = get_session_for_participant(db, session_id, uid, mid)
+    if timer_just_started:
+        background_tasks.add_task(_ws_push_session, session_id, session)
+
+    from services.chat_service import mentor_chat_busy
+    from services.presence_service import presence_service
+
+    if actor.user:
+        partner_online = presence_service.is_online(session.mentor_id, "mentor") and not mentor_chat_busy(db, session.mentor_id)
+    else:
+        partner_online = presence_service.is_online(session.user_id, "user")
+    out = _session_out(session, db)
+    out.partner_is_online = partner_online
+    return out
 
 
 @router.post(
@@ -656,10 +716,15 @@ def list_my_chat_sessions(db: DbSession, actor: ChatActorDep) -> ChatInboxOut:
     
     for s in sessions:
         # Get partner info
+        from services.chat_service import mentor_chat_busy
+        from services.presence_service import presence_service
+
         if actor.user:
             partner = db.query(Mentor.full_name, Mentor.profile_image).filter(Mentor.id == s.mentor_id).first()
+            partner_online = presence_service.is_online(s.mentor_id, "mentor") and not mentor_chat_busy(db, s.mentor_id)
         else:
             partner = db.query(User.full_name, User.profile_image).filter(User.id == s.user_id).first()
+            partner_online = presence_service.is_online(s.user_id, "user")
             
         # Get last message preview
         last_msg = (
@@ -672,9 +737,10 @@ def list_my_chat_sessions(db: DbSession, actor: ChatActorDep) -> ChatInboxOut:
         base = _session_out(s, db)
         out.append(
             ChatInboxSessionOut(
-                **base.model_dump(),
+                **base.model_dump(exclude={"partner_is_online"}),
                 partner_name=partner[0] if partner else "Unknown",
                 partner_profile_image=partner[1] if partner else None,
+                partner_is_online=partner_online,
                 last_message_body=_message_preview(
                     last_msg[0] if last_msg else None,
                     last_msg[2] if last_msg else None,

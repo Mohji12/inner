@@ -4,6 +4,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { listChatMessages, markChatSessionAsRead, sendChatImageMessage, sendChatMessage } from "@/api/chat";
 import { useChatWebSocket } from "@/hooks/useChatWebSocket";
 import { ConnectionStatusBar } from "@/components/chat/ConnectionStatusBar";
+import { SessionBookingDetails } from "@/components/SessionBookingDetails";
 import type { ChatMessage, ChatSession } from "@/api/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -204,6 +205,11 @@ export function ChatPanel({ sessionId, session }: Props) {
     <Card className="border-border/60 shadow-xl shadow-black/5 overflow-hidden">
       <ConnectionStatusBar status={wsStatus} />
       <CardContent className="p-0">
+        {session.booking && session.status === "ended" ? (
+          <div className="border-b border-border/60 px-4 py-3">
+            <SessionBookingDetails booking={session.booking} variant="compact" />
+          </div>
+        ) : null}
         <div ref={listRef} className="max-h-[min(60vh,520px)] space-y-4 overflow-y-auto p-4 bg-muted/5 scroll-smooth">
           {sortedMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center space-y-2">

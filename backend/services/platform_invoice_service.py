@@ -122,10 +122,8 @@ def load_booking_invoice(
     booking_id: str,
     user_id: str | None = None,
     mentor_id: str | None = None,
+    for_admin: bool = False,
 ) -> BookingInvoiceOut:
-    if not user_id and not mentor_id:
-        raise InvoiceError("Forbidden")
-
     booking = (
         db.query(Booking)
         .options(joinedload(Booking.user), joinedload(Booking.mentor))
@@ -134,10 +132,13 @@ def load_booking_invoice(
     )
     if not booking:
         raise InvoiceError("Booking not found")
-    if user_id and booking.user_id != user_id:
-        raise InvoiceError("Forbidden")
-    if mentor_id and booking.mentor_id != mentor_id:
-        raise InvoiceError("Forbidden")
+    if not for_admin:
+        if not user_id and not mentor_id:
+            raise InvoiceError("Forbidden")
+        if user_id and booking.user_id != user_id:
+            raise InvoiceError("Forbidden")
+        if mentor_id and booking.mentor_id != mentor_id:
+            raise InvoiceError("Forbidden")
 
     payment = _resolve_booking_payment(db, booking)
     if not payment:
@@ -253,3 +254,62 @@ def load_mentor_onboarding_invoice(
         created_at=row.created_at,
         mollie_payment_id=row.mollie_payment_id,
     )
+
+
+def list_admin_booking_invoices(db: Session, *, skip: int = 0, limit: int = 50) -> tuple[list[dict], int]:
+    """All paid booking invoices for admin (includes active sessions)."""
+    bookings = (
+        db.query(Booking)
+        .options(joinedload(Booking.user), joinedload(Booking.mentor))
+        .order_by(Booking.created_at.desc())
+        .all()
+    )
+    rows: list[dict] = []
+    for booking in bookings:
+        payment = _resolve_booking_payment(db, booking)
+        if not payment or str(payment.status) != PAYMENT_RECORD_SUCCEEDED:
+            continue
+        user: User = booking.user
+        mentor: Mentor = booking.mentor
+        rows.append(
+            {
+                "booking_id": booking.id,
+                "invoice_number": booking_invoice_number(booking.id),
+                "customer_name": user.full_name if user else "Customer",
+                "customer_email": user.email if user else "",
+                "mentor_name": mentor.full_name if mentor else "Coach",
+                "total_amount": str(Decimal(str(payment.amount)).quantize(Decimal("0.01"))),
+                "currency": str(payment.currency or "EUR"),
+                "payment_status": "paid",
+                "duration_minutes": int(booking.duration),
+                "issued_at": payment.created_at or _utcnow(),
+            }
+        )
+    total = len(rows)
+    return rows[skip : skip + limit], total
+
+
+def list_admin_onboarding_invoices(db: Session, *, skip: int = 0, limit: int = 50) -> tuple[list[dict], int]:
+    query = (
+        db.query(MentorOnboardingPayment)
+        .filter(MentorOnboardingPayment.status == "paid")
+        .order_by(MentorOnboardingPayment.created_at.desc())
+    )
+    total = query.count()
+    payments = query.offset(skip).limit(limit).all()
+    rows: list[dict] = []
+    for row in payments:
+        mentor = db.query(Mentor).filter(Mentor.id == row.mentor_id).first()
+        rows.append(
+            {
+                "payment_id": row.id,
+                "invoice_number": onboarding_invoice_number(row.id),
+                "mentor_name": mentor.full_name if mentor else "Coach",
+                "mentor_email": mentor.email if mentor else "",
+                "total_amount": str(Decimal(str(row.amount)).quantize(Decimal("0.01"))),
+                "currency": str(row.currency or "EUR"),
+                "payment_status": str(row.status),
+                "issued_at": row.paid_at or row.created_at,
+            }
+        )
+    return rows, total

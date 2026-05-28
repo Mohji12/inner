@@ -14,7 +14,7 @@ from models.chat_message import ChatMessage
 from models.chat_purchase import ChatPurchase
 from models.chat_session import ChatSession
 from models.mentor import Mentor
-from models.mentor_monthly_invoice import MentorMonthlyInvoice
+from models.mentor_onboarding_payment import MentorOnboardingPayment
 from models.mentor_payout_account import MentorPayoutAccount
 from models.mentor_settlement import MentorSettlement, MentorSettlementItem
 from models.payment import Payment
@@ -24,8 +24,14 @@ from models.user import User
 from models.wallet import Wallet, WalletTransaction
 from schemas.chat import ChatInvoiceConversationLineOut, ChatInvoiceDetailOut, ChatInvoiceLineOut, ChatInvoiceSummaryOut
 from schemas.admin import (
+    AdminBookingInvoiceList,
+    AdminBookingInvoiceRow,
     AdminBookingList,
     AdminBookingRow,
+    AdminOnboardingInvoiceList,
+    AdminOnboardingInvoiceRow,
+    AdminTransactionList,
+    AdminTransactionRow,
     AdminMentorList,
     AdminMentorMonthlyInvoiceList,
     AdminMentorMonthlyInvoiceRow,
@@ -59,7 +65,14 @@ from schemas.admin import (
     DateCountPoint,
     MentorApprovalUpdateRequest,
 )
-from services.chat_invoice_pdf import build_chat_invoice_pdf
+from services.booking_invoice_pdf import build_booking_invoice_pdf_from_out
+from services.invoice_errors import InvoiceError
+from services.platform_invoice_service import (
+    list_admin_booking_invoices,
+    list_admin_onboarding_invoices,
+    load_booking_invoice,
+    load_mentor_onboarding_invoice,
+)
 from services.chat_invoice_service import aggregate_purchases
 from services.mentor_monthly_invoice_pdf import build_mentor_monthly_invoice_pdf
 from services.payout_gateway import payout_gateway
@@ -528,6 +541,129 @@ def admin_list_payments(
     rows = query.order_by(Payment.created_at.desc()).offset(skip).limit(limit).all()
     items = [AdminPaymentRow.model_validate(p) for p in rows]
     return AdminPaymentList(items=items, total=total, skip=skip, limit=limit)
+
+
+@router.get("/booking-invoices", response_model=AdminBookingInvoiceList)
+def admin_list_booking_invoices(
+    db: DbSession,
+    _admin: CurrentAdmin,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+) -> AdminBookingInvoiceList:
+    rows, total = list_admin_booking_invoices(db, skip=skip, limit=limit)
+    items = [AdminBookingInvoiceRow.model_validate(r) for r in rows]
+    return AdminBookingInvoiceList(items=items, total=total, skip=skip, limit=limit)
+
+
+@router.get("/booking-invoices/{booking_id}/pdf")
+def admin_download_booking_invoice_pdf(
+    booking_id: str,
+    db: DbSession,
+    _admin: CurrentAdmin,
+) -> Response:
+    try:
+        inv = load_booking_invoice(db, booking_id=booking_id, for_admin=True)
+    except InvoiceError as e:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(e)) from e
+    pdf_bytes = build_booking_invoice_pdf_from_out(inv)
+    safe_name = f"booking-invoice-{inv.invoice_number.replace(' ', '_')}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{safe_name}"'},
+    )
+
+
+@router.get("/onboarding-invoices", response_model=AdminOnboardingInvoiceList)
+def admin_list_onboarding_invoices(
+    db: DbSession,
+    _admin: CurrentAdmin,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+) -> AdminOnboardingInvoiceList:
+    rows, total = list_admin_onboarding_invoices(db, skip=skip, limit=limit)
+    items = [AdminOnboardingInvoiceRow.model_validate(r) for r in rows]
+    return AdminOnboardingInvoiceList(items=items, total=total, skip=skip, limit=limit)
+
+
+@router.get("/transactions", response_model=AdminTransactionList)
+def admin_list_all_transactions(
+    db: DbSession,
+    _admin: CurrentAdmin,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+) -> AdminTransactionList:
+    combined: list[AdminTransactionRow] = []
+
+    for p in db.query(Payment).order_by(Payment.created_at.desc()).all():
+        user = db.query(User).filter(User.id == p.user_id).first()
+        combined.append(
+            AdminTransactionRow(
+                id=p.id,
+                transaction_type="booking_payment",
+                reference_id=p.booking_id,
+                party_name=user.full_name if user else p.user_id,
+                party_email=user.email if user else None,
+                amount=str(p.amount),
+                currency=str(p.currency or "EUR"),
+                status=str(p.status),
+                created_at=p.created_at,
+            )
+        )
+
+    for cp in db.query(ChatPurchase).order_by(ChatPurchase.created_at.desc()).all():
+        user = db.query(User).filter(User.id == cp.user_id).first()
+        combined.append(
+            AdminTransactionRow(
+                id=cp.id,
+                transaction_type="chat_purchase",
+                reference_id=cp.session_id,
+                party_name=user.full_name if user else cp.user_id,
+                party_email=user.email if user else None,
+                amount=str(cp.amount),
+                currency=str(cp.currency or "EUR"),
+                status=str(cp.status),
+                created_at=cp.created_at,
+            )
+        )
+
+    for ob in db.query(MentorOnboardingPayment).order_by(MentorOnboardingPayment.created_at.desc()).all():
+        mentor = db.query(Mentor).filter(Mentor.id == ob.mentor_id).first()
+        combined.append(
+            AdminTransactionRow(
+                id=ob.id,
+                transaction_type="onboarding_payment",
+                reference_id=ob.mentor_id,
+                party_name=mentor.full_name if mentor else ob.mentor_id,
+                party_email=mentor.email if mentor else None,
+                amount=str(ob.amount),
+                currency=str(ob.currency or "EUR"),
+                status=str(ob.status),
+                created_at=ob.created_at,
+            )
+        )
+
+    for wt in db.query(WalletTransaction).order_by(WalletTransaction.created_at.desc()).all():
+        wallet = db.query(Wallet).filter(Wallet.id == wt.wallet_id).first()
+        user = db.query(User).filter(User.id == wallet.user_id).first() if wallet else None
+        combined.append(
+            AdminTransactionRow(
+                id=wt.id,
+                transaction_type=f"wallet_{wt.type}",
+                reference_id=wt.reference_id,
+                party_name=user.full_name if user else (wallet.user_id if wallet else "Unknown"),
+                party_email=user.email if user else None,
+                amount=str(wt.amount),
+                currency=str(wallet.currency if wallet else "EUR"),
+                status="completed",
+                created_at=wt.created_at,
+            )
+        )
+
+    combined.sort(key=lambda r: r.created_at, reverse=True)
+    total = len(combined)
+    page = combined[skip : skip + limit]
+    return AdminTransactionList(items=page, total=total, skip=skip, limit=limit)
 
 
 @router.get("/reviews", response_model=AdminReviewList)

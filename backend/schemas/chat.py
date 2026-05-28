@@ -14,6 +14,15 @@ class ChatSessionExtendIn(BaseModel):
     checkout_currency: str | None = None
 
 
+class SessionBookingMetaOut(BaseModel):
+    booking_id: str
+    duration_minutes: int
+    booked_at: datetime
+    start_at_utc: datetime
+    end_at_utc: datetime
+    communication_mode: str | None = None
+
+
 class ChatSessionExtendQuoteOut(BaseModel):
     minutes: int
     rate_per_minute_eur: str
@@ -35,6 +44,11 @@ class ChatSessionOut(BaseModel):
     status: str
     ends_at: datetime
     remaining_seconds: int
+    timer_started: bool = False
+    waiting_for: str | None = None
+    allocated_duration_minutes: int | None = None
+    partner_is_online: bool | None = None
+    booking: SessionBookingMetaOut | None = None
     created_at: datetime
     updated_at: datetime
     last_message_at: datetime | None = None
@@ -177,6 +191,7 @@ class ChatInvoiceDetailOut(BaseModel):
 class ChatInboxSessionOut(ChatSessionOut):
     partner_name: str
     partner_profile_image: str | None = None
+    partner_is_online: bool = False
     last_message_body: str | None = None
     last_message_role: str | None = None
 

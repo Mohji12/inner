@@ -7,9 +7,11 @@ from core.security import new_uuid
 from models.availability_slot import AvailabilitySlot
 from models.booking import Booking
 from models.mentor import Mentor
+from models.user import User
 from schemas.booking import BookingCreate
 from services.chat_service import mentor_chat_busy
 from services.i18n_service import to_i18n_map
+from services.notification_service import create_notification
 from services.presence_service import presence_service
 from services.pricing_service import PricingError, booking_base_eur_amount
 
@@ -129,6 +131,19 @@ def create_live_booking_request(db: Session, user_id: str, payload: BookingCreat
     db.add(booking)
     db.commit()
     db.refresh(booking)
+
+    user = db.query(User).filter(User.id == user_id).first()
+    user_name = user.full_name if user else "A user"
+    comm_label = "video" if communication_mode == "video" else "phone call"
+    create_notification(
+        db,
+        type="booking_started",
+        title="New booking request",
+        body=f"{user_name} is booking a {duration}-minute {comm_label} session.",
+        link="/mentor/appointments",
+        mentor_id=mentor.id,
+    )
+
     return booking
 
 

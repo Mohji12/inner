@@ -51,11 +51,14 @@ import AdminWalletOpsPage from "./pages/admin/AdminWalletOpsPage.tsx";
 import AdminReviewsPage from "./pages/admin/AdminReviewsPage.tsx";
 import AdminAnalyticsPage from "./pages/admin/AdminAnalyticsPage.tsx";
 import AdminMentorInvoicesPage from "./pages/admin/AdminMentorInvoicesPage.tsx";
+import AdminInvoicesPage from "./pages/admin/AdminInvoicesPage.tsx";
+import AdminTransactionsPage from "./pages/admin/AdminTransactionsPage.tsx";
 import AdminMarketplacePage from "./pages/admin/AdminMarketplacePage.tsx";
 import SecuritySettingsPage from "./pages/settings/SecuritySettingsPage.tsx";
 import { AccessibilityProvider } from "@/accessibility/AccessibilityContext";
 import AccessibilityWidget from "@/components/accessibility/AccessibilityWidget";
 import MentorPresenceHeartbeat from "@/components/MentorPresenceHeartbeat";
+import UserPresenceHeartbeat from "@/components/UserPresenceHeartbeat";
 
 const queryClient = new QueryClient();
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
@@ -68,6 +71,7 @@ const App = () => (
           <AccessibilityProvider>
             <TooltipProvider>
               <MentorPresenceHeartbeat />
+              <UserPresenceHeartbeat />
               <Toaster />
               <Sonner />
               <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
@@ -143,6 +147,8 @@ const App = () => (
                   <Route path="users" element={<AdminUsersPage />} />
                   <Route path="mentors" element={<AdminMentorsPage />} />
                   <Route path="payments" element={<AdminPaymentsPage />} />
+                  <Route path="invoices" element={<AdminInvoicesPage />} />
+                  <Route path="transactions" element={<AdminTransactionsPage />} />
                   <Route path="chat-invoices" element={<AdminChatInvoicesPage />} />
                   <Route path="mentor-invoices" element={<AdminMentorInvoicesPage />} />
                   <Route path="settlements" element={<AdminSettlementsPage />} />

@@ -136,7 +136,7 @@ const ConsultationPackagesSection = () => {
               <div className="pt-12 px-8 pb-8 flex-1 flex flex-col">
                 <div className="flex items-center gap-3 mb-4">
                   <Clock className="w-5 h-5 text-foreground/60" />
-                  <h3 className="text-2xl font-serif text-foreground/80">{pkg.title}</h3>
+                  <h3 className="text-2xl font-serif">{pkg.title}</h3>
                 </div>
                 
                 <p className="text-sm text-foreground/70 mb-8 flex-1 whitespace-pre-line leading-relaxed">

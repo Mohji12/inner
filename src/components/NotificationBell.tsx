@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Bell, Check, Trash2, CalendarDays, MessageSquare, Receipt, Info } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,17 +14,40 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, type Notification } from "@/api/notifications";
+import { useAuth } from "@/auth/AuthContext";
 import { cn } from "@/lib/utils";
 
 export function NotificationBell() {
+  const { role } = useAuth();
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
+  const notificationsPath = role === "mentor" ? "/mentor/appointments" : "/user/notifications";
 
   const { data } = useQuery({
     queryKey: ["notifications", "recent"],
     queryFn: () => getNotifications(5, 0),
-    refetchInterval: 30000, // Poll every 30s
+    refetchInterval: 10_000,
   });
+
+  const seenIdsRef = useRef<Set<string>>(new Set());
+  const initializedRef = useRef(false);
+
+  useEffect(() => {
+    const list = data?.notifications ?? [];
+    const ids = new Set(list.map((n) => n.id));
+    if (!initializedRef.current) {
+      seenIdsRef.current = ids;
+      initializedRef.current = true;
+      return;
+    }
+    for (const notif of list) {
+      if (seenIdsRef.current.has(notif.id) || notif.is_read) continue;
+      if (notif.type === "booking_started" || notif.type === "booking_confirmed") {
+        toast(notif.title, { description: notif.body, duration: 10_000 });
+      }
+    }
+    seenIdsRef.current = ids;
+  }, [data?.notifications]);
 
   const markAsRead = useMutation({
     mutationFn: markNotificationAsRead,
@@ -51,10 +75,20 @@ export function NotificationBell() {
 
   const getIcon = (type: string) => {
     switch (type) {
-      case "booking": return <CalendarDays className="h-4 w-4 text-blue-500" />;
-      case "chat": return <MessageSquare className="h-4 w-4 text-green-500" />;
-      case "payment": return <Receipt className="h-4 w-4 text-yellow-500" />;
-      default: return <Info className="h-4 w-4 text-muted-foreground" />;
+      case "booking":
+      case "booking_started":
+      case "booking_confirmed":
+      case "session_reminder":
+        return <CalendarDays className="h-4 w-4 text-blue-500" />;
+      case "chat":
+      case "new_message":
+        return <MessageSquare className="h-4 w-4 text-green-500" />;
+      case "payment":
+        return <Receipt className="h-4 w-4 text-yellow-500" />;
+      case "session_unattended":
+        return <Info className="h-4 w-4 text-orange-500" />;
+      default:
+        return <Info className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
@@ -169,7 +203,7 @@ export function NotificationBell() {
         </div>
         <div className="p-2 border-t border-border/50 bg-muted/20">
           <Button asChild variant="ghost" className="w-full h-8 text-xs font-medium justify-center" onClick={() => setOpen(false)}>
-            <Link to="/user/notifications">View all notifications</Link>
+            <Link to={notificationsPath}>View all notifications</Link>
           </Button>
         </div>
       </DropdownMenuContent>

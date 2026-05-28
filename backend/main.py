@@ -20,6 +20,8 @@ from core.limiter import limiter
 from db.phase5_bootstrap import ensure_phase5_booking_columns
 from db.startup_schema import (
     ensure_chat_billing_columns,
+    ensure_chat_session_join_timer_columns,
+    backfill_booking_linked_chat_sessions,
     ensure_legacy_public_pricing_upgraded,
     ensure_localization_i18n_columns,
     ensure_marketplace_ledger_tables,
@@ -40,6 +42,8 @@ async def lifespan(app: FastAPI):
     ensure_mentor_mollie_fee_tables()
     ensure_marketplace_ledger_tables()
     ensure_chat_billing_columns()
+    ensure_chat_session_join_timer_columns()
+    backfill_booking_linked_chat_sessions()
     ensure_mentor_payout_bank_columns()
     start_scheduler()
     yield

@@ -64,6 +64,10 @@ export function getChatSession(sessionId: string): Promise<ChatSession> {
   return apiFetch<ChatSession>(`/chat/sessions/${sessionId}`);
 }
 
+export function joinChatSession(sessionId: string): Promise<ChatSession> {
+  return apiFetch<ChatSession>(`/chat/sessions/${sessionId}/join`, { method: "POST" });
+}
+
 export function listChatSessions(): Promise<ChatInbox> {
   return apiFetch<ChatInbox>("/chat/sessions");
 }

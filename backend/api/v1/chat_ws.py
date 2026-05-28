@@ -7,7 +7,7 @@ from models.mentor import Mentor
 from models.user import User
 from services.chat_hub import chat_hub
 from services.chat_service import ChatError, get_session_for_participant
-from services.live_session_service import activate_session_on_participant_join
+from services.live_session_service import record_participant_join
 from services.session_billing_service import process_session_heartbeat
 from services.presence_service import presence_service
 
@@ -64,15 +64,20 @@ async def chat_websocket(
 
     join_db = SessionLocal()
     try:
-        activate_session_on_participant_join(join_db, session_id)
+        timer_just_started = record_participant_join(join_db, session_id, role)
+        if timer_just_started:
+            from api.v1.chat import _session_out
+            from models.chat_session import ChatSession
+
+            session = join_db.query(ChatSession).filter(ChatSession.id == session_id).first()
+            if session:
+                payload = _session_out(session).model_dump(mode="json")
+                await chat_hub.broadcast(session_id, {"type": "session", "data": payload})
     finally:
         join_db.close()
 
-    if role == "mentor":
-        presence_service.set_offline(sub, role)
-    else:
-        presence_service.set_online(sub, role)
-    
+    presence_service.set_online(sub, role)
+
     try:
         while True:
             # Receive message from client
@@ -81,10 +86,7 @@ async def chat_websocket(
                 msg_type = data.get("type")
                 
                 if msg_type == "ping":
-                    if role == "mentor":
-                        presence_service.set_offline(sub, role)
-                    else:
-                        presence_service.set_online(sub, role)
+                    presence_service.set_online(sub, role)
                     # Use a dedicated DB session per tick (auth session is closed before this loop).
                     billing_db = SessionLocal()
                     try:

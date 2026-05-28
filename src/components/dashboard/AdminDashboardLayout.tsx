@@ -11,6 +11,7 @@ import {
   UserRound,
   Users,
   ShieldCheck,
+  Receipt,
 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
@@ -55,7 +56,7 @@ export function AdminDashboardLayout() {
       <Sidebar collapsible="icon" variant="floating">
         <SidebarHeader className="border-b border-sidebar-border/60 px-4 py-4">
           <div className={dashboardBrandCardClass}>
-            <p className="font-serif text-4xl font-semibold tracking-tight break-words">Mijn Levenspad</p>
+            <p className="font-serif text-4xl font-semibold tracking-tight break-words text-heading">Mijn Levenspad</p>
             <p className="text-xs text-muted-foreground break-words">{d.role}</p>
           </div>
         </SidebarHeader>
@@ -101,6 +102,22 @@ export function AdminDashboardLayout() {
                     <NavLink to="/admin/payments" className={dashboardNavLinkClass}>
                       <CreditCard />
                       <span>{d.payments}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="All invoices">
+                    <NavLink to="/admin/invoices" className={dashboardNavLinkClass}>
+                      <FileText />
+                      <span>All invoices</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="All transactions">
+                    <NavLink to="/admin/transactions" className={dashboardNavLinkClass}>
+                      <Receipt />
+                      <span>Transactions</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

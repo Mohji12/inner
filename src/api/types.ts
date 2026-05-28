@@ -229,6 +229,15 @@ export function formatTimeLabel(isoTime: string): string {
   return part;
 }
 
+export interface SessionBookingMeta {
+  booking_id: string;
+  duration_minutes: number;
+  booked_at: string;
+  start_at_utc: string;
+  end_at_utc: string;
+  communication_mode: string | null;
+}
+
 export interface ChatSession {
   id: string;
   user_id: string;
@@ -236,6 +245,11 @@ export interface ChatSession {
   status: string;
   ends_at: string;
   remaining_seconds: number;
+  timer_started: boolean;
+  waiting_for: "user" | "mentor" | "both" | null;
+  allocated_duration_minutes: number | null;
+  partner_is_online?: boolean | null;
+  booking?: SessionBookingMeta | null;
   created_at: string;
   updated_at: string;
   last_message_at: string | null;
@@ -259,6 +273,14 @@ export interface ChatSessionExtendQuote {
   checkout_currency: string;
   fx_rate_used: string | null;
   min_minutes: number;
+}
+
+export interface ChatInboxSession extends ChatSession {
+  partner_name: string;
+  partner_profile_image: string | null;
+  partner_is_online: boolean;
+  last_message_body: string | null;
+  last_message_role: string | null;
 }
 
 /** POST /chat/sessions/{id}/call/token — LiveKit WebRTC room */
@@ -317,13 +339,6 @@ export interface ChatMessage {
   attachment_size_bytes?: number | null;
   read_at: string | null;
   created_at: string;
-}
-
-export interface ChatInboxSession extends ChatSession {
-  partner_name: string;
-  partner_profile_image: string | null;
-  last_message_body: string | null;
-  last_message_role: string | null;
 }
 
 export interface ChatInbox {

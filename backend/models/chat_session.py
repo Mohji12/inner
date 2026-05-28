@@ -17,6 +17,10 @@ class ChatSession(Base):
     unread_count_user: Mapped[int] = mapped_column(Integer, default=0)
     unread_count_mentor: Mapped[int] = mapped_column(Integer, default=0)
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    allocated_duration_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    user_joined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    mentor_joined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    timer_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 

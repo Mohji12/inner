@@ -59,6 +59,42 @@ def ensure_localization_i18n_columns() -> None:
     _safe_add_column("ALTER TABLE notifications ADD COLUMN body_i18n JSON NULL")
 
 
+def ensure_chat_session_join_timer_columns() -> None:
+    """Dual-join timer fields for booking-linked chat sessions."""
+    _safe_add_column("ALTER TABLE chat_sessions ADD COLUMN allocated_duration_minutes INT NULL")
+    _safe_add_column("ALTER TABLE chat_sessions ADD COLUMN user_joined_at DATETIME(6) NULL")
+    _safe_add_column("ALTER TABLE chat_sessions ADD COLUMN mentor_joined_at DATETIME(6) NULL")
+    _safe_add_column("ALTER TABLE chat_sessions ADD COLUMN timer_started_at DATETIME(6) NULL")
+
+
+def backfill_booking_linked_chat_sessions() -> None:
+    """Ensure paid booking chat sessions use dual-join timer fields (not legacy countdown)."""
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                UPDATE chat_sessions cs
+                INNER JOIN bookings b ON b.meeting_link LIKE CONCAT('%/chat/', cs.id, '%')
+                SET cs.allocated_duration_minutes = COALESCE(cs.allocated_duration_minutes, b.duration)
+                WHERE cs.allocated_duration_minutes IS NULL
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                UPDATE chat_sessions cs
+                INNER JOIN bookings b ON b.meeting_link LIKE CONCAT('%/chat/', cs.id, '%')
+                SET cs.ends_at = DATE_ADD(COALESCE(cs.updated_at, cs.created_at), INTERVAL 30 MINUTE)
+                WHERE cs.timer_started_at IS NULL
+                  AND cs.status != 'ended'
+                  AND cs.allocated_duration_minutes IS NOT NULL
+                  AND TIMESTAMPDIFF(MINUTE, cs.created_at, cs.ends_at) <= cs.allocated_duration_minutes
+                """
+            )
+        )
+
+
 def ensure_platform_pricing_table() -> None:
     from decimal import Decimal
 

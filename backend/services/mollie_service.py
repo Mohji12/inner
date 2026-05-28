@@ -27,6 +27,7 @@ from models.mentor import Mentor
 from models.mentor_monthly_invoice import MentorMonthlyInvoice
 from models.mentor_onboarding_payment import MentorOnboardingPayment
 from models.payment import Payment
+from models.user import User
 from core.security import new_uuid
 from core.chat_states import CHAT_PURCHASE_FAILED, CHAT_PURCHASE_SUCCEEDED, CHAT_SESSION_ACTIVE, CHAT_SESSION_PAUSED
 
@@ -345,20 +346,22 @@ def _dt_utc(dt: datetime | None, *, fallback_combine: datetime | None) -> dateti
     return datetime.now(timezone.utc)
 
 
-def _live_session_window_on_payment(booking: Booking, *, now: datetime) -> tuple[datetime, datetime]:
-    """Live bookings start when payment completes, not when the hold was created."""
+def _live_session_window_on_payment(booking: Booking, *, now: datetime) -> tuple[datetime, datetime, int]:
+    """Live bookings: join deadline starts at payment; billed timer starts when both join."""
     duration_minutes = max(1, int(booking.duration or 5))
     start_dt = now
-    end_dt = now + timedelta(minutes=duration_minutes)
+    join_deadline = now + timedelta(minutes=30)
     booking.start_at_utc = start_dt
-    booking.end_at_utc = end_dt
+    booking.end_at_utc = join_deadline
     booking.booking_date = start_dt.date()
     booking.start_time = start_dt.time().replace(microsecond=0)
-    booking.end_time = end_dt.time().replace(microsecond=0)
-    return start_dt, end_dt
+    booking.end_time = join_deadline.time().replace(microsecond=0)
+    return start_dt, join_deadline, duration_minutes
 
 
 def _mark_booking_paid(db: Session, payment: Payment) -> None:
+    from services.notification_service import create_notification
+
     payment.status = PAYMENT_RECORD_SUCCEEDED
     booking = db.query(Booking).filter(Booking.id == payment.booking_id).first()
     if booking:
@@ -366,20 +369,28 @@ def _mark_booking_paid(db: Session, payment: Payment) -> None:
         booking.status = STATUS_CONFIRMED
         booking.payment_id = payment.id
         now = datetime.now(timezone.utc)
-        _, end_dt = _live_session_window_on_payment(booking, now=now)
+        _, join_deadline, duration_minutes = _live_session_window_on_payment(booking, now=now)
         slot = db.query(AvailabilitySlot).filter(AvailabilitySlot.id == booking.slot_id).first()
         if slot:
             slot.is_booked = True
             slot.start_at_utc = booking.start_at_utc
             slot.end_at_utc = booking.end_at_utc
-        # Chat session is created paused; it activates when a participant joins the room.
+        session_id: str | None = None
+        mode = (booking.communication_mode or "video").strip().lower()
+        if mode not in ("video", "call"):
+            mode = "video"
+        # Chat session is created paused; billed timer starts when both participants join.
         if not booking.meeting_link:
             session = ChatSession(
                 id=new_uuid(),
                 user_id=booking.user_id,
                 mentor_id=booking.mentor_id,
                 status=CHAT_SESSION_PAUSED,
-                ends_at=end_dt,
+                ends_at=join_deadline,
+                allocated_duration_minutes=duration_minutes,
+                user_joined_at=None,
+                mentor_joined_at=None,
+                timer_started_at=None,
                 created_at=now,
                 updated_at=now,
                 last_message_at=None,
@@ -387,10 +398,48 @@ def _mark_booking_paid(db: Session, payment: Payment) -> None:
                 unread_count_mentor=0,
             )
             db.add(session)
-            mode = (booking.communication_mode or "video").strip().lower()
-            if mode not in ("video", "call"):
-                mode = "video"
+            session_id = session.id
             booking.meeting_link = f"/user/chat/{session.id}?mode={mode}"
+        else:
+            needle = "/chat/"
+            if needle in booking.meeting_link:
+                session_id = booking.meeting_link.split(needle, 1)[1].split("?", 1)[0]
+                existing = (
+                    db.query(ChatSession)
+                    .filter(ChatSession.id == session_id)
+                    .with_for_update()
+                    .first()
+                )
+                if existing and existing.timer_started_at is None:
+                    existing.allocated_duration_minutes = duration_minutes
+                    existing.ends_at = join_deadline
+                    existing.status = CHAT_SESSION_PAUSED
+                    existing.user_joined_at = None
+                    existing.mentor_joined_at = None
+                    existing.timer_started_at = None
+                    existing.updated_at = now
+
+        user = db.query(User).filter(User.id == booking.user_id).first()
+        user_name = user.full_name if user else "A user"
+        comm_label = "video" if mode == "video" else "phone call"
+
+        if session_id:
+            create_notification(
+                db,
+                type="booking_confirmed",
+                title="Session ready to join",
+                body=f"{user_name} paid for a {duration_minutes}-minute {comm_label} session. Join now.",
+                link=f"/mentor/chat/{session_id}",
+                mentor_id=booking.mentor_id,
+            )
+            create_notification(
+                db,
+                type="booking_confirmed",
+                title="Session confirmed",
+                body=f"Your {duration_minutes}-minute {comm_label} session is ready. Join when your coach enters.",
+                link=f"/user/chat/{session_id}?mode={mode}",
+                user_id=booking.user_id,
+            )
 
 
 def _mark_monthly_invoice_paid(db: Session, invoice: MentorMonthlyInvoice) -> None:

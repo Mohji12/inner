@@ -16,15 +16,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
+import { AuthSuccessOverlay } from "@/components/ui/SuccessBurst";
 import { uploadRegistrationMentorAvatar } from "@/api/uploads";
 import { CheckoutCurrencySelect } from "@/components/CheckoutCurrencySelect";
 import { guessCheckoutCurrencyFromLocale } from "@/lib/checkoutCurrencyGuess";
-import { COACH_AGREEMENT_TEXT, COACH_AGREEMENT_VERSION } from "@/lib/coachAgreement";
+import { COACH_AGREEMENT_TEXT, COACH_AGREEMENT_VERSION, COACH_MEDICAL_GUIDELINES } from "@/lib/coachAgreement";
 import { SPOKEN_LANGUAGE_OPTIONS } from "@/lib/spokenLanguageOptions";
 
 const TAB_ORDER = ["account", "profile", "background"] as const;
 type TabId = (typeof TAB_ORDER)[number];
-type Phase = "form" | "verify";
+type Phase = "form" | "verify" | "success";
+
+const REGISTER_SUCCESS_DELAY_MS = 1200;
 
 const MentorRegisterPage = () => {
   const navigate = useNavigate();
@@ -99,9 +102,11 @@ const MentorRegisterPage = () => {
     if (!agreementAcceptedBeforePayment) {
       throw new Error("Please confirm the coach agreement before proceeding to payment.");
     }
+    setPhase("success");
     const pay = await createMentorOnboardingPayment(email, onboardingCheckoutCurrency);
-    toast.success("Registration complete. Redirecting to onboarding payment.");
-    window.location.href = pay.checkout_url;
+    window.setTimeout(() => {
+      window.location.href = pay.checkout_url;
+    }, REGISTER_SUCCESS_DELAY_MS);
   };
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -206,6 +211,12 @@ const MentorRegisterPage = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      {phase === "success" ? (
+        <AuthSuccessOverlay
+          message="Registration complete!"
+          description="Redirecting to onboarding payment…"
+        />
+      ) : null}
       <AppPageHeader />
       <main className="container mx-auto px-6 py-10">
         <Card className="mx-auto max-w-4xl border-border/60">
@@ -492,6 +503,11 @@ const MentorRegisterPage = () => {
                       Your acceptance is stored as proof (agreement version and snapshot text).
                     </p>
                   </div>
+                  <ul className="list-disc space-y-2 pl-5 text-sm font-bold leading-relaxed text-foreground">
+                    {COACH_MEDICAL_GUIDELINES.map((guideline) => (
+                      <li key={guideline}>{guideline}</li>
+                    ))}
+                  </ul>
                   <p className="text-sm text-muted-foreground">{m.backgroundHint}</p>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="space-y-2 md:col-span-2">

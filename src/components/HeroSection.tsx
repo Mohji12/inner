@@ -7,7 +7,7 @@ const HeroSection = () => {
   return (
     <section
       id="hero"
-      className="relative flex min-h-screen items-start justify-center overflow-hidden bg-transparent pt-36 sm:pt-40 md:pt-44 lg:pt-48"
+      className="relative flex min-h-screen items-start justify-center overflow-hidden bg-transparent pt-28 sm:pt-32 md:pt-36 lg:pt-40"
     >
       <div className="pointer-events-none absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-gold/20 blur-3xl animate-float" />
       <div
@@ -16,13 +16,15 @@ const HeroSection = () => {
       />
 
       <div className="relative z-10 mx-auto flex max-w-3xl flex-col items-center px-6 text-center">
-        <h1 className="font-serif text-3xl font-bold leading-tight text-foreground sm:text-4xl md:text-5xl">
-          {t.hero.heading}
-        </h1>
-        <p className="mt-6 max-w-2xl text-pretty text-center text-base font-bold leading-relaxed text-white sm:text-lg">
-          {t.hero.subtext}
-        </p>
-        <div className="mt-10 flex w-full max-w-xl flex-col flex-wrap justify-center gap-4 sm:flex-row sm:justify-center">
+        <div className="flex w-full flex-col items-center gap-1 sm:gap-1.5">
+          <h1 className="font-display text-3xl font-semibold leading-none text-heading sm:text-4xl md:text-5xl lg:text-6xl">
+            {t.hero.heading}
+          </h1>
+          <p className="max-w-2xl text-pretty font-display text-base font-medium leading-snug text-[#8A7A63] sm:text-lg md:text-xl">
+            {t.hero.subtext}
+          </p>
+        </div>
+        <div className="mt-36 flex w-full max-w-xl flex-col flex-wrap justify-center gap-4 sm:mt-44 sm:flex-row sm:justify-center md:mt-52 lg:mt-60 xl:mt-64">
           <a
             href="#services"
             className="px-8 py-3.5 rounded-xl gradient-cta text-white font-medium text-sm tracking-wide shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"

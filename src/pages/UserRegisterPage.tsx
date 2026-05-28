@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AppPageHeader from "@/components/AppPageHeader";
 import { useAuth } from "@/auth/AuthContext";
@@ -11,8 +11,11 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AuthSuccessOverlay } from "@/components/ui/SuccessBurst";
 import { toast } from "sonner";
 import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
+
+const REGISTER_SUCCESS_DELAY_MS = 1400;
 
 const UserRegisterPage = () => {
   const navigate = useNavigate();
@@ -20,7 +23,7 @@ const UserRegisterPage = () => {
   const { t } = useLanguage();
   const a = t.app.userRegister;
   const [error, setError] = useState("");
-  const [phase, setPhase] = useState<"form" | "verify">("form");
+  const [phase, setPhase] = useState<"form" | "verify" | "success">("form");
   const [otp, setOtp] = useState("");
   const [verifyCtx, setVerifyCtx] = useState<{ email: string; password: string } | null>(null);
   const [formData, setFormData] = useState({
@@ -43,9 +46,16 @@ const UserRegisterPage = () => {
       gender: formData.gender.trim() || null,
       date_of_birth: formData.dateOfBirth.trim() || null,
     });
-    toast.success(a.toastWelcome);
-    navigate("/mentors", { replace: true });
+    setPhase("success");
   };
+
+  useEffect(() => {
+    if (phase !== "success") return;
+    const timer = window.setTimeout(() => {
+      navigate("/mentors", { replace: true });
+    }, REGISTER_SUCCESS_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [phase, navigate]);
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -108,6 +118,9 @@ const UserRegisterPage = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      {phase === "success" ? (
+        <AuthSuccessOverlay message={a.toastWelcome} description="Finding coaches for you…" />
+      ) : null}
       <AppPageHeader />
       <main className="container mx-auto px-6 py-10">
         <Card className="mx-auto max-w-3xl border-border/60">

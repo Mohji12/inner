@@ -15,6 +15,9 @@ class MeetingOut(BaseModel):
     ends_at: datetime
     remaining_seconds: int
     can_join: bool
+    timer_started: bool = False
+    waiting_for: str | None = None
+    allocated_duration_minutes: int | None = None
 
 
 class MeetingTokenOut(BaseModel):

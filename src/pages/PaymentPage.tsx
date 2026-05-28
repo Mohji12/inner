@@ -213,6 +213,13 @@ const PaymentPage = () => {
             </p>
             <p>
               <span className="text-muted-foreground">Time:</span> {formatTimeLocal(booking.start_at_utc, undefined, effectiveTimeZone)}
+              {" – "}
+              {formatTimeLocal(booking.end_at_utc, undefined, effectiveTimeZone)}
+            </p>
+            <p>
+              <span className="text-muted-foreground">Booked:</span>{" "}
+              {formatDateLocal(booking.created_at, { day: "numeric", month: "short", year: "numeric" }, effectiveTimeZone)}{" "}
+              at {formatTimeLocal(booking.created_at, undefined, effectiveTimeZone)}
             </p>
             <hr className="border-border/70" />
             <div className="flex flex-col gap-2">

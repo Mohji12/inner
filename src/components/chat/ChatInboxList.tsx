@@ -4,6 +4,8 @@ import { formatDistanceToNow } from "date-fns";
 import { ChatInboxSession } from "@/api/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { PresenceIndicator } from "@/components/PresenceIndicator";
+import { SessionBookingDetails } from "@/components/SessionBookingDetails";
 import { cn } from "@/lib/utils";
 
 interface ChatInboxListProps {
@@ -36,12 +38,19 @@ const ChatInboxList = ({ sessions, role }: ChatInboxListProps) => {
               unreadCount > 0 ? "bg-accent/5 border-accent/20" : "bg-card"
             )}
           >
-            <Avatar className="h-12 w-12 border-2 border-background shadow-sm">
-              <AvatarImage src={session.partner_profile_image || ""} />
-              <AvatarFallback className="bg-primary/10 text-primary font-serif">
-                {session.partner_name.charAt(0)}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative shrink-0">
+              <Avatar className="h-12 w-12 border-2 border-background shadow-sm">
+                <AvatarImage src={session.partner_profile_image || ""} />
+                <AvatarFallback className="bg-primary/10 text-primary font-serif">
+                  {session.partner_name.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              <span className="absolute bottom-0 right-0 rounded-full bg-background p-0.5">
+                <PresenceIndicator
+                  status={session.partner_is_online ? "online" : "offline"}
+                />
+              </span>
+            </div>
 
             <div className="flex-1 min-w-0">
               <div className="flex justify-between items-start mb-1">
@@ -67,6 +76,9 @@ const ChatInboxList = ({ sessions, role }: ChatInboxListProps) => {
                   </Badge>
                 )}
               </div>
+              {session.booking ? (
+                <SessionBookingDetails booking={session.booking} variant="inline" className="mt-1.5" />
+              ) : null}
             </div>
             
             <div className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity pr-1">

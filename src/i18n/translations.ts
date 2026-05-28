@@ -24,9 +24,8 @@ export const translations = {
       contact: "Contact",
     },
     hero: {
-      heading: "Discover. Grow. Live your path.",
-      subtext:
-        'Mijn Levenspad helps people discover their true selves through personal growth and inner transformation. Its vision, "discover the destiny within yourself," inspires a meaningful and peaceful life.',
+      heading: "Mijnlevenspad",
+      subtext: "Discover. Grow. Live your path.",
       cta1: "Start Your Journey",
       cta2: "Book a Session",
       cta3: "Book a coach",
@@ -99,9 +98,8 @@ export const translations = {
   fr: {
     nav: { home: "Accueil", about: "À propos", services: "Services", pricing: "Tarifs", contact: "Contact" },
     hero: {
-      heading: "Découvrez la destination en vous-même",
-      subtext:
-        "Mijn Levenspad est une plateforme en ligne axée sur le développement personnel, la paix intérieure et la recherche de sens. Grâce au coaching, aux contenus et aux formations, Mijn Levenspad aide chacun à (re)découvrir son véritable moi. Sous la devise « découvrez le destin en vous-même », elle vise une transformation profonde et durable de l’intérieur.",
+      heading: "Mon Chemin de Vie",
+      subtext: "Découvrez. Grandissez. Vivez votre chemin.",
       cta1: "Commencez Votre Voyage",
       cta2: "Réservez une Séance",
       cta3: "Réserver un coach",
@@ -175,9 +173,8 @@ export const translations = {
   nl: {
     nav: { home: "Home", about: "Over Ons", services: "Diensten", pricing: "Prijzen", contact: "Contact" },
     hero: {
-      heading: "Ontdek de bestemming in jezelf",
-      subtext:
-        "Mijn Levenspad is een online platform gericht op persoonlijke groei, innerlijke rust en het vinden van betekenis. Via coaching, content en training helpt Mijn Levenspad mensen hun ware zelf (opnieuw) te ontdekken. Met de slogan « ontdek het lot in jezelf » streeft het naar diepe, duurzame transformatie van binnenuit.",
+      heading: "Mijn Levenspad",
+      subtext: "Ontdek. Groei. Leef jouw pad.",
       cta1: "Start Je Reis",
       cta2: "Boek een Sessie",
       cta3: "Boek een coach",
@@ -250,9 +247,8 @@ export const translations = {
   ar: {
     nav: { home: "الرئيسية", about: "عنّا", services: "الخدمات", pricing: "الأسعار", contact: "اتصل بنا" },
     hero: {
-      heading: "اكتشف الوجهة في داخلك",
-      subtext:
-        "منصة Mijn Levenspad الإلكترونية تركز على النمو الشخصي والسلام الداخلي وإيجاد المعنى. من خلال التدريب والمحتوى والجلسات، تساعد المنصة الناس على (إعادة) اكتشاف ذواتهم الحقيقية. وبهدف «اكتشف القدر بداخلك» تسعى إلى تحول عميق ومستدام من الداخل.",
+      heading: "مسار حياتي",
+      subtext: "اكتشف. نمُ. عِشْ طريقك.",
       cta1: "ابدأ رحلتك",
       cta2: "احجز جلسة",
       cta3: "احجز مدربًا",
@@ -325,9 +321,8 @@ export const translations = {
   zh: {
     nav: { home: "首页", about: "关于", services: "服务", pricing: "价格", contact: "联系" },
     hero: {
-      heading: "发现内心的目的地",
-      subtext:
-        "Mijn Levenspad 是一个专注于个人成长、内心平静与意义探索的在线平台。通过教练、内容与培训，帮助人们（重新）发现真实的自己。以「发现你内在的命运」为理念，致力于由内而外的深度、可持续转变。",
+      heading: "我的人生之路",
+      subtext: "发现。成长。走你的路。",
       cta1: "开始您的旅程",
       cta2: "预约课程",
       cta3: "预约教练",
@@ -400,9 +395,8 @@ export const translations = {
   ru: {
     nav: { home: "Главная", about: "О нас", services: "Услуги", pricing: "Цены", contact: "Контакт" },
     hero: {
-      heading: "Откройте предназначение внутри себя",
-      subtext:
-        "Mijn Levenspad — онлайн-платформа о личностном росте, внутреннем покое и поиске смысла. Через коучинг, контент и обучение она помогает людям (заново) открыть свою истинную суть. Девиз «открой судьбу внутри себя» ведёт к глубоким и устойчивым переменам изнутри.",
+      heading: "Мой жизненный путь",
+      subtext: "Откройте. Растите. Живите своим путём.",
       cta1: "Начните Путешествие",
       cta2: "Запишитесь на Сеанс",
       cta3: "Записаться к коучу",
@@ -475,9 +469,8 @@ export const translations = {
   es: {
     nav: { home: "Inicio", about: "Acerca de", services: "Servicios", pricing: "Precios", contact: "Contacto" },
     hero: {
-      heading: "Descubre el destino dentro de ti",
-      subtext:
-        "Mijn Levenspad es una plataforma en línea centrada en el crecimiento personal, la paz interior y encontrar sentido. A través de coaching, contenido y formación, ayuda a las personas a (re)descubrir su verdadero yo. Con el lema «descubre el destino en ti mismo», apunta a una transformación profunda y sostenible desde dentro.",
+      heading: "Mi Camino de Vida",
+      subtext: "Descubre. Crece. Vive tu camino.",
       cta1: "Comienza Tu Viaje",
       cta2: "Reserva una Sesión",
       cta3: "Reservar un coach",

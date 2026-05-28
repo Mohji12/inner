@@ -9,7 +9,7 @@ const AppPageHeader = () => {
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/90 backdrop-blur">
       <div className="container mx-auto flex flex-wrap items-center justify-between gap-3 px-6 py-4">
-        <Link to="/" className="font-serif text-xl font-semibold text-foreground">
+        <Link to="/" className="font-serif text-xl font-semibold text-heading">
           Mijn Levenspad
         </Link>
         <div className="flex flex-wrap items-center gap-2">

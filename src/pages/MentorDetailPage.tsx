@@ -9,6 +9,7 @@ import { getMentorAvailabilityStatus, sessionPackageEur } from "@/api/types";
 import { unknownListToStrings } from "@/lib/dbJsonFields";
 import AppPageHeader from "@/components/AppPageHeader";
 import { FavoriteButton } from "@/components/FavoriteButton";
+import { PresenceIndicator } from "@/components/PresenceIndicator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +17,7 @@ import { toast } from "sonner";
 import { Phone, Video } from "lucide-react";
 import { formatDateLocal, formatTimeLocal, isSameCalendarDayLocal } from "@/lib/timeZone";
 import { useEffectiveTimeZone } from "@/hooks/useEffectiveTimeZone";
+import { LiveSessionWindowPreview } from "@/components/LiveSessionWindowPreview";
 
 const SESSION_PACKAGES = [5, 10, 20, 30] as const;
 type LiveCommunicationMode = "video" | "call";
@@ -185,17 +187,20 @@ const MentorDetailPage = () => {
               </div>
               <div className="flex flex-col items-end gap-1">
                 {availability === "available" ? (
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                    </span>
-                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Online — book now</span>
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50">
+                      <PresenceIndicator status="online" />
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Online — book now</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Coach is on the platform and available</p>
                   </div>
                 ) : availability === "busy" ? (
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/50">
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-                    <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">In session</span>
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/50">
+                      <PresenceIndicator status="busy" />
+                      <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">In session</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Coach is in another live session</p>
                   </div>
                 ) : mentor.last_seen_at ? (
                   <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold bg-muted/50 px-2 py-0.5 rounded border border-border/50">
@@ -204,9 +209,12 @@ const MentorDetailPage = () => {
                       : formatDateLocal(mentor.last_seen_at, { month: "short", day: "numeric" }, effectiveTimeZone)}
                   </div>
                 ) : mentorOffline ? (
-                  <div className="flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1">
-                    <span className="inline-flex h-2 w-2 rounded-full bg-slate-400" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Offline</span>
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1">
+                      <PresenceIndicator status="offline" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Offline</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Coach is not on the platform right now</p>
                   </div>
                 ) : null}
               </div>
@@ -354,9 +362,14 @@ const MentorDetailPage = () => {
                     <p className="mt-3 text-xs text-muted-foreground">
                       Choose a duration, then start an in-app <strong className="text-foreground">video meeting</strong> (mic
                       + camera) or <strong className="text-foreground">voice meeting</strong> (mic only, no video). Chat
-                      works in both.
+                      works in both. Your session starts at the current local time once payment is complete.
                     </p>
                   )}
+                  {pricing?.is_active && canBookLive ? (
+                    <div className="mt-3 rounded-lg border border-border/60 bg-background/80 px-3 py-2">
+                      <LiveSessionWindowPreview durationMinutes={selectedDuration} className="text-xs" />
+                    </div>
+                  ) : null}
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">Pricing unavailable right now.</p>

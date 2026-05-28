@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Response, status
 from sqlalchemy import func
 from pydantic import BaseModel
 from typing import Any
@@ -14,8 +14,26 @@ from models.chat_session import ChatSession
 from schemas.user import DateAmountPoint, UserOut, UserSpendingSeriesOut, UserUpdate
 from core.booking_states import STATUS_CONFIRMED, STATUS_COMPLETED, PAYMENT_RECORD_SUCCEEDED
 from services.timezone_service import TimezoneConversionError, validate_timezone_name
+from services.presence_service import presence_service
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+class UserPresenceStatusOut(BaseModel):
+    is_online: bool
+
+
+@router.post("/me/presence", status_code=status.HTTP_204_NO_CONTENT)
+def user_presence_heartbeat(db: DbSession, user: CurrentUser) -> Response:
+    presence_service.set_online(user.id, "user")
+    user.last_seen_at = datetime.now(timezone.utc)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/me/presence-status", response_model=UserPresenceStatusOut)
+def user_presence_status(user: CurrentUser) -> UserPresenceStatusOut:
+    return UserPresenceStatusOut(is_online=presence_service.is_online(user.id, "user"))
 
 
 @router.get("/me", response_model=UserOut)

@@ -327,3 +327,60 @@ class AdminPlatformPricingUpdateRequest(BaseModel):
     price_30_min: Decimal
     currency: str
     is_active: bool = False
+
+
+class AdminBookingInvoiceRow(BaseModel):
+    booking_id: str
+    invoice_number: str
+    customer_name: str
+    customer_email: str
+    mentor_name: str
+    total_amount: str
+    currency: str
+    payment_status: str
+    duration_minutes: int
+    issued_at: datetime
+
+
+class AdminBookingInvoiceList(BaseModel):
+    items: list[AdminBookingInvoiceRow]
+    total: int
+    skip: int
+    limit: int
+
+
+class AdminOnboardingInvoiceRow(BaseModel):
+    payment_id: str
+    invoice_number: str
+    mentor_name: str
+    mentor_email: str
+    total_amount: str
+    currency: str
+    payment_status: str
+    issued_at: datetime
+
+
+class AdminOnboardingInvoiceList(BaseModel):
+    items: list[AdminOnboardingInvoiceRow]
+    total: int
+    skip: int
+    limit: int
+
+
+class AdminTransactionRow(BaseModel):
+    id: str
+    transaction_type: str
+    reference_id: str | None
+    party_name: str
+    party_email: str | None
+    amount: str
+    currency: str
+    status: str
+    created_at: datetime
+
+
+class AdminTransactionList(BaseModel):
+    items: list[AdminTransactionRow]
+    total: int
+    skip: int
+    limit: int

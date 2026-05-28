@@ -10,6 +10,9 @@ export interface MeetingOut {
   ends_at: string;
   remaining_seconds: number;
   can_join: boolean;
+  timer_started: boolean;
+  waiting_for: "user" | "mentor" | "both" | null;
+  allocated_duration_minutes: number | null;
 }
 
 export interface MeetingTokenResponse {

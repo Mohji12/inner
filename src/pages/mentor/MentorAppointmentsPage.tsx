@@ -8,6 +8,7 @@ import type { ChatInboxSession } from "@/api/types";
 import { formatDateLocal, formatTimeLocal } from "@/lib/timeZone";
 import { chatSessionCardCaption } from "@/lib/chatSessionCardCaption";
 import { useEffectiveTimeZone } from "@/hooks/useEffectiveTimeZone";
+import { SessionBookingDetails } from "@/components/SessionBookingDetails";
 import {
   canOpenBookingChat,
   chatSessionById,
@@ -190,6 +191,7 @@ const MentorAppointmentsPage = () => {
                       {cap.secondaryLine ? (
                         <p className="mt-1 text-xs text-muted-foreground">{cap.secondaryLine}</p>
                       ) : null}
+                      {s.booking ? <SessionBookingDetails booking={s.booking} variant="compact" className="mt-2" /> : null}
                       {s.last_message_body ? <p className="mt-1 text-xs text-muted-foreground">{s.last_message_body}</p> : null}
                     </div>
                     <Badge variant={canJoin ? "default" : "secondary"}>{s.status}</Badge>

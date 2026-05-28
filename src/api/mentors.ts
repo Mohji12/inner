@@ -110,6 +110,16 @@ export function heartbeatMentorPresence(): Promise<void> {
   return apiFetch<void>("/mentors/me/presence", { method: "POST" });
 }
 
+export interface MentorPresenceStatus {
+  is_online: boolean;
+  chat_busy: boolean;
+  status: "online" | "offline" | "busy";
+}
+
+export function getMentorPresenceStatus(): Promise<MentorPresenceStatus> {
+  return apiFetch<MentorPresenceStatus>("/mentors/me/presence-status");
+}
+
 export function patchMentorMe(body: MentorPatchBody): Promise<MentorAccount> {
   return apiFetch<MentorAccount>("/mentors/me", {
     method: "PATCH",
