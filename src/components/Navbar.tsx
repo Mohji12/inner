@@ -48,14 +48,14 @@ const Navbar = () => {
             <a
               key={l.href}
               href={l.href}
-              className="text-sm font-semibold text-zinc-950 transition-colors duration-200 hover:text-black"
+              className="text-lg font-semibold text-zinc-950 transition-colors duration-200 hover:text-black"
             >
               {l.label}
             </a>
           ))}
           <Link
             to="/mentors"
-            className="text-sm font-semibold text-zinc-950 transition-colors duration-200 hover:text-black"
+            className="text-lg font-semibold text-zinc-950 transition-colors duration-200 hover:text-black"
           >
             {t.app.shell.mentors}
           </Link>
@@ -64,12 +64,12 @@ const Navbar = () => {
           <div className="relative">
             <button
               onClick={() => setLangOpen(!langOpen)}
-              className="flex items-center gap-1.5 text-sm font-semibold text-zinc-950 transition-colors hover:text-black active:scale-95"
+              className="flex items-center gap-2 text-lg font-semibold text-zinc-950 transition-colors hover:text-black active:scale-95"
             >
-              <Globe className="w-4 h-4" />
+              <Globe className="h-5 w-5" />
               <LanguageFlag language={language} />
               {language.toUpperCase()}
-              <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${langOpen ? "rotate-180" : ""}`} />
+              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${langOpen ? "rotate-180" : ""}`} />
             </button>
             {langOpen && (
               <>
@@ -93,14 +93,14 @@ const Navbar = () => {
               </>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Link
               to="/login"
-              className="rounded-md border border-zinc-400 px-3 py-1.5 text-sm font-semibold text-zinc-950 transition-colors hover:border-zinc-500 hover:bg-zinc-50"
+              className="rounded-md border border-zinc-400 px-4 py-2 text-base font-semibold text-zinc-950 transition-colors hover:border-zinc-500 hover:bg-zinc-50"
             >
               {t.app.shell.login}
             </Link>
-            <Link to="/register" className="gradient-cta rounded-md px-3 py-1.5 text-sm font-semibold text-white transition-opacity hover:opacity-95">
+            <Link to="/register" className="gradient-cta rounded-md px-4 py-2 text-base font-semibold text-white transition-opacity hover:opacity-95">
               {t.app.shell.register}
             </Link>
           </div>
@@ -121,7 +121,7 @@ const Navbar = () => {
               key={l.href}
               href={l.href}
               onClick={() => setMenuOpen(false)}
-              className="text-base font-semibold text-zinc-950 transition-colors hover:text-black"
+              className="text-lg font-semibold text-zinc-950 transition-colors hover:text-black"
             >
               {l.label}
             </a>
@@ -129,7 +129,7 @@ const Navbar = () => {
           <Link
             to="/mentors"
             onClick={() => setMenuOpen(false)}
-            className="text-base font-semibold text-zinc-950 transition-colors hover:text-black"
+            className="text-lg font-semibold text-zinc-950 transition-colors hover:text-black"
           >
             {t.app.shell.mentors}
           </Link>
@@ -138,14 +138,14 @@ const Navbar = () => {
               <Link
                 to="/login"
                 onClick={() => setMenuOpen(false)}
-                className="rounded-md border border-zinc-400 px-3 py-1.5 text-sm font-semibold text-zinc-950 hover:bg-zinc-50"
+                className="rounded-md border border-zinc-400 px-4 py-2 text-base font-semibold text-zinc-950 hover:bg-zinc-50"
               >
                 {t.app.shell.login}
               </Link>
               <Link
                 to="/register"
                 onClick={() => setMenuOpen(false)}
-                className="gradient-cta rounded-md px-3 py-1.5 text-sm font-semibold text-white hover:opacity-95"
+                className="gradient-cta rounded-md px-4 py-2 text-base font-semibold text-white hover:opacity-95"
               >
                 {t.app.shell.register}
               </Link>

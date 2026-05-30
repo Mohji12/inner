@@ -26,10 +26,10 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { OnlineStatusBadge } from "@/components/OnlineStatusBadge";
 import { DashboardContentArea } from "@/components/dashboard/DashboardContentArea";
 import {
-  dashboardBrandCardClass,
   dashboardLogoutButtonClass,
   dashboardNavLinkClass,
 } from "@/components/dashboard/dashboardNav";
+import { DashboardBrandHeader } from "@/components/dashboard/DashboardBrandHeader";
 
 export function MentorDashboardLayout() {
   const navigate = useNavigate();
@@ -52,10 +52,7 @@ export function MentorDashboardLayout() {
     <SidebarProvider>
       <Sidebar collapsible="icon" variant="floating">
         <SidebarHeader className="border-b border-sidebar-border/60 px-4 py-4">
-          <div className={dashboardBrandCardClass}>
-            <p className="font-serif text-4xl font-semibold tracking-tight break-words text-heading">Mijn Levenspad</p>
-            <p className="text-xs text-muted-foreground break-words">{d.role}</p>
-          </div>
+          <DashboardBrandHeader roleLabel={d.role} />
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>

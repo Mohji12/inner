@@ -109,6 +109,9 @@ const Footer = () => {
               <li className="flex items-center gap-3 text-sm text-primary-foreground/50">
                 <MapPin className="w-4 h-4 shrink-0" /> {t.footer.contactCountry}
               </li>
+              <li className="text-sm text-primary-foreground/50">
+                KVK nummer: <span className="font-bold">82878692</span>
+              </li>
             </ul>
           </div>
         </div>
