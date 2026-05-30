@@ -128,7 +128,18 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> list[str]:
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        """Merge env-configured origins with required production SPA hosts."""
+        seen: set[str] = set()
+        merged: list[str] = []
+        required = (
+            "https://mijnlevenspad.com",
+            "https://www.mijnlevenspad.com",
+        )
+        for origin in (*required, *(o.strip() for o in self.cors_origins.split(",") if o.strip())):
+            if origin not in seen:
+                seen.add(origin)
+                merged.append(origin)
+        return merged
 
     @property
     def cloudinary_configured(self) -> bool:

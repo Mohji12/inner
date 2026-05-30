@@ -32,8 +32,13 @@ from db.startup_schema import (
 )
 from services.background_scheduler import start_scheduler, shutdown_scheduler
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("CORS allow_origins: %s", settings.cors_origins_list)
     ensure_mentors_banner_image_column()
     ensure_localization_i18n_columns()
     ensure_phase5_booking_columns()
@@ -56,6 +61,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
+    allow_origin_regex=r"https://([a-z0-9-]+\.)*mijnlevenspad\.com",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
