@@ -6,7 +6,9 @@ class ForgotPasswordIn(BaseModel):
     role: Literal["user", "mentor"]
 
 class ResetPasswordIn(BaseModel):
-    token: str
+    email: EmailStr
+    role: Literal["user", "mentor"]
+    code: str
     new_password: str
 
 class PasswordResetMessage(BaseModel):

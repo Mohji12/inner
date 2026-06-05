@@ -59,6 +59,12 @@ const Navbar = () => {
           >
             {t.app.shell.mentors}
           </Link>
+          <Link
+            to="/become-a-coach"
+            className="text-lg font-semibold text-zinc-950 transition-colors duration-200 hover:text-black"
+          >
+            {t.app.header.becomeCoach}
+          </Link>
 
           {/* Language selector */}
           <div className="relative">
@@ -132,6 +138,13 @@ const Navbar = () => {
             className="text-lg font-semibold text-zinc-950 transition-colors hover:text-black"
           >
             {t.app.shell.mentors}
+          </Link>
+          <Link
+            to="/become-a-coach"
+            onClick={() => setMenuOpen(false)}
+            className="text-lg font-semibold text-zinc-950 transition-colors hover:text-black"
+          >
+            {t.app.header.becomeCoach}
           </Link>
           <div className="mt-2 border-t border-zinc-200 pt-4">
             <div className="mb-4 flex flex-wrap gap-2">

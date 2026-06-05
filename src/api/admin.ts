@@ -303,6 +303,45 @@ export function fetchAdminMentors(skip = 0, limit = 50, q?: string) {
   return apiFetch<Paginated<AdminMentorRow>>(`/admin/mentors${qs({ skip, limit, q })}`);
 }
 
+export type CoachApplicationStatus = "new" | "reviewed" | "contacted" | "rejected";
+
+export interface AdminCoachApplicationRow {
+  id: string;
+  full_name: string;
+  email: string;
+  phone_number: string;
+  headline: string;
+  motivation: string;
+  years_of_experience: number;
+  languages_spoken: string[] | null;
+  website_or_social: string | null;
+  status: CoachApplicationStatus | string;
+  admin_notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function fetchAdminCoachApplications(
+  skip = 0,
+  limit = 50,
+  q?: string,
+  status?: string,
+) {
+  return apiFetch<Paginated<AdminCoachApplicationRow>>(
+    `/admin/coach-applications${qs({ skip, limit, q, status })}`,
+  );
+}
+
+export function updateAdminCoachApplication(
+  applicationId: string,
+  payload: { status?: CoachApplicationStatus; admin_notes?: string | null },
+) {
+  return apiFetch<AdminCoachApplicationRow>(`/admin/coach-applications/${applicationId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function updateMentorApproval(mentorId: string, payload: MentorApprovalUpdatePayload) {
   return apiFetch<AdminMentorRow>(`/admin/mentors/${mentorId}/approval`, {
     method: "PATCH",

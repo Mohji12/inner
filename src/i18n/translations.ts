@@ -30,6 +30,12 @@ export const translations = {
       cta2: "Book a Session",
       cta3: "Book a coach",
     },
+    coaches: {
+      label: "Our Coaches",
+      heading: "Meet Your Spiritual Guides",
+      sub: "Browse available coaches and book a live session that fits you.",
+      viewAll: "View all coaches",
+    },
     about: {
       label: "About Us",
       heading: "Your Path To Inner Peace",
@@ -103,6 +109,12 @@ export const translations = {
       cta1: "Commencez Votre Voyage",
       cta2: "Réservez une Séance",
       cta3: "Réserver un coach",
+    },
+    coaches: {
+      label: "Nos Coaches",
+      heading: "Rencontrez Vos Guides Spirituels",
+      sub: "Parcourez les coaches disponibles et réservez une séance en direct.",
+      viewAll: "Voir tous les coaches",
     },
     about: {
       label: "À Propos",
@@ -179,6 +191,12 @@ export const translations = {
       cta2: "Boek een Sessie",
       cta3: "Boek een coach",
     },
+    coaches: {
+      label: "Onze Coaches",
+      heading: "Ontmoet Onze Coaches",
+      sub: "Bekijk beschikbare coaches en boek direct een live sessie.",
+      viewAll: "Alle coaches bekijken",
+    },
     about: {
       label: "Over Ons",
       heading: "Jouw Pad Naar Innerlijke Rust",
@@ -252,6 +270,12 @@ export const translations = {
       cta1: "ابدأ رحلتك",
       cta2: "احجز جلسة",
       cta3: "احجز مدربًا",
+    },
+    coaches: {
+      label: "مدربونا",
+      heading: "تعرّف على مرشديك الروحيين",
+      sub: "تصفّح المدربين المتاحين واحجز جلسة مباشرة تناسبك.",
+      viewAll: "عرض جميع المدربين",
     },
     about: {
       label: "عنّا",
@@ -327,6 +351,12 @@ export const translations = {
       cta2: "预约课程",
       cta3: "预约教练",
     },
+    coaches: {
+      label: "我们的教练",
+      heading: "认识您的灵性导师",
+      sub: "浏览可用教练并预约适合您的直播课程。",
+      viewAll: "查看全部教练",
+    },
     about: {
       label: "关于我们",
       heading: "通往内心平静之路",
@@ -401,6 +431,12 @@ export const translations = {
       cta2: "Запишитесь на Сеанс",
       cta3: "Записаться к коучу",
     },
+    coaches: {
+      label: "Наши коучи",
+      heading: "Познакомьтесь с духовными наставниками",
+      sub: "Просмотрите доступных коучей и запишитесь на живую сессию.",
+      viewAll: "Все коучи",
+    },
     about: {
       label: "О Нас",
       heading: "Ваш Путь К Внутреннему Покою",
@@ -474,6 +510,12 @@ export const translations = {
       cta1: "Comienza Tu Viaje",
       cta2: "Reserva una Sesión",
       cta3: "Reservar un coach",
+    },
+    coaches: {
+      label: "Nuestros Coaches",
+      heading: "Conoce a Tus Guías Espirituales",
+      sub: "Explora coaches disponibles y reserva una sesión en vivo.",
+      viewAll: "Ver todos los coaches",
     },
     about: {
       label: "Sobre Nosotros",

@@ -21,6 +21,9 @@ const AppPageHeader = () => {
             <Link to="/user/register">{t.app.header.userRegister}</Link>
           </Button>
           <Button asChild variant="ghost" size="sm">
+            <Link to="/become-a-coach">{t.app.header.becomeCoach}</Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm">
             <Link to="/mentor/register">{t.app.header.mentorRegister}</Link>
           </Button>
           <Button asChild variant="ghost" size="sm">

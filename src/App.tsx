@@ -23,6 +23,7 @@ import BookingSuccessPage from "./pages/BookingSuccessPage.tsx";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage.tsx";
 import TermsAndConditionsPage from "./pages/TermsAndConditionsPage.tsx";
 import CoachAgreementPage from "./pages/CoachAgreementPage.tsx";
+import BecomeCoachPage from "./pages/BecomeCoachPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import UserProfilePage from "./pages/user/UserProfilePage.tsx";
 import UserDashboardHomePage from "./pages/user/UserDashboardHomePage.tsx";
@@ -49,6 +50,7 @@ import AdminChatInvoicesPage from "./pages/admin/AdminChatInvoicesPage.tsx";
 import AdminSettlementsPage from "./pages/admin/AdminSettlementsPage.tsx";
 import AdminWalletOpsPage from "./pages/admin/AdminWalletOpsPage.tsx";
 import AdminReviewsPage from "./pages/admin/AdminReviewsPage.tsx";
+import AdminCoachApplicationsPage from "./pages/admin/AdminCoachApplicationsPage.tsx";
 import AdminAnalyticsPage from "./pages/admin/AdminAnalyticsPage.tsx";
 import AdminMentorInvoicesPage from "./pages/admin/AdminMentorInvoicesPage.tsx";
 import AdminInvoicesPage from "./pages/admin/AdminInvoicesPage.tsx";
@@ -91,6 +93,7 @@ const App = () => (
                 <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
                 <Route path="/terms-and-conditions" element={<TermsAndConditionsPage />} />
                 <Route path="/coach-agreement" element={<CoachAgreementPage />} />
+                <Route path="/become-a-coach" element={<BecomeCoachPage />} />
 
                 <Route
                   path="/user"
@@ -146,6 +149,7 @@ const App = () => (
                   <Route path="bookings" element={<AdminBookingsPage />} />
                   <Route path="users" element={<AdminUsersPage />} />
                   <Route path="mentors" element={<AdminMentorsPage />} />
+                  <Route path="coach-applications" element={<AdminCoachApplicationsPage />} />
                   <Route path="payments" element={<AdminPaymentsPage />} />
                   <Route path="invoices" element={<AdminInvoicesPage />} />
                   <Route path="transactions" element={<AdminTransactionsPage />} />

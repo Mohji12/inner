@@ -2,6 +2,7 @@ import hashlib
 import logging
 import secrets
 from datetime import datetime, timedelta, timezone
+from typing import Literal
 
 from sqlalchemy.orm import Session
 
@@ -31,6 +32,10 @@ def delete_otp_for_email(db: Session, email: str, role: str) -> None:
     )
 
 
+def password_reset_otp_role(account_role: str) -> str:
+    return f"password_reset:{account_role}"
+
+
 def create_and_send_otp(
     db: Session,
     *,
@@ -38,6 +43,7 @@ def create_and_send_otp(
     role: str,
     subject_id: str,
     otp_id: str,
+    purpose: Literal["verify", "password_reset"] = "verify",
 ) -> str:
     """
     Stores OTP hash and sends email. Returns plaintext OTP (for logging when SMTP off).
@@ -60,18 +66,44 @@ def create_and_send_otp(
     db.add(row)
     db.flush()
 
-    subject = f"{settings.app_name} — verify your email"
-    body = (
-        f"Your verification code is: {code}\n\n"
-        f"It expires in {settings.otp_expire_minutes} minutes.\n"
-        f"If you did not register, you can ignore this email."
-    )
+    if purpose == "password_reset":
+        subject = f"{settings.app_name} — password reset code"
+        body = (
+            f"Your password reset code is: {code}\n\n"
+            f"It expires in {settings.otp_expire_minutes} minutes.\n"
+            f"If you did not request a password reset, you can ignore this email."
+        )
+    else:
+        subject = f"{settings.app_name} — verify your email"
+        body = (
+            f"Your verification code is: {code}\n\n"
+            f"It expires in {settings.otp_expire_minutes} minutes.\n"
+            f"If you did not register, you can ignore this email."
+        )
     try:
         send_plain_email(to_email=email_l, subject=subject, body=body)
     except Exception as e:
         logger.exception("Failed to send OTP email: %s", e)
         raise
     return code
+
+
+def create_and_send_password_reset_otp(
+    db: Session,
+    *,
+    email: str,
+    role: str,
+    subject_id: str,
+    otp_id: str,
+) -> str:
+    return create_and_send_otp(
+        db,
+        email=email,
+        role=password_reset_otp_role(role),
+        subject_id=subject_id,
+        otp_id=otp_id,
+        purpose="password_reset",
+    )
 
 
 def verify_otp(db: Session, *, email: str, role: str, code: str) -> str | None:

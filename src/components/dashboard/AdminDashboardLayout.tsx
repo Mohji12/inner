@@ -4,6 +4,7 @@ import {
   CalendarDays,
   CreditCard,
   FileText,
+  FileUser,
   Landmark,
   LayoutDashboard,
   LogOut,
@@ -91,6 +92,14 @@ export function AdminDashboardLayout() {
                     <NavLink to="/admin/mentors" className={dashboardNavLinkClass}>
                       <Users />
                       <span>{d.mentors}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip={d.coachApplications}>
+                    <NavLink to="/admin/coach-applications" className={dashboardNavLinkClass}>
+                      <FileUser />
+                      <span>{d.coachApplications}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

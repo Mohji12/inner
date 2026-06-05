@@ -13,6 +13,7 @@ from models.booking import Booking
 from models.chat_message import ChatMessage
 from models.chat_purchase import ChatPurchase
 from models.chat_session import ChatSession
+from models.coach_application import CoachApplication
 from models.mentor import Mentor
 from models.mentor_onboarding_payment import MentorOnboardingPayment
 from models.mentor_payout_account import MentorPayoutAccount
@@ -94,6 +95,11 @@ from services.mentor_monthly_fee_service import (
 from services.mollie_service import MollieServiceError, resolve_mollie_webhook_url
 from services.pricing_service import get_platform_pricing
 from services.i18n_service import resolve_i18n_text
+from schemas.coach_application import (
+    AdminCoachApplicationList,
+    AdminCoachApplicationRow,
+    AdminCoachApplicationUpdate,
+)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -249,6 +255,51 @@ def admin_update_mentor_approval(
     db.commit()
     db.refresh(mentor)
     return AdminMentorRow.model_validate(mentor)
+
+
+@router.get("/coach-applications", response_model=AdminCoachApplicationList)
+def admin_list_coach_applications(
+    db: DbSession,
+    _admin: CurrentAdmin,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    q: str | None = Query(None, description="Search name, email, or headline"),
+    status: str | None = Query(None, description="Filter by status"),
+) -> AdminCoachApplicationList:
+    query = db.query(CoachApplication)
+    if q and q.strip():
+        term = f"%{q.strip()}%"
+        query = query.filter(
+            (CoachApplication.full_name.like(term))
+            | (CoachApplication.email.like(term))
+            | (CoachApplication.headline.like(term))
+        )
+    if status and status.strip():
+        query = query.filter(CoachApplication.status == status.strip().lower())
+    total = query.count()
+    rows = query.order_by(CoachApplication.created_at.desc()).offset(skip).limit(limit).all()
+    items = [AdminCoachApplicationRow.model_validate(r) for r in rows]
+    return AdminCoachApplicationList(items=items, total=total, skip=skip, limit=limit)
+
+
+@router.patch("/coach-applications/{application_id}", response_model=AdminCoachApplicationRow)
+def admin_update_coach_application(
+    application_id: str,
+    payload: AdminCoachApplicationUpdate,
+    db: DbSession,
+    _admin: CurrentAdmin,
+) -> AdminCoachApplicationRow:
+    row = db.query(CoachApplication).filter(CoachApplication.id == application_id).first()
+    if not row:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Application not found")
+    if payload.status is not None:
+        row.status = payload.status
+    if payload.admin_notes is not None:
+        row.admin_notes = payload.admin_notes.strip() or None
+    row.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(row)
+    return AdminCoachApplicationRow.model_validate(row)
 
 
 @router.get("/platform-pricing", response_model=AdminPlatformPricingOut)

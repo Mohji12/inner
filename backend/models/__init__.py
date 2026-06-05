@@ -6,6 +6,7 @@ from models.chat_message import ChatMessage
 from models.chat_purchase import ChatPurchase
 from models.chat_bridge_session import ChatBridgeSession
 from models.chat_session import ChatSession
+from models.coach_application import CoachApplication
 from models.email_otp import EmailOtpCode
 from models.mentor import Mentor
 from models.mentor_monthly_invoice import MentorMonthlyInvoice
@@ -55,6 +56,7 @@ __all__ = [
     "Payment",
     "PlatformPricing",
     "Review",
+    "CoachApplication",
     "EmailOtpCode",
     "ChatSession",
     "ChatMessage",

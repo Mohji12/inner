@@ -19,6 +19,7 @@ from api.v1 import (
     booking_reschedule,
     booking_calendar,
     waitlist,
+    coach_applications,
     payments,
     wallets,
     promo_codes,
@@ -41,6 +42,7 @@ api_router.include_router(bookings.router)
 api_router.include_router(booking_reschedule.router)
 api_router.include_router(booking_calendar.router)
 api_router.include_router(waitlist.router)
+api_router.include_router(coach_applications.router)
 api_router.include_router(chat.router)
 api_router.include_router(meetings.router)
 api_router.include_router(reviews.router)

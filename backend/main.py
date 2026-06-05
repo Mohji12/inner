@@ -21,6 +21,7 @@ from db.phase5_bootstrap import ensure_phase5_booking_columns
 from db.startup_schema import (
     ensure_chat_billing_columns,
     ensure_chat_session_join_timer_columns,
+    ensure_coach_applications_table,
     backfill_booking_linked_chat_sessions,
     ensure_legacy_public_pricing_upgraded,
     ensure_localization_i18n_columns,
@@ -50,6 +51,7 @@ async def lifespan(app: FastAPI):
     ensure_chat_session_join_timer_columns()
     backfill_booking_linked_chat_sessions()
     ensure_mentor_payout_bank_columns()
+    ensure_coach_applications_table()
     start_scheduler()
     yield
     shutdown_scheduler()

@@ -82,6 +82,11 @@ const Footer = () => {
                 </li>
               ))}
               <li>
+                <Link to="/become-a-coach" className="text-sm text-primary-foreground/50 hover:text-primary-foreground transition-colors">
+                  {t.app.header.becomeCoach}
+                </Link>
+              </li>
+              <li>
                 <Link to="/privacy-policy" className="text-sm text-primary-foreground/50 hover:text-primary-foreground transition-colors">
                   Privacy Policy
                 </Link>
@@ -92,6 +97,9 @@ const Footer = () => {
                 </Link>
               </li>
             </ul>
+            <p className="mt-6 text-sm text-primary-foreground/50">
+              KVK nummer: <span className="font-bold">82878692</span>
+            </p>
           </div>
 
           <div>
@@ -108,9 +116,6 @@ const Footer = () => {
               </li>
               <li className="flex items-center gap-3 text-sm text-primary-foreground/50">
                 <MapPin className="w-4 h-4 shrink-0" /> {t.footer.contactCountry}
-              </li>
-              <li className="text-sm text-primary-foreground/50">
-                KVK nummer: <span className="font-bold">82878692</span>
               </li>
             </ul>
           </div>

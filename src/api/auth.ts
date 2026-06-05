@@ -211,7 +211,9 @@ export interface ForgotPasswordBody {
 }
 
 export interface ResetPasswordBody {
-  token: string;
+  email: string;
+  role: "user" | "mentor";
+  code: string;
   new_password: string;
 }
 

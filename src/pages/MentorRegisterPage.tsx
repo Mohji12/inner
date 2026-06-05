@@ -222,7 +222,12 @@ const MentorRegisterPage = () => {
         <Card className="mx-auto max-w-4xl border-border/60">
           <CardHeader>
             <CardTitle className="font-serif text-3xl">{m.title}</CardTitle>
-            <CardDescription>{m.description}</CardDescription>
+            <CardDescription>
+              {m.description}{" "}
+              <Link to="/become-a-coach" className="text-accent underline underline-offset-4">
+                {t.app.header.becomeCoach}
+              </Link>
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {phase === "verify" ? (
