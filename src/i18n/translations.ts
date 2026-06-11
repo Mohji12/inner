@@ -24,11 +24,19 @@ export const translations = {
       contact: "Contact",
     },
     hero: {
-      heading: "Mijnlevenspad",
+      heading: "Mijn levenspad",
       subtext: "Discover. Grow. Live your path.",
       cta1: "Start Your Journey",
       cta2: "Book a Session",
       cta3: "Book a coach",
+    },
+    music: {
+      play: "Play background music",
+      pause: "Pause background music",
+      label: "Background music",
+      enterTitle: "Mijn levenspad",
+      enterHint: "Tap Enter to open the site with gentle background music.",
+      enterAction: "Enter",
     },
     coaches: {
       label: "Our Coaches",
@@ -110,6 +118,14 @@ export const translations = {
       cta2: "Réservez une Séance",
       cta3: "Réserver un coach",
     },
+    music: {
+      play: "Lire la musique de fond",
+      pause: "Mettre la musique en pause",
+      label: "Musique de fond",
+      enterTitle: "Mijn levenspad",
+      enterHint: "Appuyez sur Entrer pour ouvrir le site avec une musique de fond douce.",
+      enterAction: "Entrer",
+    },
     coaches: {
       label: "Nos Coaches",
       heading: "Rencontrez Vos Guides Spirituels",
@@ -185,11 +201,19 @@ export const translations = {
   nl: {
     nav: { home: "Home", about: "Over Ons", services: "Diensten", pricing: "Prijzen", contact: "Contact" },
     hero: {
-      heading: "Mijn Levenspad",
+      heading: "Mijn levenspad",
       subtext: "Ontdek. Groei. Leef jouw pad.",
       cta1: "Start Je Reis",
       cta2: "Boek een Sessie",
       cta3: "Boek een coach",
+    },
+    music: {
+      play: "Achtergrondmuziek afspelen",
+      pause: "Achtergrondmuziek pauzeren",
+      label: "Achtergrondmuziek",
+      enterTitle: "Mijn levenspad",
+      enterHint: "Tik op Enter om de site te openen met zachte achtergrondmuziek.",
+      enterAction: "Enter",
     },
     coaches: {
       label: "Onze Coaches",
@@ -271,6 +295,14 @@ export const translations = {
       cta2: "احجز جلسة",
       cta3: "احجز مدربًا",
     },
+    music: {
+      play: "تشغيل موسيقى الخلفية",
+      pause: "إيقاف موسيقى الخلفية",
+      label: "موسيقى الخلفية",
+      enterTitle: "Mijn levenspad",
+      enterHint: "اضغط على دخول لفتح الموقع مع موسيقى خلفية هادئة.",
+      enterAction: "دخول",
+    },
     coaches: {
       label: "مدربونا",
       heading: "تعرّف على مرشديك الروحيين",
@@ -350,6 +382,14 @@ export const translations = {
       cta1: "开始您的旅程",
       cta2: "预约课程",
       cta3: "预约教练",
+    },
+    music: {
+      play: "播放背景音乐",
+      pause: "暂停背景音乐",
+      label: "背景音乐",
+      enterTitle: "Mijn levenspad",
+      enterHint: "点击Enter进入网站并播放轻柔的背景音乐。",
+      enterAction: "进入",
     },
     coaches: {
       label: "我们的教练",
@@ -431,6 +471,14 @@ export const translations = {
       cta2: "Запишитесь на Сеанс",
       cta3: "Записаться к коучу",
     },
+    music: {
+      play: "Включить фоновую музыку",
+      pause: "Пауза фоновой музыки",
+      label: "Фоновая музыка",
+      enterTitle: "Mijn levenspad",
+      enterHint: "Нажмите «Войти», чтобы открыть сайт с фоновой музыкой.",
+      enterAction: "Войти",
+    },
     coaches: {
       label: "Наши коучи",
       heading: "Познакомьтесь с духовными наставниками",
@@ -510,6 +558,14 @@ export const translations = {
       cta1: "Comienza Tu Viaje",
       cta2: "Reserva una Sesión",
       cta3: "Reservar un coach",
+    },
+    music: {
+      play: "Reproducir música de fondo",
+      pause: "Pausar música de fondo",
+      label: "Música de fondo",
+      enterTitle: "Mijn levenspad",
+      enterHint: "Pulse Enter para abrir el sitio con música de fondo suave.",
+      enterAction: "Entrar",
     },
     coaches: {
       label: "Nuestros Coaches",

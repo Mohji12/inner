@@ -9,6 +9,7 @@ import ConsultationPackagesSection from "@/components/ConsultationPackagesSectio
 import TestimonialsSection from "@/components/TestimonialsSection";
 import Footer from "@/components/Footer";
 import ScrollProgress from "@/components/ScrollProgress";
+import HomeBackgroundMusic from "@/components/HomeBackgroundMusic";
 
 const HOME_BG_IMAGE = "/home-background.jpeg";
 
@@ -26,6 +27,7 @@ const Index = () => {
       />
       <div className="relative z-10">
       <ScrollProgress />
+      <HomeBackgroundMusic />
       <Navbar />
       <HeroSection />
       <CoachesSection />
