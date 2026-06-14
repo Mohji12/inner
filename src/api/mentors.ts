@@ -127,6 +127,17 @@ export function patchMentorMe(body: MentorPatchBody): Promise<MentorAccount> {
   });
 }
 
+export function acceptCoachAgreement(body: {
+  signature_name: string;
+  agreement_version: string;
+  agreement_text_snapshot: string;
+}): Promise<MentorAccount> {
+  return apiFetch<MentorAccount>("/mentors/me/coach-agreement", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
 export function listMySlots(): Promise<AvailabilitySlot[]> {
   return apiFetch<AvailabilitySlot[]>("/mentors/me/slots");
 }
@@ -266,9 +277,44 @@ export interface MentorOnboardingPayment {
   status: string;
   mollie_payment_id: string;
   checkout_url: string | null;
+  payment_plan: string;
+  installment_number: number;
+  installment_total: number;
   paid_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface MentorOnboardingStatus {
+  is_complete: boolean;
+  payment_plan: string | null;
+  installments_paid: number;
+  installment_total: number;
+  next_installment_number: number | null;
+  next_amount_eur: string | null;
+}
+
+export function getMentorOnboardingStatus(): Promise<MentorOnboardingStatus> {
+  return apiFetch<MentorOnboardingStatus>("/mentors/me/onboarding-status");
+}
+
+export function createMentorOnboardingPaymentMe(body: {
+  checkout_currency?: string;
+  payment_plan: "full" | "installments";
+  installment_number?: number;
+}): Promise<{
+  payment_id: string;
+  checkout_url: string;
+  amount: string;
+  currency: string;
+  payment_plan: string;
+  installment_number: number;
+  installment_total: number;
+}> {
+  return apiFetch("/mentors/me/onboarding-payment", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }
 
 export function listMentorOnboardingPayments(): Promise<MentorOnboardingPayment[]> {

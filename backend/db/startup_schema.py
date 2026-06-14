@@ -557,3 +557,15 @@ def ensure_mentor_payout_bank_columns() -> None:
     _safe_add_column("ALTER TABLE mentor_payout_accounts ADD COLUMN account_holder_name VARCHAR(255) NULL")
     _safe_add_column("ALTER TABLE mentor_payout_accounts ADD COLUMN iban VARCHAR(34) NULL")
     _safe_add_column("ALTER TABLE mentor_payout_accounts ADD COLUMN bic VARCHAR(11) NULL")
+
+
+def ensure_onboarding_installment_columns() -> None:
+    _safe_add_column(
+        "ALTER TABLE mentor_onboarding_payments ADD COLUMN payment_plan VARCHAR(16) NOT NULL DEFAULT 'full'"
+    )
+    _safe_add_column(
+        "ALTER TABLE mentor_onboarding_payments ADD COLUMN installment_number INT NOT NULL DEFAULT 1"
+    )
+    _safe_add_column(
+        "ALTER TABLE mentor_onboarding_payments ADD COLUMN installment_total INT NOT NULL DEFAULT 1"
+    )

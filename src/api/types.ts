@@ -118,6 +118,8 @@ export interface MentorAccount extends MentorDetail {
   is_approved: boolean;
   is_verified: boolean;
   email_verified: boolean;
+  agreement_accepted_at?: string | null;
+  agreement_version?: string | null;
   updated_at: string;
 }
 

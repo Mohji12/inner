@@ -138,18 +138,36 @@ export function resendMentorVerifyEmail(email: string): Promise<{ message: strin
 export function createMentorOnboardingPayment(
   email: string,
   checkoutCurrency?: string,
-): Promise<{ payment_id: string; checkout_url: string; amount: string; currency: string }> {
-  return apiFetch<{ payment_id: string; checkout_url: string; amount: string; currency: string }>(
-    "/auth/mentor/onboarding-payment",
-    {
-      method: "POST",
-      body: JSON.stringify({
-        email,
-        checkout_currency: checkoutCurrency ?? null,
-      }),
-      skipAuth: true,
-    },
-  );
+  paymentPlan: "full" | "installments" = "full",
+  installmentNumber = 1,
+): Promise<{
+  payment_id: string;
+  checkout_url: string;
+  amount: string;
+  currency: string;
+  payment_plan: string;
+  installment_number: number;
+  installment_total: number;
+}> {
+  return apiFetch("/auth/mentor/onboarding-payment", {
+    method: "POST",
+    body: JSON.stringify({
+      email,
+      checkout_currency: checkoutCurrency ?? null,
+      payment_plan: paymentPlan,
+      installment_number: installmentNumber,
+    }),
+    skipAuth: true,
+  });
+}
+
+export function getMentorOnboardingPlans(): Promise<{
+  total_eur: string;
+  full_eur: string;
+  installment_eur: string;
+  installment_count: number;
+}> {
+  return apiFetch("/auth/mentor/onboarding-plans", { skipAuth: true });
 }
 
 export function loginMentor(body: MentorLoginBody): Promise<LoginResponse> {

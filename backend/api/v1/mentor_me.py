@@ -2,12 +2,14 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import Literal
 from sqlalchemy import func, update
 from sqlalchemy.exc import OperationalError
 
 from api.deps import CurrentMentor, DbSession, RequestLang
 from core.booking_states import PAYMENT_RECORD_SUCCEEDED
+from core.config import settings
 from core.security import new_uuid
 from models.availability_slot import AvailabilitySlot
 from models.booking import Booking
@@ -18,7 +20,13 @@ from models.mentor_onboarding_payment import MentorOnboardingPayment
 from models.payment import Payment
 from models.chat_purchase import ChatPurchase
 from models.chat_session import ChatSession
-from schemas.mentor import MentorAccountOut, MentorPayoutBankDetailsIn, MentorPayoutBankDetailsOut, MentorUpdate
+from schemas.mentor import (
+    CoachAgreementAcceptIn,
+    MentorAccountOut,
+    MentorPayoutBankDetailsIn,
+    MentorPayoutBankDetailsOut,
+    MentorUpdate,
+)
 from schemas.platform_invoice import MentorMonthlyFeeStatementOut, MentorOnboardingInvoiceOut
 from schemas.slot import SlotCreate, SlotOut, SlotUpdate
 from services.fx_checkout import FxCheckoutError, FxUpstreamError
@@ -28,7 +36,9 @@ from services.mentor_monthly_invoice_pdf import build_mentor_monthly_invoice_pdf
 from services.platform_invoice_service import load_mentor_monthly_statement, load_mentor_onboarding_invoice
 from services.payout_bank_service import mask_bic, mask_iban, normalize_bic, validate_and_normalize_iban
 from services.mollie_service import MollieServiceError, resolve_mollie_webhook_url
+from services.onboarding_payment_service import create_onboarding_checkout, mentor_onboarding_status
 from services.i18n_service import resolve_i18n_text, to_i18n_map
+from core.coach_agreement import COACH_AGREEMENT_TEXT, COACH_AGREEMENT_VERSION
 from services.presence_service import presence_service
 from services.ledger_service import (
     ACCOUNT_COACH_PENDING,
@@ -67,9 +77,37 @@ class MentorOnboardingPaymentOut(BaseModel):
     status: str
     mollie_payment_id: str
     checkout_url: str | None
+    payment_plan: str
+    installment_number: int
+    installment_total: int
     paid_at: datetime | None
     created_at: datetime
     updated_at: datetime
+
+
+class MentorOnboardingStatusOut(BaseModel):
+    is_complete: bool
+    payment_plan: str | None
+    installments_paid: int
+    installment_total: int
+    next_installment_number: int | None
+    next_amount_eur: str | None
+
+
+class MentorOnboardingCheckoutIn(BaseModel):
+    checkout_currency: str = "EUR"
+    payment_plan: Literal["full", "installments"] = "full"
+    installment_number: int = Field(default=1, ge=1, le=2)
+
+
+class MentorOnboardingCheckoutOut(BaseModel):
+    payment_id: str
+    checkout_url: str
+    amount: str
+    currency: str
+    payment_plan: str
+    installment_number: int
+    installment_total: int
 
 
 class MonthlyInvoicePrepareCheckoutIn(BaseModel):
@@ -162,6 +200,34 @@ def mentor_update(db: DbSession, me: CurrentMentor, payload: MentorUpdate, lang:
     me.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(me)
+    out = MentorAccountOut.model_validate(me).model_dump()
+    out["headline"] = resolve_i18n_text(getattr(me, "headline_i18n", None), me.headline, lang)
+    out["bio"] = resolve_i18n_text(getattr(me, "bio_i18n", None), me.bio, lang)
+    out["chat_price_per_minute"] = effective_chat_price_per_minute_eur(me)
+    return MentorAccountOut.model_validate(out)
+
+
+@router.post("/coach-agreement", response_model=MentorAccountOut)
+def accept_coach_agreement(
+    db: DbSession,
+    me: CurrentMentor,
+    payload: CoachAgreementAcceptIn,
+    lang: RequestLang,
+) -> MentorAccountOut:
+    if payload.agreement_version != COACH_AGREEMENT_VERSION:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Coach agreement version mismatch")
+    if payload.agreement_text_snapshot.strip() != COACH_AGREEMENT_TEXT.strip():
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Coach agreement text mismatch")
+
+    now = datetime.now(timezone.utc)
+    me.agreement_accepted_at = now
+    me.agreement_version = COACH_AGREEMENT_VERSION
+    me.agreement_text_snapshot = COACH_AGREEMENT_TEXT
+    me.agreement_text_snapshot_i18n = to_i18n_map(COACH_AGREEMENT_TEXT)
+    me.updated_at = now
+    db.commit()
+    db.refresh(me)
+
     out = MentorAccountOut.model_validate(me).model_dump()
     out["headline"] = resolve_i18n_text(getattr(me, "headline_i18n", None), me.headline, lang)
     out["bio"] = resolve_i18n_text(getattr(me, "bio_i18n", None), me.bio, lang)
@@ -428,6 +494,40 @@ def mentor_monthly_invoice_pdf(invoice_id: str, db: DbSession, me: CurrentMentor
     )
 
 
+@router.get("/onboarding-status", response_model=MentorOnboardingStatusOut)
+def mentor_onboarding_payment_status(db: DbSession, me: CurrentMentor) -> MentorOnboardingStatusOut:
+    return MentorOnboardingStatusOut.model_validate(mentor_onboarding_status(db, me.id))
+
+
+@router.post("/onboarding-payment", response_model=MentorOnboardingCheckoutOut)
+def mentor_create_onboarding_payment(
+    request: Request,
+    db: DbSession,
+    me: CurrentMentor,
+    payload: MentorOnboardingCheckoutIn,
+) -> MentorOnboardingCheckoutOut:
+    redirect_url = f"{settings.mollie_redirect_base_url.rstrip('/')}/mentor"
+    row = create_onboarding_checkout(
+        db,
+        mentor=me,
+        payment_plan=payload.payment_plan,
+        installment_number=payload.installment_number,
+        checkout_currency=payload.checkout_currency,
+        redirect_url=redirect_url,
+        webhook_url=resolve_mollie_webhook_url(request),
+    )
+    db.commit()
+    return MentorOnboardingCheckoutOut(
+        payment_id=row.mollie_payment_id,
+        checkout_url=row.checkout_url or "",
+        amount=str(row.amount),
+        currency=row.currency,
+        payment_plan=row.payment_plan,
+        installment_number=row.installment_number,
+        installment_total=row.installment_total,
+    )
+
+
 @router.get("/onboarding-payments", response_model=list[MentorOnboardingPaymentOut])
 def mentor_onboarding_payments(db: DbSession, me: CurrentMentor) -> list[MentorOnboardingPaymentOut]:
     rows = (
@@ -444,6 +544,9 @@ def mentor_onboarding_payments(db: DbSession, me: CurrentMentor) -> list[MentorO
             status=r.status,
             mollie_payment_id=r.mollie_payment_id,
             checkout_url=r.checkout_url,
+            payment_plan=getattr(r, "payment_plan", None) or "full",
+            installment_number=int(getattr(r, "installment_number", None) or 1),
+            installment_total=int(getattr(r, "installment_total", None) or 1),
             paid_at=r.paid_at,
             created_at=r.created_at,
             updated_at=r.updated_at,

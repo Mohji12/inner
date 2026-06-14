@@ -123,6 +123,11 @@ export const appEn = {
     verifySubmit: "Verify & continue",
     resendCode: "Resend code",
     resendToast: "If an account exists, a new code was sent.",
+    onboardingPaymentPlanLabel: "Onboarding fee payment",
+    onboardingPayOnce: "Pay once — €{amount} (incl. tax)",
+    onboardingPayInstallments: "Pay in 2 installments — €{amount} now, then €{amount} later",
+    onboardingInstallmentNote:
+      "If you choose installments, pay the second part from your coach dashboard after logging in.",
   },
   becomeCoach: {
     label: "Coach onboarding",
@@ -158,7 +163,8 @@ export const appEn = {
         title: "Pay the onboarding fee",
         desc: "After verification, you are redirected to Mollie to pay the one-time platform onboarding fee.",
         bullets: [
-          "Base fee €85 + 21% (≈ €102.85 EUR at checkout)",
+          "One-time fee €70 EUR at checkout (including tax)",
+          "Or pay in 2 installments of €35 EUR each",
           "Payment available in supported checkout currencies",
           "Invoice issued after successful payment",
         ],
@@ -167,7 +173,7 @@ export const appEn = {
         title: "Account approval",
         desc: "Your account is activated once payment is confirmed. An admin may also review applications.",
         bullets: [
-          "Successful payment automatically approves your account",
+          "Successful payment automatically approves your account (both installments required if you choose split payment)",
           "Status changes from pending to active",
           "Rejected accounts can contact support",
         ],
@@ -187,7 +193,7 @@ export const appEn = {
         bullets: [
           "Listed on the home page and /mentors directory",
           "Users can book 10, 20, or 30 minute sessions",
-          "Metered live chat with platform fee and tax applied",
+          "Metered live chat with 70% coach share and 30% platform fee",
         ],
       },
     ],
@@ -197,7 +203,7 @@ export const appEn = {
       "Unique email and phone number (not already registered)",
       "Password: 8+ characters with uppercase, lowercase, a digit, and a special character",
       "Professional headline and bio in your coaching niche",
-      "Agreement to platform fee terms (30% platform fee + 21% tax on metered chat)",
+      "Agreement to platform fee terms (70% coach share / 30% platform fee on metered chat)",
       "Commitment to medical guidelines — no medical advice, diagnosis, or prescriptions",
       "Willingness to pay the one-time onboarding fee",
     ],
@@ -218,10 +224,9 @@ export const appEn = {
     feesLabel: "Fees at a glance",
     feesHeading: "How coach earnings work",
     fees: [
-      "Metered chat: 21% tax and 30% platform fee on the gross per-minute rate; you receive the remainder.",
+      "Metered chat: you receive 70% of the gross per-minute rate (including your tax obligations); the platform retains 30%.",
       "Users pay a fixed €0.50 transaction fee per chat session (not shared with coaches).",
       "Session packages (10 / 20 / 30 min) use platform pricing set by admin.",
-      "Monthly platform fee may apply to active coaches (see your dashboard).",
     ],
     readyTitle: "Ready to begin?",
     readySub: "The full registration takes about 10–15 minutes. You can save optional profile details for later in your dashboard.",
@@ -390,6 +395,9 @@ export const appEn = {
     completed: "Completed",
     pending: "Pending",
     noOnboardingPayment: "No onboarding payment found yet.",
+    onboardingInstallmentProgress: "Installments paid: {paid} of {total}",
+    payNextInstallment: "Pay installment {n} (€{amount})",
+    payOnboardingFee: "Pay onboarding fee",
     earningsOverTime: "Earnings over time",
     bookingsPlusChat: "Bookings + text chat",
     day: "Day",
@@ -547,6 +555,30 @@ export const appEn = {
     save: "Save",
     cancel: "Cancel",
     loading: "Loading…",
+  },
+  coachAgreementPage: {
+    back: "Back",
+    version: "Version",
+    signTitle: "Sign the agreement",
+    signDescription:
+      "Read the terms above, confirm your acceptance, and type your full legal name as your electronic signature.",
+    acceptLabel:
+      "I have read and agree to the Coach Agreement, including the 70% coach share and 30% platform fee on metered chats.",
+    signatureLabel: "Full name (electronic signature)",
+    signaturePlaceholder: "Type your full legal name",
+    signatureHint: "Your name and acceptance are stored with the agreement version and text snapshot.",
+    submit: "Sign agreement",
+    submitting: "Signing…",
+    continueRegister: "Continue to registration",
+    alreadySigned: "You have signed this agreement.",
+    signedOn: "Signed on {date}",
+    footerNote:
+      "This page is shown for transparency. Coaches must accept this agreement before going live on the platform.",
+    toastSigned: "Coach agreement signed successfully.",
+    toastSaved: "Agreement acceptance saved. Continue with coach registration to complete your account.",
+    errMustAccept: "Please confirm that you accept the Coach Agreement.",
+    errSignature: "Enter your full name to sign (at least 2 characters).",
+    errFailed: "Could not save agreement acceptance.",
   },
 } as const;
 

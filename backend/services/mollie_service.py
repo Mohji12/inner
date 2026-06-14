@@ -463,14 +463,9 @@ def _apply_chat_purchase_paid(db: Session, purchase: ChatPurchase) -> None:
 
 
 def _mark_onboarding_paid(db: Session, onboarding: MentorOnboardingPayment) -> None:
-    onboarding.status = "paid"
-    onboarding.paid_at = datetime.now(timezone.utc)
-    onboarding.updated_at = datetime.now(timezone.utc)
-    mentor = db.query(Mentor).filter(Mentor.id == onboarding.mentor_id).first()
-    if mentor:
-        mentor.is_approved = True
-        mentor.status = "active"
-        mentor.updated_at = datetime.now(timezone.utc)
+    from services.onboarding_payment_service import apply_onboarding_payment_paid
+
+    apply_onboarding_payment_paid(db, onboarding)
 
 
 def _sync_amount_currency_from_mollie(

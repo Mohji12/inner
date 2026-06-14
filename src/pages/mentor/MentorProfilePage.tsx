@@ -3,7 +3,8 @@ import { apiFetch } from "@/api/client";
 import { getMentorMe, patchMentorMe } from "@/api/mentors";
 import type { MentorAccount } from "@/api/types";
 import { commaSeparatedToStringList, stringListToCommaSeparated, unknownListToStrings } from "@/lib/dbJsonFields";
-import { normalizeSpokenLanguagesFromApi, SPOKEN_LANGUAGE_OPTIONS } from "@/lib/spokenLanguageOptions";
+import { normalizeSpokenLanguagesFromApi } from "@/lib/spokenLanguageOptions";
+import SpokenLanguageCheckboxGroup from "@/components/SpokenLanguageCheckboxGroup";
 import { resolveBrowserTimeZone } from "@/lib/timeZone";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { Button } from "@/components/ui/button";
@@ -300,26 +301,13 @@ const MentorProfilePage = () => {
               <Textarea id="bio" rows={5} value={bio} onChange={(ev) => setBio(ev.target.value)} />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2 sm:col-span-1">
+              <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="lang">{mr.languages}</Label>
-                <select
+                <SpokenLanguageCheckboxGroup
                   id="lang"
-                  multiple
                   value={spokenLanguages}
-                  onChange={(ev) =>
-                    setSpokenLanguages(Array.from(ev.target.selectedOptions, (o) => o.value))
-                  }
-                  className="min-h-[7.5rem] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {SPOKEN_LANGUAGE_OPTIONS.map((lang) => (
-                    <option key={lang} value={lang}>
-                      {lang}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-muted-foreground">
-                  Hold Ctrl (Windows) or ⌘ (Mac) while clicking to select more than one language.
-                </p>
+                  onChange={setSpokenLanguages}
+                />
               </div>
               <div className="space-y-2 sm:col-span-1">
                 <Label htmlFor="years">{mr.years}</Label>

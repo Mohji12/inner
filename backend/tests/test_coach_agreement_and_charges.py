@@ -12,8 +12,9 @@ class CoachAgreementAndChargesTests(unittest.TestCase):
     def test_charges_formula(self) -> None:
         out = compute_coach_platform_fee_and_tax(one_minute_rate=Decimal("1.00"))
         self.assertEqual(out.platform_fee, Decimal("0.30"))
-        self.assertEqual(out.tax, Decimal("0.21"))
-        self.assertEqual(out.total_deduction, Decimal("0.51"))
+        self.assertEqual(out.tax, Decimal("0.00"))
+        self.assertEqual(out.coach_net, Decimal("0.70"))
+        self.assertEqual(out.total_deduction, Decimal("0.30"))
 
     def test_register_enforces_agreement_and_persists_snapshot(self) -> None:
         content = (ROOT / "api" / "v1" / "auth_mentor.py").read_text(encoding="utf-8")

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,8 +16,10 @@ import {
   YAxis,
 } from "recharts";
 import {
+  createMentorOnboardingPaymentMe,
   getMentorEarnings,
   getMentorEarningsSeries,
+  getMentorOnboardingStatus,
   listMentorOnboardingPayments,
   listMentorMonthlyInvoices,
   type AnalyticsPeriod,
@@ -25,10 +27,13 @@ import {
 import { CoachConnectStatusCard } from "@/components/mentor/CoachConnectStatusCard";
 import { CoachWalletCard } from "@/components/mentor/CoachWalletCard";
 import { useLanguage } from "@/i18n/LanguageContext";
+import { toast } from "sonner";
 
 export default function MentorDashboardHomePage() {
   const [period, setPeriod] = useState<AnalyticsPeriod>("month");
   const { t } = useLanguage();
+  const queryClient = useQueryClient();
+  const d = t.app.mentorDashboardHome;
 
   const earningsQ = useQuery({
     queryKey: ["mentor", "earnings"],
@@ -50,6 +55,28 @@ export default function MentorDashboardHomePage() {
     queryFn: listMentorOnboardingPayments,
   });
 
+  const onboardingStatusQ = useQuery({
+    queryKey: ["mentor", "onboarding-status"],
+    queryFn: getMentorOnboardingStatus,
+  });
+
+  const payInstallmentMut = useMutation({
+    mutationFn: () =>
+      createMentorOnboardingPaymentMe({
+        checkout_currency: "EUR",
+        payment_plan: onboardingStatusQ.data?.payment_plan === "installments" ? "installments" : "full",
+        installment_number: onboardingStatusQ.data?.next_installment_number ?? 1,
+      }),
+    onSuccess: (data) => {
+      void queryClient.invalidateQueries({ queryKey: ["mentor", "onboarding-payments"] });
+      void queryClient.invalidateQueries({ queryKey: ["mentor", "onboarding-status"] });
+      window.location.href = data.checkout_url;
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : "Could not start payment");
+    },
+  });
+
   const chartData = useMemo(() => {
     const data = seriesQ.data;
     if (!data) return [];
@@ -68,25 +95,58 @@ export default function MentorDashboardHomePage() {
   }, [seriesQ.data]);
 
   const recentInvoices = (invoicesQ.data ?? []).slice(0, 3);
+  const onboardingStatus = onboardingStatusQ.data;
+  const onboardingDone = onboardingStatus?.is_complete ?? false;
   const latestOnboarding = onboardingQ.data?.[0];
-  const onboardingDone = latestOnboarding?.status === "paid";
+  const showPayOnboarding =
+    !onboardingDone &&
+    onboardingStatus?.next_installment_number != null &&
+    onboardingStatus.next_amount_eur != null;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm uppercase tracking-widest text-accent">{t.app.mentorDashboardHome.label}</p>
-          <h1 className="font-serif text-3xl">{t.app.mentorDashboardHome.heading}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t.app.mentorDashboardHome.subheading}</p>
+          <p className="text-sm uppercase tracking-widest text-accent">{d.label}</p>
+          <h1 className="font-serif text-3xl">{d.heading}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{d.subheading}</p>
         </div>
       </div>
+
+      {showPayOnboarding ? (
+        <Card className="border-amber-500/40 bg-amber-500/5">
+          <CardHeader>
+            <CardTitle>{d.onboardingPayment}</CardTitle>
+            <CardDescription>
+              {onboardingStatus.payment_plan === "installments" && onboardingStatus.installment_total > 1
+                ? d.onboardingInstallmentProgress
+                    .replace("{paid}", String(onboardingStatus.installments_paid))
+                    .replace("{total}", String(onboardingStatus.installment_total))
+                : d.pending}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              type="button"
+              disabled={payInstallmentMut.isPending}
+              onClick={() => payInstallmentMut.mutate()}
+            >
+              {onboardingStatus.next_installment_number && onboardingStatus.next_amount_eur
+                ? d.payNextInstallment
+                    .replace("{n}", String(onboardingStatus.next_installment_number))
+                    .replace("{amount}", onboardingStatus.next_amount_eur)
+                : d.payOnboardingFee}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <CoachWalletCard />
         <CoachConnectStatusCard />
         <Card className="border-border/60">
           <CardHeader className="pb-2">
-            <CardDescription>{t.app.mentorDashboardHome.totalEarnings}</CardDescription>
+            <CardDescription>{d.totalEarnings}</CardDescription>
             {earningsQ.isLoading ? (
               <CardTitle className="font-serif text-2xl">{t.app.common.loading}</CardTitle>
             ) : (
@@ -96,13 +156,13 @@ export default function MentorDashboardHomePage() {
             )}
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            {earningsQ.data ? `${earningsQ.data.payment_count} ${t.app.mentorDashboardHome.bookingPayments}` : ""}
+            {earningsQ.data ? `${earningsQ.data.payment_count} ${d.bookingPayments}` : ""}
           </CardContent>
         </Card>
 
         <Card className="border-border/60">
           <CardHeader className="pb-2">
-            <CardDescription>{t.app.mentorDashboardHome.onboardingPayment}</CardDescription>
+            <CardDescription>{d.onboardingPayment}</CardDescription>
             {onboardingQ.isLoading ? (
               <CardTitle className="font-serif text-2xl">{t.app.common.loading}</CardTitle>
             ) : latestOnboarding ? (
@@ -110,25 +170,30 @@ export default function MentorDashboardHomePage() {
                 {latestOnboarding.currency} {latestOnboarding.amount}
               </CardTitle>
             ) : (
-              <CardTitle className="font-serif text-2xl">{t.app.mentorDashboardHome.noTransaction}</CardTitle>
+              <CardTitle className="font-serif text-2xl">{d.noTransaction}</CardTitle>
             )}
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
             {latestOnboarding ? (
               <div className="space-y-1">
                 <p>
-                  {t.app.mentorDashboardHome.statusLabel}:{" "}
+                  {d.statusLabel}:{" "}
                   <span className="font-medium capitalize text-foreground/80">{latestOnboarding.status}</span>
                 </p>
+                {latestOnboarding.payment_plan === "installments" ? (
+                  <p>
+                    Installment {latestOnboarding.installment_number}/{latestOnboarding.installment_total}
+                  </p>
+                ) : null}
                 <p>
-                  {t.app.mentorDashboardHome.platformOnboardingLabel}:{" "}
+                  {d.platformOnboardingLabel}:{" "}
                   <span className={`font-medium ${onboardingDone ? "text-green-700" : "text-amber-700"}`}>
-                    {onboardingDone ? t.app.mentorDashboardHome.completed : t.app.mentorDashboardHome.pending}
+                    {onboardingDone ? d.completed : d.pending}
                   </span>
                 </p>
               </div>
             ) : (
-              t.app.mentorDashboardHome.noOnboardingPayment
+              d.noOnboardingPayment
             )}
           </CardContent>
         </Card>
@@ -137,28 +202,28 @@ export default function MentorDashboardHomePage() {
           <CardHeader>
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <CardTitle>{t.app.mentorDashboardHome.earningsOverTime}</CardTitle>
+                <CardTitle>{d.earningsOverTime}</CardTitle>
                 <CardDescription>
-                  {t.app.mentorDashboardHome.bookingsPlusChat} ·{" "}
+                  {d.bookingsPlusChat} ·{" "}
                   {seriesQ.data ? new Date(seriesQ.data.range_start).toLocaleString() : ""}{" "}
                   {seriesQ.data ? `→ ${new Date(seriesQ.data.range_end).toLocaleString()}` : ""}
                 </CardDescription>
               </div>
               <Tabs value={period} onValueChange={(v) => setPeriod(v as AnalyticsPeriod)}>
                 <TabsList>
-                  <TabsTrigger value="day">{t.app.mentorDashboardHome.day}</TabsTrigger>
-                  <TabsTrigger value="week">{t.app.mentorDashboardHome.week}</TabsTrigger>
-                  <TabsTrigger value="month">{t.app.mentorDashboardHome.month}</TabsTrigger>
-                  <TabsTrigger value="year">{t.app.mentorDashboardHome.year}</TabsTrigger>
+                  <TabsTrigger value="day">{d.day}</TabsTrigger>
+                  <TabsTrigger value="week">{d.week}</TabsTrigger>
+                  <TabsTrigger value="month">{d.month}</TabsTrigger>
+                  <TabsTrigger value="year">{d.year}</TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
           </CardHeader>
           <CardContent>
             {seriesQ.isLoading ? (
-              <p className="text-sm text-muted-foreground">{t.app.mentorDashboardHome.loadingChart}</p>
+              <p className="text-sm text-muted-foreground">{d.loadingChart}</p>
             ) : chartData.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t.app.mentorDashboardHome.noEarningsInRange}</p>
+              <p className="text-sm text-muted-foreground">{d.noEarningsInRange}</p>
             ) : (
               <div className="h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
@@ -168,9 +233,9 @@ export default function MentorDashboardHomePage() {
                     <YAxis tick={{ fontSize: 11 }} />
                     <Tooltip />
                     <Legend />
-                    <Line type="monotone" dataKey="bookings" name={t.app.mentorDashboardHome.bookingsLegend} stroke="hsl(90 8% 48%)" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="chat" name={t.app.mentorDashboardHome.chatLegend} stroke="hsl(90 15% 40%)" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="total" name={t.app.mentorDashboardHome.totalLegend} stroke="hsl(90 5% 45%)" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="bookings" name={d.bookingsLegend} stroke="hsl(90 8% 48%)" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="chat" name={d.chatLegend} stroke="hsl(90 15% 40%)" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="total" name={d.totalLegend} stroke="hsl(90 5% 45%)" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -182,18 +247,18 @@ export default function MentorDashboardHomePage() {
       <Card className="border-border/60 glass-card">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>{t.app.mentorDashboardHome.monthlyPlatformFees}</CardTitle>
-            <CardDescription>{t.app.mentorDashboardHome.recentFeeInvoices}</CardDescription>
+            <CardTitle>{d.monthlyPlatformFees}</CardTitle>
+            <CardDescription>{d.recentFeeInvoices}</CardDescription>
           </div>
           <Button asChild variant="outline" size="sm">
-            <Link to="/mentor/invoices">{t.app.mentorDashboardHome.viewAll}</Link>
+            <Link to="/mentor/invoices">{d.viewAll}</Link>
           </Button>
         </CardHeader>
         <CardContent>
           {invoicesQ.isLoading ? (
             <p className="text-sm text-muted-foreground">{t.app.common.loading}</p>
           ) : recentInvoices.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t.app.mentorDashboardHome.noMonthlyInvoices}</p>
+            <p className="text-sm text-muted-foreground">{d.noMonthlyInvoices}</p>
           ) : (
             <div className="space-y-2">
               {recentInvoices.map((r) => (
@@ -201,7 +266,7 @@ export default function MentorDashboardHomePage() {
                   <div className="min-w-0">
                     <p className="font-medium">{r.invoice_month}</p>
                     <p className="text-xs text-muted-foreground">
-                      {t.app.mentorDashboardHome.grossLabel} {r.gross_revenue} {r.currency} · {t.app.mentorDashboardHome.feeLabel} {r.fee_amount} ({r.fee_percent}%)
+                      {d.grossLabel} {r.gross_revenue} {r.currency} · {d.feeLabel} {r.fee_amount} ({r.fee_percent}%)
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
@@ -214,7 +279,7 @@ export default function MentorDashboardHomePage() {
                         size="sm"
                         onClick={() => window.open(r.mollie_checkout_url ?? "", "_blank")}
                       >
-                        {t.app.mentorDashboardHome.payNow}
+                        {d.payNow}
                       </Button>
                     ) : null}
                   </div>
@@ -227,4 +292,3 @@ export default function MentorDashboardHomePage() {
     </div>
   );
 }
-

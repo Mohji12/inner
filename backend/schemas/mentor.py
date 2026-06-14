@@ -88,7 +88,15 @@ class MentorAccountOut(MentorDetailOut):
     is_approved: bool
     is_verified: bool
     email_verified: bool
+    agreement_accepted_at: datetime | None = None
+    agreement_version: str | None = None
     updated_at: datetime
+
+
+class CoachAgreementAcceptIn(BaseModel):
+    signature_name: str = Field(min_length=2, max_length=255)
+    agreement_version: str
+    agreement_text_snapshot: str
 
 
 class MentorRegisterResponse(MentorAccountOut):

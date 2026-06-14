@@ -1,6 +1,7 @@
 import { Mail, MapPin } from "lucide-react";
 import { useLanguage } from "@/i18n/LanguageContext";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { homeSectionTo, scrollToHomeSection } from "@/lib/homeSectionLink";
 
 const SOCIAL_LINKS = [
   {
@@ -34,24 +35,32 @@ const SOCIAL_LINKS = [
 
 const Footer = () => {
   const { t } = useLanguage();
+  const location = useLocation();
+  const onHome = location.pathname === "/";
 
   const navLinks = [
-    { label: t.nav.home, href: "#hero" },
-    { label: t.nav.about, href: "#about" },
-    { label: t.nav.services, href: "#services" },
-    { label: t.nav.pricing, href: "#pricing" },
+    { label: t.nav.home, hash: "#hero" },
+    { label: t.nav.about, hash: "#about" },
+    { label: t.nav.services, hash: "#services" },
+    { label: t.nav.pricing, hash: "#pricing" },
   ];
+
+  const onSectionLinkClick = (hash: string) => {
+    if (onHome) scrollToHomeSection(hash);
+  };
 
   return (
     <footer id="footer" className="bg-primary text-primary-foreground py-16">
       <div className="container mx-auto px-6">
         <div className="grid md:grid-cols-3 gap-12">
           <div>
-            <img 
-              src="/lifepath%20logo.png" 
-              alt="Mijn Levenspad Logo" 
-              className="mb-4 h-36 w-auto object-contain md:h-44" 
-            />
+            <Link to={homeSectionTo(location.pathname, "#hero")} onClick={() => onSectionLinkClick("#hero")}>
+              <img
+                src="/lifepath%20logo.png"
+                alt="Mijn Levenspad Logo"
+                className="mb-4 h-36 w-auto object-contain md:h-44"
+              />
+            </Link>
             <p className="text-primary-foreground/60 text-sm leading-relaxed max-w-xs">
               {t.footer.description}
             </p>
@@ -75,10 +84,14 @@ const Footer = () => {
             <h4 className="text-sm font-medium uppercase tracking-widest mb-4 text-primary-foreground/80">{t.footer.quickLinks}</h4>
             <ul className="space-y-2.5">
               {navLinks.map((l) => (
-                <li key={l.href}>
-                  <a href={l.href} className="text-sm text-primary-foreground/50 hover:text-primary-foreground transition-colors">
+                <li key={l.hash}>
+                  <Link
+                    to={homeSectionTo(location.pathname, l.hash)}
+                    onClick={() => onSectionLinkClick(l.hash)}
+                    className="text-sm text-primary-foreground/50 hover:text-primary-foreground transition-colors"
+                  >
                     {l.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
               <li>

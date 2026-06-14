@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import { Menu, X, Globe, ChevronDown } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { languageLabels, type Language } from "@/i18n/translations";
 import LanguageFlag from "@/components/LanguageFlag";
 import { cn } from "@/lib/utils";
+import { homeSectionTo, scrollToHomeSection } from "@/lib/homeSectionLink";
 
 const Navbar = () => {
+  const location = useLocation();
+  const onHome = location.pathname === "/";
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
@@ -18,12 +21,14 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  const sectionTo = (hash: string) => homeSectionTo(location.pathname, hash);
+
   const links = [
-    { label: t.nav.home, href: "#hero" },
-    { label: t.nav.about, href: "#about" },
-    { label: t.nav.services, href: "#services" },
-    { label: t.nav.pricing, href: "#pricing" },
-    { label: t.nav.contact, href: "#footer" },
+    { label: t.nav.home, to: sectionTo("#hero") },
+    { label: t.nav.about, to: sectionTo("#about") },
+    { label: t.nav.services, to: sectionTo("#services") },
+    { label: t.nav.pricing, to: sectionTo("#pricing") },
+    { label: t.nav.contact, to: sectionTo("#footer") },
   ];
 
   const langs = Object.entries(languageLabels) as [Language, string][];
@@ -36,22 +41,28 @@ const Navbar = () => {
       )}
     >
       <div className="container mx-auto flex items-center justify-between px-6">
-        <a
-          href="#hero"
+        <Link
+          to={sectionTo("#hero")}
+          onClick={() => {
+            if (onHome) scrollToHomeSection("#hero");
+          }}
           className="flex items-center transition-opacity hover:opacity-80"
         >
           <img src="/lifepath%20logo.png" alt="Mijn Levenspad Logo" className="h-20 w-auto object-contain drop-shadow-sm md:h-24" />
-        </a>
+        </Link>
 
         <div className="hidden md:flex items-center gap-8">
           {links.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
+            <Link
+              key={typeof l.to === "string" ? l.to : l.to.hash}
+              to={l.to}
+              onClick={() => {
+                if (onHome) scrollToHomeSection(typeof l.to === "string" ? l.to : l.to.hash ?? "#hero");
+              }}
               className="text-lg font-semibold text-zinc-950 transition-colors duration-200 hover:text-black"
             >
               {l.label}
-            </a>
+            </Link>
           ))}
           <Link
             to="/mentors"
@@ -123,14 +134,17 @@ const Navbar = () => {
       {menuOpen && (
         <div className="mx-4 mt-2 flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-6 shadow-xl md:hidden">
           {links.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              onClick={() => setMenuOpen(false)}
+            <Link
+              key={typeof l.to === "string" ? l.to : l.to.hash}
+              to={l.to}
+              onClick={() => {
+                setMenuOpen(false);
+                if (onHome) scrollToHomeSection(typeof l.to === "string" ? l.to : l.to.hash ?? "#hero");
+              }}
               className="text-lg font-semibold text-zinc-950 transition-colors hover:text-black"
             >
               {l.label}
-            </a>
+            </Link>
           ))}
           <Link
             to="/mentors"

@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import AppPageHeader from "@/components/AppPageHeader";
 import { useLanguage } from "@/i18n/LanguageContext";
-import { createMentorOnboardingPayment, registerMentor, resendMentorVerifyEmail, verifyMentorEmail } from "@/api/auth";
+import { createMentorOnboardingPayment, getMentorOnboardingPlans, registerMentor, resendMentorVerifyEmail, verifyMentorEmail } from "@/api/auth";
 import { getCheckoutCurrencies } from "@/api/payments";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,8 +20,8 @@ import { AuthSuccessOverlay } from "@/components/ui/SuccessBurst";
 import { uploadRegistrationMentorAvatar } from "@/api/uploads";
 import { CheckoutCurrencySelect } from "@/components/CheckoutCurrencySelect";
 import { guessCheckoutCurrencyFromLocale } from "@/lib/checkoutCurrencyGuess";
-import { COACH_AGREEMENT_TEXT, COACH_AGREEMENT_VERSION, COACH_MEDICAL_GUIDELINES } from "@/lib/coachAgreement";
-import { SPOKEN_LANGUAGE_OPTIONS } from "@/lib/spokenLanguageOptions";
+import { COACH_AGREEMENT_TEXT, COACH_AGREEMENT_VERSION, COACH_MEDICAL_GUIDELINES, readCoachAgreementAcceptance } from "@/lib/coachAgreement";
+import SpokenLanguageCheckboxGroup from "@/components/SpokenLanguageCheckboxGroup";
 
 const TAB_ORDER = ["account", "profile", "background"] as const;
 type TabId = (typeof TAB_ORDER)[number];
@@ -51,12 +51,30 @@ const MentorRegisterPage = () => {
     };
   }, [localAvatarPreview]);
 
+  useEffect(() => {
+    const stored = readCoachAgreementAcceptance();
+    if (!stored) return;
+    setAgreementAccepted(true);
+    setAgreementAcceptedBeforePayment(true);
+    setFormData((prev) => ({
+      ...prev,
+      name: prev.name || stored.signatureName,
+    }));
+  }, []);
+
   const onboardingCurrenciesQuery = useQuery({
     queryKey: ["checkout-currencies"],
     queryFn: getCheckoutCurrencies,
     enabled: phase === "verify",
   });
   const [onboardingCheckoutCurrency, setOnboardingCheckoutCurrency] = useState("EUR");
+  const [onboardingPaymentPlan, setOnboardingPaymentPlan] = useState<"full" | "installments">("full");
+
+  const onboardingPlansQuery = useQuery({
+    queryKey: ["mentor-onboarding-plans"],
+    queryFn: getMentorOnboardingPlans,
+    enabled: phase === "verify",
+  });
 
   useEffect(() => {
     const list = onboardingCurrenciesQuery.data;
@@ -103,7 +121,12 @@ const MentorRegisterPage = () => {
       throw new Error("Please confirm the coach agreement before proceeding to payment.");
     }
     setPhase("success");
-    const pay = await createMentorOnboardingPayment(email, onboardingCheckoutCurrency);
+    const pay = await createMentorOnboardingPayment(
+      email,
+      onboardingCheckoutCurrency,
+      onboardingPaymentPlan,
+      1,
+    );
     window.setTimeout(() => {
       window.location.href = pay.checkout_url;
     }, REGISTER_SUCCESS_DELAY_MS);
@@ -264,6 +287,42 @@ const MentorRegisterPage = () => {
                     currencies={onboardingCurrenciesQuery.data}
                   />
                 ) : null}
+                <div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-4">
+                  <p className="text-sm font-medium">{m.onboardingPaymentPlanLabel}</p>
+                  <label className="flex cursor-pointer items-start gap-3 text-sm">
+                    <input
+                      type="radio"
+                      name="onboarding-plan"
+                      className="mt-1"
+                      checked={onboardingPaymentPlan === "full"}
+                      onChange={() => setOnboardingPaymentPlan("full")}
+                    />
+                    <span>
+                      {m.onboardingPayOnce.replace(
+                        "{amount}",
+                        onboardingPlansQuery.data?.full_eur ?? "70.00",
+                      )}
+                    </span>
+                  </label>
+                  <label className="flex cursor-pointer items-start gap-3 text-sm">
+                    <input
+                      type="radio"
+                      name="onboarding-plan"
+                      className="mt-1"
+                      checked={onboardingPaymentPlan === "installments"}
+                      onChange={() => setOnboardingPaymentPlan("installments")}
+                    />
+                    <span>
+                      {m.onboardingPayInstallments.replace(
+                        /\{amount\}/g,
+                        onboardingPlansQuery.data?.installment_eur ?? "35.00",
+                      )}
+                    </span>
+                  </label>
+                  {onboardingPaymentPlan === "installments" ? (
+                    <p className="text-xs text-muted-foreground">{m.onboardingInstallmentNote}</p>
+                  ) : null}
+                </div>
                 <div className="space-y-2">
                   <label className="flex items-start gap-3 text-sm">
                     <input
@@ -277,7 +336,7 @@ const MentorRegisterPage = () => {
                       <Link to="/coach-agreement" className="text-accent underline underline-offset-4">
                         Coach Agreement
                       </Link>{" "}
-                      (platform 30% + tax 21% of 1-minute rate).
+                      (platform 30%; you receive 70% of the 1-minute rate, including tax).
                     </span>
                   </label>
                 </div>
@@ -450,29 +509,13 @@ const MentorRegisterPage = () => {
                         onChange={(event) => setFormData((prev) => ({ ...prev, bio: event.target.value }))}
                       />
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2 md:col-span-2">
                       <Label htmlFor="lang">{m.languages}</Label>
-                      <select
+                      <SpokenLanguageCheckboxGroup
                         id="lang"
-                        multiple
                         value={formData.spokenLanguages}
-                        onChange={(event) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            spokenLanguages: Array.from(event.target.selectedOptions, (o) => o.value),
-                          }))
-                        }
-                        className="min-h-[7.5rem] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        {SPOKEN_LANGUAGE_OPTIONS.map((lang) => (
-                          <option key={lang} value={lang}>
-                            {lang}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="text-xs text-muted-foreground">
-                        Hold Ctrl (Windows) or ⌘ (Mac) while clicking to select more than one language.
-                      </p>
+                        onChange={(spokenLanguages) => setFormData((prev) => ({ ...prev, spokenLanguages }))}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="exp">{m.years}</Label>
@@ -501,7 +544,7 @@ const MentorRegisterPage = () => {
                         <Link to="/coach-agreement" className="text-accent underline underline-offset-4">
                           Coach Agreement
                         </Link>
-                        . Platform charges 30% and tax is 21% of the 1-minute rate.
+                        . Platform retains 30%; you receive 70% of the 1-minute rate (including your tax obligations).
                       </span>
                     </label>
                     <p className="mt-2 text-xs text-muted-foreground">

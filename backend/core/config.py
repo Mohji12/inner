@@ -97,15 +97,19 @@ class Settings(BaseSettings):
     fx_rates_http_timeout_seconds: float = 10.0
     # Public session tiers: €/min × 5 | 10 | 20 | 30 (stored in platform_pricing; bootstrap fills defaults).
     session_price_eur_per_minute: Decimal = Decimal("0.90")
-    #: Base onboarding amount in EUR before add-on percent.
-    mentor_onboarding_fee_eur: Decimal = Decimal("85")
-    #: Percent of base added at checkout (e.g. 21 ⇒ charge = base × 1.21).
-    mentor_onboarding_fee_add_percent: Decimal = Decimal("21")
+    #: One-time coach onboarding checkout amount in EUR (including tax when add-on percent is 0).
+    mentor_onboarding_fee_eur: Decimal = Decimal("70")
+    #: Optional percent added on top of fee at checkout (0 = fee is all-in, tax included).
+    mentor_onboarding_fee_add_percent: Decimal = Decimal("0")
+    #: Number of installments when coach chooses split payment (2 × half of total).
+    mentor_onboarding_installment_count: int = 2
     mentor_monthly_fee_percent: Decimal = Decimal("27")
-    #: Platform fee % on metered chat gross (parallel with tax; coach gets remainder).
+    #: Platform fee % on metered chat gross (coach receives the remainder, default 70%).
     marketplace_default_commission_percent: Decimal = Decimal("30")
-    #: VAT-style % on metered chat gross (parallel with platform fee).
-    chat_session_tax_percent: Decimal = Decimal("21")
+    #: Coach share % on metered chat gross (includes coach tax obligations; remainder after platform fee).
+    marketplace_default_coach_share_percent: Decimal = Decimal("70")
+    #: Optional separate tax % on metered gross (0 = tax handled within coach share).
+    chat_session_tax_percent: Decimal = Decimal("0")
     #: One-time EUR fee per chat session (from user hold / added to first Mollie chat checkout), not shared with coach.
     chat_session_transaction_fee_eur: Decimal = Decimal("0.50")
     marketplace_min_withdrawal_amount: Decimal = Decimal("10.00")
@@ -154,6 +158,12 @@ class Settings(BaseSettings):
         base = Decimal(str(self.mentor_onboarding_fee_eur))
         pct = Decimal(str(self.mentor_onboarding_fee_add_percent)) / Decimal("100")
         return (base * (Decimal("1") + pct)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    @property
+    def mentor_onboarding_installment_charge_eur(self) -> Decimal:
+        total = self.mentor_onboarding_charge_eur
+        parts = max(1, int(self.mentor_onboarding_installment_count))
+        return (total / Decimal(parts)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 # Reload Settings when backend/.env changes (mtime). Avoids stale values when uvicorn --reload

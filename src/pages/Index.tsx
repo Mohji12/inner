@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
 import CoachesSection from "@/components/CoachesSection";
@@ -10,10 +12,18 @@ import TestimonialsSection from "@/components/TestimonialsSection";
 import Footer from "@/components/Footer";
 import ScrollProgress from "@/components/ScrollProgress";
 import HomeBackgroundMusic from "@/components/HomeBackgroundMusic";
+import { scrollToHomeSection } from "@/lib/homeSectionLink";
 
 const HOME_BG_IMAGE = "/home-background.jpeg";
 
 const Index = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!location.hash) return;
+    scrollToHomeSection(location.hash);
+  }, [location.pathname, location.hash]);
+
   return (
     <div className="relative min-h-screen">
       <div

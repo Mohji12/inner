@@ -15,7 +15,6 @@ from core.security import (
     validate_password_strength
 )
 from models.mentor import Mentor
-from models.mentor_onboarding_payment import MentorOnboardingPayment
 from schemas.auth import (
     AccessTokenResponse, 
     LoginResponse,
@@ -28,10 +27,14 @@ from schemas.auth import (
     VerifyEmailRequest
 )
 from schemas.mentor import MentorAccountOut, MentorLogin, MentorRegister, MentorRegisterResponse
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
+from typing import Literal
 from services.otp_service import create_and_send_otp, verify_otp
-from services.fx_checkout import FxCheckoutError, FxUpstreamError, eur_to_checkout_amount
-from services.mollie_service import MollieServiceError, create_mollie_payment, resolve_mollie_webhook_url
+from services.onboarding_payment_service import (
+    create_onboarding_checkout,
+    onboarding_plans_public,
+)
+from services.mollie_service import resolve_mollie_webhook_url
 from services.token_service import revoke_refresh_token, rotate_refresh_token, store_refresh_token
 from services.two_factor_service import two_factor_service
 from services.social_auth_service import social_auth_service
@@ -44,6 +47,15 @@ router = APIRouter(prefix="/auth/mentor", tags=["auth-mentor"])
 class MentorOnboardingPaymentRequest(BaseModel):
     email: EmailStr
     checkout_currency: str | None = None
+    payment_plan: Literal["full", "installments"] = "full"
+    installment_number: int = Field(default=1, ge=1, le=2)
+
+
+class MentorOnboardingPlansOut(BaseModel):
+    total_eur: str
+    full_eur: str
+    installment_eur: str
+    installment_count: int
 
 
 class MentorOnboardingPaymentResponse(BaseModel):
@@ -51,6 +63,9 @@ class MentorOnboardingPaymentResponse(BaseModel):
     checkout_url: str
     amount: str
     currency: str
+    payment_plan: str
+    installment_number: int
+    installment_total: int
 
 
 def _set_refresh_cookie(response: Response, raw: str) -> None:
@@ -194,78 +209,38 @@ def resend_mentor_verify_email(db: DbSession, payload: ResendVerifyEmailRequest)
     return MessageResponse(message="If an account exists, a verification code was sent.")
 
 
+@router.get("/onboarding-plans", response_model=MentorOnboardingPlansOut)
+def get_mentor_onboarding_plans() -> MentorOnboardingPlansOut:
+    return MentorOnboardingPlansOut.model_validate(onboarding_plans_public())
+
+
 @router.post("/onboarding-payment", response_model=MentorOnboardingPaymentResponse)
 def create_mentor_onboarding_payment(request: Request, db: DbSession, payload: MentorOnboardingPaymentRequest) -> MentorOnboardingPaymentResponse:
     email = str(payload.email).lower()
     mentor = db.query(Mentor).filter(Mentor.email == email).first()
     if not mentor:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Coach not found")
-    if not mentor.email_verified:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Verify email before payment")
-    if mentor.is_approved and mentor.status == "active":
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Coach already approved")
-
-    existing_open = (
-        db.query(MentorOnboardingPayment)
-        .filter(MentorOnboardingPayment.mentor_id == mentor.id, MentorOnboardingPayment.status.in_(["open", "pending"]))
-        .order_by(MentorOnboardingPayment.created_at.desc())
-        .first()
-    )
-    ccy_req = (payload.checkout_currency or "EUR").strip()
-    if existing_open and existing_open.checkout_url:
-        if (existing_open.currency or "").strip().upper() == ccy_req.upper():
-            return MentorOnboardingPaymentResponse(
-                payment_id=existing_open.mollie_payment_id,
-                checkout_url=existing_open.checkout_url,
-                amount=str(existing_open.amount),
-                currency=existing_open.currency,
-            )
-
-    amount_eur = settings.mentor_onboarding_charge_eur
-    try:
-        charged, checkout_ccy, fx_rate = eur_to_checkout_amount(amount_eur, ccy_req)
-    except FxCheckoutError as e:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
-    except FxUpstreamError as e:
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(e)) from e
 
     redirect_url = f"{settings.mollie_redirect_base_url.rstrip('/')}/login?role=mentor"
     webhook_url = resolve_mollie_webhook_url(request)
-    try:
-        payment_id, checkout_url = create_mollie_payment(
-            amount=charged,
-            currency=checkout_ccy,
-            description=f"Coach onboarding fee {mentor.email}",
-            redirect_url=redirect_url,
-            webhook_url=webhook_url,
-            metadata={"kind": "mentor_onboarding", "mentor_id": mentor.id, "email": mentor.email},
-        )
-    except MollieServiceError as e:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
-
-    now = datetime.now(timezone.utc)
-    row = MentorOnboardingPayment(
-        id=new_uuid(),
-        mentor_id=mentor.id,
-        amount=charged,
-        amount_base_eur=amount_eur,
-        currency=checkout_ccy,
-        fx_rate_used=fx_rate if checkout_ccy != "EUR" else None,
-        status="open",
-        mollie_payment_id=payment_id,
-        checkout_url=checkout_url,
-        metadata_json=None,
-        paid_at=None,
-        created_at=now,
-        updated_at=now,
+    row = create_onboarding_checkout(
+        db,
+        mentor=mentor,
+        payment_plan=payload.payment_plan,
+        installment_number=payload.installment_number,
+        checkout_currency=payload.checkout_currency or "EUR",
+        redirect_url=redirect_url,
+        webhook_url=webhook_url,
     )
-    db.add(row)
     db.commit()
     return MentorOnboardingPaymentResponse(
-        payment_id=payment_id,
-        checkout_url=checkout_url,
-        amount=str(charged),
-        currency=checkout_ccy,
+        payment_id=row.mollie_payment_id,
+        checkout_url=row.checkout_url or "",
+        amount=str(row.amount),
+        currency=row.currency,
+        payment_plan=row.payment_plan,
+        installment_number=row.installment_number,
+        installment_total=row.installment_total,
     )
 
 
@@ -278,10 +253,8 @@ def login_mentor(request: Request, db: DbSession, payload: MentorLogin, response
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
     if not mentor.email_verified:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Please verify your email before signing in")
-    if not mentor.is_approved or mentor.status != "active":
-        if mentor.status == "rejected":
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "Your coach account was rejected. Please contact support.")
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Your coach account is pending admin approval.")
+    if mentor.status == "rejected":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Your coach account was rejected. Please contact support.")
 
     if mentor.is_totp_enabled:
         temp_token = create_2fa_temp_token(mentor.id, "mentor")
@@ -382,10 +355,8 @@ def login_mentor_google(db: DbSession, payload: SocialLoginRequest, response: Re
     if not mentor.google_id:
         mentor.google_id = google_id
     mentor.email_verified = True
-    if not mentor.is_approved or mentor.status != "active":
-        if mentor.status == "rejected":
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "Your coach account was rejected. Please contact support.")
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Your coach account is pending admin approval.")
+    if mentor.status == "rejected":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Your coach account was rejected. Please contact support.")
     
     mentor.last_seen_at = datetime.now(timezone.utc)
     db.commit()

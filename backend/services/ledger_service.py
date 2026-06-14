@@ -53,7 +53,7 @@ def metered_split_amounts(
     tax_percent: Decimal,
     platform_percent: Decimal,
 ) -> tuple[Decimal, Decimal, Decimal]:
-    """Parallel split on metered gross: tax and platform fee; coach receives the remainder (q2 each leg)."""
+    """Split metered gross: platform fee + optional tax; coach receives the remainder (q2 each leg)."""
     g = q2(gross)
     tax_amt = q2(g * tax_percent / Decimal("100"))
     platform_amt = q2(g * platform_percent / Decimal("100"))
