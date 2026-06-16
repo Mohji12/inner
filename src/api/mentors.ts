@@ -302,6 +302,7 @@ export function createMentorOnboardingPaymentMe(body: {
   checkout_currency?: string;
   payment_plan: "full" | "installments";
   installment_number?: number;
+  promo_code?: string | null;
 }): Promise<{
   payment_id: string;
   checkout_url: string;

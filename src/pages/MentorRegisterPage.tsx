@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import AppPageHeader from "@/components/AppPageHeader";
 import { useLanguage } from "@/i18n/LanguageContext";
-import { createMentorOnboardingPayment, getMentorOnboardingPlans, registerMentor, resendMentorVerifyEmail, verifyMentorEmail } from "@/api/auth";
+import { createMentorOnboardingPayment, getMentorOnboardingPlans, registerMentor, resendMentorVerifyEmail, validateMentorOnboardingPromo, verifyMentorEmail } from "@/api/auth";
 import { getCheckoutCurrencies } from "@/api/payments";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -69,6 +69,12 @@ const MentorRegisterPage = () => {
   });
   const [onboardingCheckoutCurrency, setOnboardingCheckoutCurrency] = useState("EUR");
   const [onboardingPaymentPlan, setOnboardingPaymentPlan] = useState<"full" | "installments">("full");
+  const [promoCodeInput, setPromoCodeInput] = useState("");
+  const [promoCode, setPromoCode] = useState("");
+  const [promoDiscountEur, setPromoDiscountEur] = useState<string | null>(null);
+  const [validatingPromo, setValidatingPromo] = useState(false);
+  const [promoError, setPromoError] = useState("");
+  const [successDescription, setSuccessDescription] = useState(m.successPaymentRedirect);
 
   const onboardingPlansQuery = useQuery({
     queryKey: ["mentor-onboarding-plans"],
@@ -115,18 +121,46 @@ const MentorRegisterPage = () => {
 
   const stepLabel = m.stepOf.replace("{current}", String(tabIndex + 1)).replace("{total}", String(TAB_ORDER.length));
 
+  const handleApplyPromo = async () => {
+    const trimmed = promoCodeInput.trim();
+    if (!trimmed) return;
+    setValidatingPromo(true);
+    setPromoError("");
+    try {
+      const res = await validateMentorOnboardingPromo(trimmed, onboardingPaymentPlan, 1);
+      if (res.is_valid) {
+        setPromoCode(trimmed);
+        setPromoDiscountEur(res.discount_amount_eur);
+        setPromoError("");
+      } else {
+        setPromoCode("");
+        setPromoDiscountEur(null);
+        setPromoError(res.message || m.promoInvalid);
+      }
+    } catch (err: unknown) {
+      setPromoCode("");
+      setPromoDiscountEur(null);
+      setPromoError(err instanceof Error ? err.message : m.promoInvalid);
+    } finally {
+      setValidatingPromo(false);
+    }
+  };
+
   const completeMentorOnboarding = async (email: string, password: string) => {
     void password;
     if (!agreementAcceptedBeforePayment) {
       throw new Error("Please confirm the coach agreement before proceeding to payment.");
     }
-    setPhase("success");
     const pay = await createMentorOnboardingPayment(
       email,
       onboardingCheckoutCurrency,
       onboardingPaymentPlan,
       1,
+      promoCode || undefined,
     );
+    const isFree = parseFloat(pay.amount) <= 0;
+    setSuccessDescription(isFree ? m.successLoginRedirect : m.successPaymentRedirect);
+    setPhase("success");
     window.setTimeout(() => {
       window.location.href = pay.checkout_url;
     }, REGISTER_SUCCESS_DELAY_MS);
@@ -236,8 +270,8 @@ const MentorRegisterPage = () => {
     <div className="min-h-screen bg-background text-foreground">
       {phase === "success" ? (
         <AuthSuccessOverlay
-          message="Registration complete!"
-          description="Redirecting to onboarding payment…"
+          message={m.successTitle}
+          description={successDescription}
         />
       ) : null}
       <AppPageHeader />
@@ -321,6 +355,33 @@ const MentorRegisterPage = () => {
                   </label>
                   {onboardingPaymentPlan === "installments" ? (
                     <p className="text-xs text-muted-foreground">{m.onboardingInstallmentNote}</p>
+                  ) : null}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="onboarding-promo">{m.promoCodeLabel}</Label>
+                  <div className="flex flex-wrap gap-2">
+                    <Input
+                      id="onboarding-promo"
+                      placeholder={m.promoCodePlaceholder}
+                      value={promoCodeInput}
+                      onChange={(event) => setPromoCodeInput(event.target.value)}
+                      disabled={validatingPromo}
+                      className="max-w-xs"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => void handleApplyPromo()}
+                      disabled={validatingPromo || !promoCodeInput.trim()}
+                    >
+                      {m.promoApply}
+                    </Button>
+                  </div>
+                  {promoError ? <p className="text-xs text-destructive">{promoError}</p> : null}
+                  {promoCode && !promoError ? (
+                    <p className="text-xs text-green-600 dark:text-green-400">
+                      {m.promoApplied.replace("{amount}", promoDiscountEur ?? "0.00")}
+                    </p>
                   ) : null}
                 </div>
                 <div className="space-y-2">

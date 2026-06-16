@@ -516,6 +516,16 @@ def process_mollie_webhook_by_payment_id(db: Session, mollie_payment_id: str) ->
         onboarding.status = status_str
         if status_str == "paid":
             _mark_onboarding_paid(db, onboarding)
+            metadata = payment_data.get("metadata") or {}
+            promo_code = str(metadata.get("promo_code") or "").strip()
+            if not promo_code and onboarding.metadata_json:
+                try:
+                    meta = json.loads(onboarding.metadata_json)
+                    promo_code = str(meta.get("promo_code") or "").strip()
+                except (TypeError, ValueError, json.JSONDecodeError):
+                    promo_code = ""
+            if promo_code:
+                apply_promo_code(db, promo_code)
         db.commit()
         return {"status": status_str, "type": "mentor_onboarding"}
 

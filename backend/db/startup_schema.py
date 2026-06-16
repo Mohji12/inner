@@ -569,3 +569,66 @@ def ensure_onboarding_installment_columns() -> None:
     _safe_add_column(
         "ALTER TABLE mentor_onboarding_payments ADD COLUMN installment_total INT NOT NULL DEFAULT 1"
     )
+
+
+def ensure_promo_code_scope_column() -> None:
+    _safe_add_column("ALTER TABLE promo_codes ADD COLUMN scope VARCHAR(16) NOT NULL DEFAULT 'booking'")
+
+
+def ensure_default_onboarding_promo_code() -> None:
+    """Create the configured coach onboarding waiver promo if it does not exist."""
+    from datetime import datetime, timezone
+
+    from core.config import settings
+    from core.security import new_uuid
+
+    code = (settings.mentor_onboarding_promo_seed_code or "").strip().upper()
+    if not code:
+        return
+
+    with engine.begin() as conn:
+        row = conn.execute(
+            text("SELECT id, scope FROM promo_codes WHERE code = :code LIMIT 1"),
+            {"code": code},
+        ).first()
+        if row:
+            conn.execute(
+                text(
+                    "UPDATE promo_codes SET scope = 'onboarding', discount_type = 'percentage', "
+                    "discount_value = 100.00, is_active = 1 WHERE code = :code AND scope != 'onboarding'"
+                ),
+                {"code": code},
+            )
+            return
+
+        conn.execute(
+            text(
+                """
+                INSERT INTO promo_codes (
+                    id, code, discount_type, discount_value, scope, is_active, current_uses, first_time_only, created_at
+                ) VALUES (
+                    :id, :code, 'percentage', 100.00, 'onboarding', 1, 0, 0, :created_at
+                )
+                """
+            ),
+            {
+                "id": new_uuid(),
+                "code": code,
+                "created_at": datetime.now(timezone.utc),
+            },
+        )
+
+
+def ensure_universal_promo_codes() -> None:
+    """Promos that should work for both session checkout and coach onboarding."""
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                UPDATE promo_codes
+                SET scope = 'all', is_active = 1
+                WHERE UPPER(code) IN ('LIFE100')
+                  AND scope IN ('booking', 'onboarding')
+                """
+            )
+        )

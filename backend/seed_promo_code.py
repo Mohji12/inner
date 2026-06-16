@@ -23,6 +23,7 @@ def seed_promo_code():
             code=code_name,
             discount_type="percentage",
             discount_value=Decimal("100.00"),
+            scope="all",
             is_active=True,
             created_at=datetime.now(timezone.utc)
         )

@@ -512,6 +512,14 @@ export const appOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
       onboardingPayInstallments: "In 2 termijnen — €{amount} nu, daarna nog €{amount}",
       onboardingInstallmentNote:
         "Kies je termijnen, dan betaal je het restant na inloggen via je coachdashboard.",
+      promoCodeLabel: "Promocode (optioneel)",
+      promoCodePlaceholder: "Voer promocode in",
+      promoApply: "Toepassen",
+      promoApplied: "Promocode toegepast — €{amount} korting op de onboardingfee",
+      promoInvalid: "Ongeldige promocode",
+      successTitle: "Registratie voltooid!",
+      successPaymentRedirect: "Doorverwijzen naar onboardingbetaling…",
+      successLoginRedirect: "Onboardingfee kwijtgescholden. Doorverwijzen naar coach inloggen…",
     },
     becomeCoach: {
       label: "Coach onboarding",

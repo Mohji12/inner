@@ -98,6 +98,7 @@ class MentorOnboardingCheckoutIn(BaseModel):
     checkout_currency: str = "EUR"
     payment_plan: Literal["full", "installments"] = "full"
     installment_number: int = Field(default=1, ge=1, le=2)
+    promo_code: str | None = None
 
 
 class MentorOnboardingCheckoutOut(BaseModel):
@@ -515,6 +516,7 @@ def mentor_create_onboarding_payment(
         checkout_currency=payload.checkout_currency,
         redirect_url=redirect_url,
         webhook_url=resolve_mollie_webhook_url(request),
+        promo_code=payload.promo_code,
     )
     db.commit()
     return MentorOnboardingCheckoutOut(

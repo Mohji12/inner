@@ -103,6 +103,8 @@ class Settings(BaseSettings):
     mentor_onboarding_fee_add_percent: Decimal = Decimal("0")
     #: Number of installments when coach chooses split payment (2 × half of total).
     mentor_onboarding_installment_count: int = 2
+    #: Default 100% onboarding promo created on startup when missing (empty = skip seed).
+    mentor_onboarding_promo_seed_code: str = "COACHFREE"
     mentor_monthly_fee_percent: Decimal = Decimal("27")
     #: Platform fee % on metered chat gross (coach receives the remainder, default 70%).
     marketplace_default_commission_percent: Decimal = Decimal("30")

@@ -32,8 +32,10 @@ from typing import Literal
 from services.otp_service import create_and_send_otp, verify_otp
 from services.onboarding_payment_service import (
     create_onboarding_checkout,
+    onboarding_amount_eur,
     onboarding_plans_public,
 )
+from services.promo_service import PromoError, calculate_discount, validate_promo_code
 from services.mollie_service import resolve_mollie_webhook_url
 from services.token_service import revoke_refresh_token, rotate_refresh_token, store_refresh_token
 from services.two_factor_service import two_factor_service
@@ -49,6 +51,20 @@ class MentorOnboardingPaymentRequest(BaseModel):
     checkout_currency: str | None = None
     payment_plan: Literal["full", "installments"] = "full"
     installment_number: int = Field(default=1, ge=1, le=2)
+    promo_code: str | None = None
+
+
+class MentorOnboardingPromoValidateIn(BaseModel):
+    code: str
+    payment_plan: Literal["full", "installments"] = "full"
+    installment_number: int = Field(default=1, ge=1, le=2)
+
+
+class MentorOnboardingPromoValidateOut(BaseModel):
+    is_valid: bool
+    discount_amount_eur: str
+    final_amount_eur: str
+    message: str | None = None
 
 
 class MentorOnboardingPlansOut(BaseModel):
@@ -214,6 +230,37 @@ def get_mentor_onboarding_plans() -> MentorOnboardingPlansOut:
     return MentorOnboardingPlansOut.model_validate(onboarding_plans_public())
 
 
+@router.post("/onboarding-promo/validate", response_model=MentorOnboardingPromoValidateOut)
+def validate_mentor_onboarding_promo(payload: MentorOnboardingPromoValidateIn, db: DbSession) -> MentorOnboardingPromoValidateOut:
+    amount_eur = onboarding_amount_eur(
+        payment_plan=payload.payment_plan,
+        installment_number=payload.installment_number,
+    )
+    try:
+        promo = validate_promo_code(
+            db,
+            payload.code,
+            amount_eur,
+            user_id=None,
+            mentor_id=None,
+            scope="onboarding",
+        )
+        discount = calculate_discount(promo, amount_eur)
+        final = max(Decimal("0.00"), amount_eur - discount)
+        return MentorOnboardingPromoValidateOut(
+            is_valid=True,
+            discount_amount_eur=str(discount.quantize(Decimal("0.01"))),
+            final_amount_eur=str(final.quantize(Decimal("0.01"))),
+        )
+    except PromoError as e:
+        return MentorOnboardingPromoValidateOut(
+            is_valid=False,
+            discount_amount_eur="0.00",
+            final_amount_eur=str(amount_eur),
+            message=str(e),
+        )
+
+
 @router.post("/onboarding-payment", response_model=MentorOnboardingPaymentResponse)
 def create_mentor_onboarding_payment(request: Request, db: DbSession, payload: MentorOnboardingPaymentRequest) -> MentorOnboardingPaymentResponse:
     email = str(payload.email).lower()
@@ -231,6 +278,7 @@ def create_mentor_onboarding_payment(request: Request, db: DbSession, payload: M
         checkout_currency=payload.checkout_currency or "EUR",
         redirect_url=redirect_url,
         webhook_url=webhook_url,
+        promo_code=payload.promo_code,
     )
     db.commit()
     return MentorOnboardingPaymentResponse(

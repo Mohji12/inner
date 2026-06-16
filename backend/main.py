@@ -29,6 +29,9 @@ from db.startup_schema import (
     ensure_mentor_mollie_fee_tables,
     ensure_mentor_payout_bank_columns,
     ensure_onboarding_installment_columns,
+    ensure_promo_code_scope_column,
+    ensure_default_onboarding_promo_code,
+    ensure_universal_promo_codes,
     ensure_mentors_banner_image_column,
     ensure_platform_pricing_table,
 )
@@ -53,6 +56,9 @@ async def lifespan(app: FastAPI):
     backfill_booking_linked_chat_sessions()
     ensure_mentor_payout_bank_columns()
     ensure_onboarding_installment_columns()
+    ensure_promo_code_scope_column()
+    ensure_default_onboarding_promo_code()
+    ensure_universal_promo_codes()
     ensure_coach_applications_table()
     start_scheduler()
     yield

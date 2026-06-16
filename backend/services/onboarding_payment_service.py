@@ -14,6 +14,7 @@ from models.mentor import Mentor
 from models.mentor_onboarding_payment import MentorOnboardingPayment
 from services.fx_checkout import FxCheckoutError, FxUpstreamError, eur_to_checkout_amount
 from services.mollie_service import MollieServiceError, create_mollie_payment
+from services.promo_service import PromoError, apply_promo_code, calculate_discount, validate_promo_code
 
 PaymentPlan = Literal["full", "installments"]
 PAID_STATUSES = ("paid",)
@@ -240,6 +241,7 @@ def create_onboarding_checkout(
     checkout_currency: str,
     redirect_url: str,
     webhook_url: str | None,
+    promo_code: str | None = None,
 ) -> MentorOnboardingPayment:
     if not mentor.email_verified:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Verify email before payment")
@@ -264,8 +266,35 @@ def create_onboarding_checkout(
     installment_total = 1 if payment_plan == "full" else onboarding_installment_total()
     amount_eur = onboarding_amount_eur(payment_plan=payment_plan, installment_number=installment_number)
 
+    normalized_promo = (promo_code or "").strip().upper() or None
+    discount_eur = Decimal("0.00")
+    if normalized_promo:
+        try:
+            promo_row = validate_promo_code(
+                db,
+                normalized_promo,
+                amount_eur,
+                user_id=None,
+                mentor_id=None,
+                scope="onboarding",
+            )
+            discount_eur = calculate_discount(promo_row, amount_eur)
+        except PromoError as e:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
+
+    final_eur = _q(max(Decimal("0.00"), amount_eur - discount_eur))
+
+    if final_eur <= Decimal("0.00"):
+        return _create_onboarding_promo_waiver(
+            db,
+            mentor=mentor,
+            redirect_url=redirect_url,
+            promo_code=normalized_promo or "",
+            original_amount_eur=amount_eur,
+        )
+
     try:
-        charged, checkout_ccy, fx_rate = eur_to_checkout_amount(amount_eur, ccy_req)
+        charged, checkout_ccy, fx_rate = eur_to_checkout_amount(final_eur, ccy_req)
     except FxCheckoutError as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
     except FxUpstreamError as e:
@@ -276,6 +305,8 @@ def create_onboarding_checkout(
         "installment_number": installment_number,
         "installment_total": installment_total,
     }
+    if normalized_promo:
+        meta["promo_code"] = normalized_promo
     label = "Coach onboarding fee"
     if payment_plan == "installments":
         label = f"Coach onboarding installment {installment_number}/{installment_total}"
@@ -291,6 +322,7 @@ def create_onboarding_checkout(
                 "kind": "mentor_onboarding",
                 "mentor_id": mentor.id,
                 "email": mentor.email,
+                "promo_code": normalized_promo or "",
                 **{k: str(v) for k, v in meta.items()},
             },
         )
@@ -302,7 +334,7 @@ def create_onboarding_checkout(
         id=new_uuid(),
         mentor_id=mentor.id,
         amount=charged,
-        amount_base_eur=amount_eur,
+        amount_base_eur=final_eur,
         currency=checkout_ccy,
         fx_rate_used=fx_rate if checkout_ccy != "EUR" else None,
         status="open",
@@ -317,6 +349,54 @@ def create_onboarding_checkout(
         updated_at=now,
     )
     db.add(row)
+    db.flush()
+    return row
+
+
+def _create_onboarding_promo_waiver(
+    db: Session,
+    *,
+    mentor: Mentor,
+    redirect_url: str,
+    promo_code: str,
+    original_amount_eur: Decimal,
+) -> MentorOnboardingPayment:
+    """Record a zero-amount onboarding waiver and activate the coach when onboarding is complete."""
+    payment_id = f"promo_{new_uuid().replace('-', '')}"
+    meta = {
+        "payment_plan": "full",
+        "installment_number": 1,
+        "installment_total": 1,
+        "promo_code": promo_code,
+        "payment_gateway": "promo",
+        "original_amount_eur": str(original_amount_eur),
+    }
+    now = _utcnow()
+    row = MentorOnboardingPayment(
+        id=new_uuid(),
+        mentor_id=mentor.id,
+        amount=Decimal("0.00"),
+        amount_base_eur=Decimal("0.00"),
+        currency="EUR",
+        fx_rate_used=None,
+        status="paid",
+        mollie_payment_id=payment_id,
+        checkout_url=redirect_url,
+        metadata_json=json.dumps(meta),
+        payment_plan="full",
+        installment_number=1,
+        installment_total=1,
+        paid_at=now,
+        created_at=now,
+        updated_at=now,
+    )
+    db.add(row)
+    db.flush()
+    if promo_code:
+        apply_promo_code(db, promo_code, commit=False)
+    mentor.is_approved = True
+    mentor.status = "active"
+    mentor.updated_at = now
     db.flush()
     return row
 

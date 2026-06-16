@@ -128,6 +128,14 @@ export const appEn = {
     onboardingPayInstallments: "Pay in 2 installments — €{amount} now, then €{amount} later",
     onboardingInstallmentNote:
       "If you choose installments, pay the second part from your coach dashboard after logging in.",
+    promoCodeLabel: "Promo code (optional)",
+    promoCodePlaceholder: "Enter promo code",
+    promoApply: "Apply",
+    promoApplied: "Promo applied — €{amount} discount on onboarding fee",
+    promoInvalid: "Invalid promo code",
+    successTitle: "Registration complete!",
+    successPaymentRedirect: "Redirecting to onboarding payment…",
+    successLoginRedirect: "Onboarding fee waived. Redirecting to coach login…",
   },
   becomeCoach: {
     label: "Coach onboarding",

@@ -135,11 +135,33 @@ export function resendMentorVerifyEmail(email: string): Promise<{ message: strin
   });
 }
 
+export function validateMentorOnboardingPromo(
+  code: string,
+  paymentPlan: "full" | "installments" = "full",
+  installmentNumber = 1,
+): Promise<{
+  is_valid: boolean;
+  discount_amount_eur: string;
+  final_amount_eur: string;
+  message?: string | null;
+}> {
+  return apiFetch("/auth/mentor/onboarding-promo/validate", {
+    method: "POST",
+    body: JSON.stringify({
+      code,
+      payment_plan: paymentPlan,
+      installment_number: installmentNumber,
+    }),
+    skipAuth: true,
+  });
+}
+
 export function createMentorOnboardingPayment(
   email: string,
   checkoutCurrency?: string,
   paymentPlan: "full" | "installments" = "full",
   installmentNumber = 1,
+  promoCode?: string,
 ): Promise<{
   payment_id: string;
   checkout_url: string;
@@ -156,6 +178,7 @@ export function createMentorOnboardingPayment(
       checkout_currency: checkoutCurrency ?? null,
       payment_plan: paymentPlan,
       installment_number: installmentNumber,
+      promo_code: promoCode?.trim() || null,
     }),
     skipAuth: true,
   });
