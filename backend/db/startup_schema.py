@@ -105,8 +105,7 @@ def ensure_platform_pricing_table() -> None:
     p10 = rate * Decimal(10)
     p20 = rate * Decimal(20)
     p30 = rate * Decimal(30)
-    p60 = rate * Decimal(60)
-    tier = {"p5": p5, "p10": p10, "p20": p20, "p30": p30, "p60": p60}
+    tier = {"p5": p5, "p10": p10, "p20": p20, "p30": p30}
 
     ddl = """
     CREATE TABLE IF NOT EXISTS platform_pricing (
@@ -131,10 +130,10 @@ def ensure_platform_pricing_table() -> None:
                 text(
                     """
                     INSERT INTO platform_pricing (
-                        id, price_5_min, price_10_min, price_20_min, price_30_min, price_60_min,
+                        id, price_5_min, price_10_min, price_20_min, price_30_min,
                         currency, is_active, created_at, updated_at
                     ) VALUES (
-                        :id, :p5, :p10, :p20, :p30, :p60, 'EUR', 1,
+                        :id, :p5, :p10, :p20, :p30, 'EUR', 1,
                         CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6)
                     )
                     """
@@ -150,7 +149,6 @@ def ensure_platform_pricing_table() -> None:
                       price_10_min = :p10,
                       price_20_min = :p20,
                       price_30_min = :p30,
-                      price_60_min = :p60,
                       currency = 'EUR',
                       is_active = 1,
                       updated_at = CURRENT_TIMESTAMP(6)
