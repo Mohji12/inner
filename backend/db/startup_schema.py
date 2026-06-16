@@ -105,7 +105,8 @@ def ensure_platform_pricing_table() -> None:
     p10 = rate * Decimal(10)
     p20 = rate * Decimal(20)
     p30 = rate * Decimal(30)
-    tier = {"p5": p5, "p10": p10, "p20": p20, "p30": p30}
+    p60 = rate * Decimal(60)
+    tier = {"p5": p5, "p10": p10, "p20": p20, "p30": p30, "p60": p60}
 
     ddl = """
     CREATE TABLE IF NOT EXISTS platform_pricing (
@@ -114,6 +115,7 @@ def ensure_platform_pricing_table() -> None:
         price_10_min DECIMAL(10,2) NOT NULL DEFAULT 0.00,
         price_20_min DECIMAL(10,2) NOT NULL DEFAULT 0.00,
         price_30_min DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+        price_60_min DECIMAL(10,2) NOT NULL DEFAULT 0.00,
         currency VARCHAR(8) NOT NULL DEFAULT 'EUR',
         is_active TINYINT(1) NOT NULL DEFAULT 0,
         created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -129,10 +131,10 @@ def ensure_platform_pricing_table() -> None:
                 text(
                     """
                     INSERT INTO platform_pricing (
-                        id, price_5_min, price_10_min, price_20_min, price_30_min,
+                        id, price_5_min, price_10_min, price_20_min, price_30_min, price_60_min,
                         currency, is_active, created_at, updated_at
                     ) VALUES (
-                        :id, :p5, :p10, :p20, :p30, 'EUR', 1,
+                        :id, :p5, :p10, :p20, :p30, :p60, 'EUR', 1,
                         CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6)
                     )
                     """
@@ -148,6 +150,7 @@ def ensure_platform_pricing_table() -> None:
                       price_10_min = :p10,
                       price_20_min = :p20,
                       price_30_min = :p30,
+                      price_60_min = :p60,
                       currency = 'EUR',
                       is_active = 1,
                       updated_at = CURRENT_TIMESTAMP(6)
@@ -178,11 +181,13 @@ def ensure_legacy_public_pricing_upgraded() -> None:
     p10 = rate * Decimal(10)
     p20 = rate * Decimal(20)
     p30 = rate * Decimal(30)
+    p60 = rate * Decimal(60)
     params = {
         "p5": str(p5.quantize(Decimal("0.01"))),
         "p10": str(p10.quantize(Decimal("0.01"))),
         "p20": str(p20.quantize(Decimal("0.01"))),
         "p30": str(p30.quantize(Decimal("0.01"))),
+        "p60": str(p60.quantize(Decimal("0.01"))),
         "chat": str(rate.quantize(Decimal("0.01"))),
     }
     legacy_tiers = text(
@@ -192,6 +197,7 @@ def ensure_legacy_public_pricing_upgraded() -> None:
           price_10_min = :p10,
           price_20_min = :p20,
           price_30_min = :p30,
+          price_60_min = :p60,
           currency = 'EUR',
           is_active = 1,
           updated_at = CURRENT_TIMESTAMP(6)
@@ -242,6 +248,37 @@ def ensure_legacy_public_pricing_upgraded() -> None:
                 )
                 return
             raise
+
+
+def ensure_platform_pricing_60_min_column() -> None:
+    """Add 60-minute session tier to platform_pricing and backfill from config or 2×30 min."""
+    from decimal import Decimal
+
+    from core.config import settings
+
+    _safe_add_column("ALTER TABLE platform_pricing ADD COLUMN price_60_min DECIMAL(10,2) NOT NULL DEFAULT 0.00")
+    rate = Decimal(str(settings.session_price_eur_per_minute))
+    p60 = str((rate * Decimal(60)).quantize(Decimal("0.01")))
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                UPDATE platform_pricing
+                SET price_60_min = :p60
+                WHERE price_60_min = 0
+                """
+            ),
+            {"p60": p60},
+        )
+        conn.execute(
+            text(
+                """
+                UPDATE platform_pricing
+                SET price_60_min = ROUND(price_30_min * 2, 2)
+                WHERE price_60_min = 0 AND price_30_min > 0
+                """
+            )
+        )
 
 
 def ensure_mentor_mollie_fee_tables() -> None:

@@ -63,7 +63,13 @@ def price_for_duration(pricing: PlatformPricing, duration: int) -> Decimal:
         return Decimal(str(pricing.price_10_min))
     if duration <= 20:
         return Decimal(str(pricing.price_20_min))
-    return Decimal(str(pricing.price_30_min))
+    if duration <= 30:
+        return Decimal(str(pricing.price_30_min))
+    p60 = getattr(pricing, "price_60_min", None)
+    if p60 is not None and Decimal(str(p60)) > 0:
+        return Decimal(str(p60))
+    p30 = Decimal(str(pricing.price_30_min))
+    return (p30 * Decimal(duration) / Decimal(30)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 def active_price_for_duration(db: Session, duration: int) -> Decimal:

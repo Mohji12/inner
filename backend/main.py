@@ -34,6 +34,7 @@ from db.startup_schema import (
     ensure_universal_promo_codes,
     ensure_mentors_banner_image_column,
     ensure_platform_pricing_table,
+    ensure_platform_pricing_60_min_column,
 )
 from services.background_scheduler import start_scheduler, shutdown_scheduler
 
@@ -48,6 +49,7 @@ async def lifespan(app: FastAPI):
     ensure_localization_i18n_columns()
     ensure_phase5_booking_columns()
     ensure_platform_pricing_table()
+    ensure_platform_pricing_60_min_column()
     ensure_legacy_public_pricing_upgraded()
     ensure_mentor_mollie_fee_tables()
     ensure_marketplace_ledger_tables()

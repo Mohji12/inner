@@ -314,6 +314,7 @@ class AdminPlatformPricingOut(BaseModel):
     price_10_min: Decimal
     price_20_min: Decimal
     price_30_min: Decimal
+    price_60_min: Decimal
     currency: str
     is_active: bool
     created_at: datetime
@@ -325,6 +326,7 @@ class AdminPlatformPricingUpdateRequest(BaseModel):
     price_10_min: Decimal
     price_20_min: Decimal
     price_30_min: Decimal
+    price_60_min: Decimal
     currency: str
     is_active: bool = False
 

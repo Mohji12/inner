@@ -143,6 +143,7 @@ def _platform_pricing_out(row: PlatformPricing) -> AdminPlatformPricingOut:
         price_10_min=Decimal(str(row.price_10_min)),
         price_20_min=Decimal(str(row.price_20_min)),
         price_30_min=Decimal(str(row.price_30_min)),
+        price_60_min=Decimal(str(getattr(row, "price_60_min", 0) or 0)),
         currency=row.currency,
         is_active=row.is_active,
         created_at=row.created_at,
@@ -316,7 +317,13 @@ def admin_update_platform_pricing(
     db: DbSession,
     _admin: CurrentAdmin,
 ) -> AdminPlatformPricingOut:
-    for value in (payload.price_5_min, payload.price_10_min, payload.price_20_min, payload.price_30_min):
+    for value in (
+        payload.price_5_min,
+        payload.price_10_min,
+        payload.price_20_min,
+        payload.price_30_min,
+        payload.price_60_min,
+    ):
         if value < 0:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Prices must be non-negative")
     currency = payload.currency.strip().upper()
@@ -327,6 +334,7 @@ def admin_update_platform_pricing(
     row.price_10_min = payload.price_10_min
     row.price_20_min = payload.price_20_min
     row.price_30_min = payload.price_30_min
+    row.price_60_min = payload.price_60_min
     row.currency = currency[:8]
     row.is_active = payload.is_active
     row.updated_at = datetime.now(timezone.utc)

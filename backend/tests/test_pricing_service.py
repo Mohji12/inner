@@ -44,6 +44,7 @@ def _pricing(active: bool = True):
         price_10_min=Decimal("9.00"),
         price_20_min=Decimal("16.00"),
         price_30_min=Decimal("22.00"),
+        price_60_min=Decimal("44.00"),
         is_active=active,
     )
 
@@ -54,6 +55,7 @@ def test_price_for_duration_includes_new_5_min_tier():
     assert price_for_duration(pricing, 6) == Decimal("9.00")
     assert price_for_duration(pricing, 20) == Decimal("16.00")
     assert price_for_duration(pricing, 30) == Decimal("22.00")
+    assert price_for_duration(pricing, 60) == Decimal("44.00")
 
 
 def test_get_active_platform_pricing_rejects_inactive():
@@ -67,6 +69,7 @@ def test_booking_base_eur_uses_mentor_per_minute_when_rate_positive():
     db = _FakeSession(_pricing(active=True))
     assert booking_base_eur_amount(db, mentor=mentor, duration_minutes=10) == Decimal("9.00")
     assert booking_base_eur_amount(db, mentor=mentor, duration_minutes=5) == Decimal("4.50")
+    assert booking_base_eur_amount(db, mentor=mentor, duration_minutes=60) == Decimal("54.00")
 
 
 def test_booking_base_eur_falls_back_to_platform_tiers_when_no_chat_rate():

@@ -19,7 +19,7 @@ import { formatDateLocal, formatTimeLocal, isSameCalendarDayLocal } from "@/lib/
 import { useEffectiveTimeZone } from "@/hooks/useEffectiveTimeZone";
 import { LiveSessionWindowPreview } from "@/components/LiveSessionWindowPreview";
 
-const SESSION_PACKAGES = [5, 10, 20, 30] as const;
+const SESSION_PACKAGES = [5, 10, 20, 30, 60] as const;
 type LiveCommunicationMode = "video" | "call";
 
 function tagList(m: MentorDetail, key: keyof MentorDetail): string[] {
@@ -313,7 +313,7 @@ const MentorDetailPage = () => {
               <p className="mb-3 text-sm uppercase tracking-widest text-accent">Live session pricing (EUR)</p>
               {pricing ? (
                 <>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                     {SESSION_PACKAGES.map((mins) => {
                       const amount = sessionPackageEur(mentor, pricing, mins);
                       const isSelected = selectedDuration === mins;

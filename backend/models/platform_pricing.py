@@ -15,6 +15,7 @@ class PlatformPricing(Base):
     price_10_min: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"))
     price_20_min: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"))
     price_30_min: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"))
+    price_60_min: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"))
     currency: Mapped[str] = mapped_column(String(8), default="EUR")
     is_active: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

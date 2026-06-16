@@ -135,6 +135,7 @@ class PlatformPricingPublicOut(BaseModel):
     price_10_min: Decimal
     price_20_min: Decimal
     price_30_min: Decimal
+    price_60_min: Decimal
     currency: str
     is_active: bool
 

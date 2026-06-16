@@ -3,19 +3,19 @@ import { Link } from "react-router-dom";
 import { useLanguage } from "@/i18n/LanguageContext";
 import type { Language } from "@/i18n/translations";
 
-/** Card header images (5 → 30 min), from `public/images/`. */
+/** Card header images (5 → 60 min), from `public/images/`. */
 const PACKAGE_CARD_IMAGES = [
   "/images/tablet.png",
   "/images/mobile.png",
   "/images/desktop.png",
+  "/images/laptop.png",
   "/images/laptop.png",
 ] as const;
 
 type PackageCard = { title: string; description: string; price: string };
 type SectionCopy = { heading: string; subheading: string; cta: string; packages: PackageCard[] };
 
-const packagePrices = ["€30.00", "€20.00", "€10.00", "€5.00"];
-const packagePricesAsc = [packagePrices[3], packagePrices[2], packagePrices[1], packagePrices[0]];
+const packagePricesAsc = ["€5.00", "€10.00", "€20.00", "€27.00", "€54.00"];
 
 const sectionCopy: Record<Language, SectionCopy> = {
   en: {
@@ -27,6 +27,7 @@ const sectionCopy: Record<Language, SectionCopy> = {
       { title: "10 minutes", description: "Buy 10 minutes to chat with an experienced medium. Perfect for a quick question or brief advice.", price: packagePricesAsc[1] },
       { title: "20 minutes", description: "Buy 20 minutes to chat with an experienced medium.\nFor peace, clarity, and personal support.", price: packagePricesAsc[2] },
       { title: "30 minutes", description: "Buy 30 minutes to chat with a medium.", price: packagePricesAsc[3] },
+      { title: "60 minutes", description: "Buy 60 minutes for an extended, in-depth session with a medium.", price: packagePricesAsc[4] },
     ],
   },
   nl: {
@@ -38,6 +39,7 @@ const sectionCopy: Record<Language, SectionCopy> = {
       { title: "10 minuten", description: "Koop 10 minuten om met een ervaren medium te chatten. Perfect voor een snelle vraag of kort advies.", price: packagePricesAsc[1] },
       { title: "20 minuten", description: "Koop 20 minuten om met een ervaren medium te chatten.\nVoor rust, helderheid en persoonlijke ondersteuning.", price: packagePricesAsc[2] },
       { title: "30 minuten", description: "Koop 30 minuten om met een medium te chatten.", price: packagePricesAsc[3] },
+      { title: "60 minuten", description: "Koop 60 minuten voor een uitgebreide sessie met een medium.", price: packagePricesAsc[4] },
     ],
   },
   fr: {
@@ -49,6 +51,7 @@ const sectionCopy: Record<Language, SectionCopy> = {
       { title: "10 minutes", description: "Achetez 10 minutes pour discuter avec un medium experimente. Parfait pour une question rapide ou un bref conseil.", price: packagePricesAsc[1] },
       { title: "20 minutes", description: "Achetez 20 minutes pour discuter avec un medium experimente.\nPour la paix, la clarte et un soutien personnel.", price: packagePricesAsc[2] },
       { title: "30 minutes", description: "Achetez 30 minutes pour discuter avec un medium.", price: packagePricesAsc[3] },
+      { title: "60 minutes", description: "Achetez 60 minutes pour une seance approfondie avec un medium.", price: packagePricesAsc[4] },
     ],
   },
   ar: {
@@ -60,6 +63,7 @@ const sectionCopy: Record<Language, SectionCopy> = {
       { title: "10 دقائق", description: "اشتر 10 دقائق للدردشة مع مرشد روحاني خبير. مثالية لسؤال سريع او نصيحة قصيرة.", price: packagePricesAsc[1] },
       { title: "20 دقيقة", description: "اشتر 20 دقيقة للدردشة مع مرشد روحاني خبير.\nللسلام والوضوح والدعم الشخصي.", price: packagePricesAsc[2] },
       { title: "30 دقيقة", description: "اشتر 30 دقيقة للدردشة مع مرشد روحاني.", price: packagePricesAsc[3] },
+      { title: "60 دقيقة", description: "اشتر 60 دقيقة لجلسة مطولة ومعمقة مع مرشد روحاني.", price: packagePricesAsc[4] },
     ],
   },
   zh: {
@@ -71,6 +75,7 @@ const sectionCopy: Record<Language, SectionCopy> = {
       { title: "10 分钟", description: "购买 10 分钟与资深灵媒聊天。适合快速提问或简短建议。", price: packagePricesAsc[1] },
       { title: "20 分钟", description: "购买 20 分钟与资深灵媒聊天。\n带来平静、清晰与个性化支持。", price: packagePricesAsc[2] },
       { title: "30 分钟", description: "购买 30 分钟与灵媒聊天。", price: packagePricesAsc[3] },
+      { title: "60 分钟", description: "购买 60 分钟，进行更深入的灵媒咨询。", price: packagePricesAsc[4] },
     ],
   },
   ru: {
@@ -82,6 +87,7 @@ const sectionCopy: Record<Language, SectionCopy> = {
       { title: "10 минут", description: "Купите 10 минут для чата с опытным медиумом. Подходит для быстрого вопроса или краткого совета.", price: packagePricesAsc[1] },
       { title: "20 минут", description: "Купите 20 минут для чата с опытным медиумом.\nДля покоя, ясности и личной поддержки.", price: packagePricesAsc[2] },
       { title: "30 минут", description: "Купите 30 минут для чата с медиумом.", price: packagePricesAsc[3] },
+      { title: "60 минут", description: "Купите 60 минут для углубленной сессии с медиумом.", price: packagePricesAsc[4] },
     ],
   },
   es: {
@@ -93,6 +99,7 @@ const sectionCopy: Record<Language, SectionCopy> = {
       { title: "10 minutos", description: "Compra 10 minutos para chatear con un medium experimentado. Perfecto para una pregunta rapida o consejo breve.", price: packagePricesAsc[1] },
       { title: "20 minutos", description: "Compra 20 minutos para chatear con un medium experimentado.\nPara paz, claridad y apoyo personal.", price: packagePricesAsc[2] },
       { title: "30 minutos", description: "Compra 30 minutos para chatear con un medium.", price: packagePricesAsc[3] },
+      { title: "60 minutos", description: "Compra 60 minutos para una sesion extendida con un medium.", price: packagePricesAsc[4] },
     ],
   },
 };
@@ -122,7 +129,7 @@ const ConsultationPackagesSection = () => {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 lg:gap-8">
           {copy.packages.map((pkg, i) => (
             <div key={i} className="bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col transition-transform duration-300 hover:scale-[1.02]">
               <div className="relative h-64 w-full">

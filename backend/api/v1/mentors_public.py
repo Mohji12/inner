@@ -1,4 +1,5 @@
 from datetime import date, datetime, time, timezone
+from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
@@ -168,6 +169,7 @@ def get_pricing(db: DbSession) -> PlatformPricingPublicOut:
         price_10_min=pricing.price_10_min,
         price_20_min=pricing.price_20_min,
         price_30_min=pricing.price_30_min,
+        price_60_min=getattr(pricing, "price_60_min", None) or Decimal("0"),
         currency=pricing.currency,
         is_active=pricing.is_active,
     )

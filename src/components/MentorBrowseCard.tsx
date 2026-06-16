@@ -156,6 +156,12 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
               <span className="rounded-md bg-primary-foreground/15 px-2 py-1 text-[11px] font-medium backdrop-blur-sm">
                 30m · {pricing.currency} {pricing.price_30_min}
               </span>
+              <span className="rounded-md bg-primary-foreground/15 px-2 py-1 text-[11px] font-medium backdrop-blur-sm">
+                60m · {pricing.currency}{" "}
+                {pricing.price_60_min && Number(pricing.price_60_min) > 0
+                  ? pricing.price_60_min
+                  : (Number(pricing.price_30_min) * 2).toFixed(2)}
+              </span>
             </div>
           ) : (
             <p className="text-[11px] text-primary-foreground/70">

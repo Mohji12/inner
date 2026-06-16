@@ -133,6 +133,7 @@ export interface PlatformPricing {
   price_10_min: string;
   price_20_min: string;
   price_30_min: string;
+  price_60_min?: string;
   currency: string;
   is_active: boolean;
 }
@@ -206,10 +207,13 @@ export function slotPriceForDuration(pricing: PlatformPricing, minutes: number):
   const p10 = Number(pricing.price_10_min);
   const p20 = Number(pricing.price_20_min);
   const p30 = Number(pricing.price_30_min);
+  const p60 = Number(pricing.price_60_min ?? 0);
   if (minutes <= 5) return p5;
   if (minutes <= 10) return p10;
   if (minutes <= 20) return p20;
-  return p30;
+  if (minutes <= 30) return p30;
+  if (Number.isFinite(p60) && p60 > 0) return p60;
+  return Math.round(p30 * (minutes / 30) * 100) / 100;
 }
 
 /** Session package EUR: coach minute rate × length when chat pricing is on; else platform tier. */

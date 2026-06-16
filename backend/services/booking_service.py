@@ -15,7 +15,7 @@ from services.notification_service import create_notification
 from services.presence_service import presence_service
 from services.pricing_service import PricingError, booking_base_eur_amount
 
-ALLOWED_LIVE_DURATIONS = frozenset({5, 10, 20, 30})
+ALLOWED_LIVE_DURATIONS = frozenset({5, 10, 20, 30, 60})
 ALLOWED_COMMUNICATION_MODES = frozenset({"video", "call"})
 
 

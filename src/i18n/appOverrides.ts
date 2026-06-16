@@ -674,7 +674,7 @@ export const appOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
       loading: "Coaches voor je zoeken…",
       directory: "Coachesoverzicht",
       heading: "Kies je coach",
-      sub: "Ontdek coaches en boek een sessie van 10, 20 of 30 minuten.",
+      sub: "Ontdek coaches en boek een sessie van 5, 10, 20, 30 of 60 minuten.",
       registerUser: "Registreren als gebruiker",
       myBookings: "Mijn boekingen",
       defaultHeadline: "Coach",
