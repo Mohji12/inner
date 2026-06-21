@@ -52,7 +52,8 @@ const MentorProfilePage = () => {
   const [spokenLanguages, setSpokenLanguages] = useState<string[]>([]);
   const [expertiseCsv, setExpertiseCsv] = useState("");
   const [skillsCsv, setSkillsCsv] = useState("");
-  const [previousCompaniesCsv, setPreviousCompaniesCsv] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [kvkNumber, setKvkNumber] = useState("");
   const [educationCsv, setEducationCsv] = useState("");
   const [certificationsCsv, setCertificationsCsv] = useState("");
   const [toolsCsv, setToolsCsv] = useState("");
@@ -76,7 +77,8 @@ const MentorProfilePage = () => {
         setSpokenLanguages(normalizeSpokenLanguagesFromApi(unknownListToStrings(m.languages_spoken)));
         setExpertiseCsv(stringListToCommaSeparated(unknownListToStrings(m.expertise_areas)));
         setSkillsCsv(stringListToCommaSeparated(unknownListToStrings(m.skills)));
-        setPreviousCompaniesCsv(stringListToCommaSeparated(unknownListToStrings(m.previous_companies)));
+        setCompanyName(m.current_company ?? "");
+        setKvkNumber(m.kvk_number ?? "");
         setEducationCsv(stringListToCommaSeparated(unknownListToStrings(m.education)));
         setCertificationsCsv(stringListToCommaSeparated(unknownListToStrings(m.certifications)));
         setToolsCsv(stringListToCommaSeparated(unknownListToStrings(m.tools_technologies)));
@@ -109,8 +111,8 @@ const MentorProfilePage = () => {
         languages_spoken: spokenLanguages.length ? spokenLanguages : null,
         expertise_areas: list(expertiseCsv),
         skills: list(skillsCsv),
-        current_company: null,
-        previous_companies: list(previousCompaniesCsv),
+        current_company: companyName.trim() || null,
+        kvk_number: kvkNumber.trim() || null,
         education: list(educationCsv),
         certifications: list(certificationsCsv),
         tools_technologies: list(toolsCsv),
@@ -323,8 +325,23 @@ const MentorProfilePage = () => {
               <Input id="skills" value={skillsCsv} onChange={(ev) => setSkillsCsv(ev.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="prev">{mr.prevCompanies}</Label>
-              <Input id="prev" value={previousCompaniesCsv} onChange={(ev) => setPreviousCompaniesCsv(ev.target.value)} />
+              <Label htmlFor="company">{mr.companyName}</Label>
+              <Input
+                id="company"
+                placeholder={mr.phCompanyName}
+                value={companyName}
+                onChange={(ev) => setCompanyName(ev.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="kvk">{mr.kvkNumber}</Label>
+              <Input
+                id="kvk"
+                inputMode="numeric"
+                placeholder={mr.phKvkNumber}
+                value={kvkNumber}
+                onChange={(ev) => setKvkNumber(ev.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="edu">{mr.education}</Label>

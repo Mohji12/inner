@@ -1,10 +1,8 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import AppPageHeader from "@/components/AppPageHeader";
 import { useLanguage } from "@/i18n/LanguageContext";
-import { createMentorOnboardingPayment, getMentorOnboardingPlans, registerMentor, resendMentorVerifyEmail, validateMentorOnboardingPromo, verifyMentorEmail } from "@/api/auth";
-import { getCheckoutCurrencies } from "@/api/payments";
+import { registerMentor, resendMentorVerifyEmail, verifyMentorEmail } from "@/api/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
@@ -18,8 +16,6 @@ import { toast } from "sonner";
 import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
 import { AuthSuccessOverlay } from "@/components/ui/SuccessBurst";
 import { uploadRegistrationMentorAvatar } from "@/api/uploads";
-import { CheckoutCurrencySelect } from "@/components/CheckoutCurrencySelect";
-import { guessCheckoutCurrencyFromLocale } from "@/lib/checkoutCurrencyGuess";
 import { COACH_AGREEMENT_TEXT, COACH_AGREEMENT_VERSION, COACH_MEDICAL_GUIDELINES, readCoachAgreementAcceptance } from "@/lib/coachAgreement";
 import SpokenLanguageCheckboxGroup from "@/components/SpokenLanguageCheckboxGroup";
 
@@ -39,9 +35,10 @@ const MentorRegisterPage = () => {
   const [verifyCtx, setVerifyCtx] = useState<{ email: string; password: string } | null>(null);
   const [tab, setTab] = useState<TabId>("account");
   const [agreementAccepted, setAgreementAccepted] = useState(false);
-  const [agreementAcceptedBeforePayment, setAgreementAcceptedBeforePayment] = useState(false);
+  const [agreementAcceptedBeforeVerify, setAgreementAcceptedBeforeVerify] = useState(false);
   const pendingAvatarFileRef = useRef<File | null>(null);
   const [localAvatarPreview, setLocalAvatarPreview] = useState<string | null>(null);
+  const [successDescription, setSuccessDescription] = useState(m.successFreeRedirect);
 
   useEffect(() => {
     return () => {
@@ -55,42 +52,12 @@ const MentorRegisterPage = () => {
     const stored = readCoachAgreementAcceptance();
     if (!stored) return;
     setAgreementAccepted(true);
-    setAgreementAcceptedBeforePayment(true);
+    setAgreementAcceptedBeforeVerify(true);
     setFormData((prev) => ({
       ...prev,
       name: prev.name || stored.signatureName,
     }));
   }, []);
-
-  const onboardingCurrenciesQuery = useQuery({
-    queryKey: ["checkout-currencies"],
-    queryFn: getCheckoutCurrencies,
-    enabled: phase === "verify",
-  });
-  const [onboardingCheckoutCurrency, setOnboardingCheckoutCurrency] = useState("EUR");
-  const [onboardingPaymentPlan, setOnboardingPaymentPlan] = useState<"full" | "installments">("full");
-  const [promoCodeInput, setPromoCodeInput] = useState("");
-  const [promoCode, setPromoCode] = useState("");
-  const [promoDiscountEur, setPromoDiscountEur] = useState<string | null>(null);
-  const [validatingPromo, setValidatingPromo] = useState(false);
-  const [promoError, setPromoError] = useState("");
-  const [successDescription, setSuccessDescription] = useState(m.successPaymentRedirect);
-
-  const onboardingPlansQuery = useQuery({
-    queryKey: ["mentor-onboarding-plans"],
-    queryFn: getMentorOnboardingPlans,
-    enabled: phase === "verify",
-  });
-
-  useEffect(() => {
-    const list = onboardingCurrenciesQuery.data;
-    if (!list?.length) return;
-    setOnboardingCheckoutCurrency((prev) =>
-      list.map((c) => c.toUpperCase()).includes(prev)
-        ? prev
-        : guessCheckoutCurrencyFromLocale(navigator.language, list),
-    );
-  }, [onboardingCurrenciesQuery.data]);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -102,7 +69,8 @@ const MentorRegisterPage = () => {
     bio: "",
     profileImage: "",
     spokenLanguages: [] as string[],
-    previousCompaniesCsv: "",
+    companyName: "",
+    kvkNumber: "",
     educationCsv: "",
     certificationsCsv: "",
     skillsCsv: "",
@@ -121,48 +89,11 @@ const MentorRegisterPage = () => {
 
   const stepLabel = m.stepOf.replace("{current}", String(tabIndex + 1)).replace("{total}", String(TAB_ORDER.length));
 
-  const handleApplyPromo = async () => {
-    const trimmed = promoCodeInput.trim();
-    if (!trimmed) return;
-    setValidatingPromo(true);
-    setPromoError("");
-    try {
-      const res = await validateMentorOnboardingPromo(trimmed, onboardingPaymentPlan, 1);
-      if (res.is_valid) {
-        setPromoCode(trimmed);
-        setPromoDiscountEur(res.discount_amount_eur);
-        setPromoError("");
-      } else {
-        setPromoCode("");
-        setPromoDiscountEur(null);
-        setPromoError(res.message || m.promoInvalid);
-      }
-    } catch (err: unknown) {
-      setPromoCode("");
-      setPromoDiscountEur(null);
-      setPromoError(err instanceof Error ? err.message : m.promoInvalid);
-    } finally {
-      setValidatingPromo(false);
-    }
-  };
-
-  const completeMentorOnboarding = async (email: string, password: string) => {
-    void password;
-    if (!agreementAcceptedBeforePayment) {
-      throw new Error("Please confirm the coach agreement before proceeding to payment.");
-    }
-    const pay = await createMentorOnboardingPayment(
-      email,
-      onboardingCheckoutCurrency,
-      onboardingPaymentPlan,
-      1,
-      promoCode || undefined,
-    );
-    const isFree = parseFloat(pay.amount) <= 0;
-    setSuccessDescription(isFree ? m.successLoginRedirect : m.successPaymentRedirect);
+  const finishRegistration = (message?: string) => {
+    setSuccessDescription(message ?? m.successFreeRedirect);
     setPhase("success");
     window.setTimeout(() => {
-      window.location.href = pay.checkout_url;
+      window.location.href = "/login?role=mentor";
     }, REGISTER_SUCCESS_DELAY_MS);
   };
 
@@ -197,6 +128,8 @@ const MentorRegisterPage = () => {
         headline: formData.headline.trim(),
         bio: formData.bio.trim() || null,
         profile_image: pendingFile ? null : urlOnly ? urlOnly : null,
+        current_company: formData.companyName.trim() || null,
+        kvk_number: formData.kvkNumber.trim() || null,
         agreement_accepted: true,
         agreement_version: COACH_AGREEMENT_VERSION,
         agreement_text_snapshot: COACH_AGREEMENT_TEXT,
@@ -223,14 +156,14 @@ const MentorRegisterPage = () => {
         }
       }
       if (reg.dev_verification_code) {
-        await verifyMentorEmail({ email, code: reg.dev_verification_code });
-        await completeMentorOnboarding(email, formData.password);
+        const verified = await verifyMentorEmail({ email, code: reg.dev_verification_code });
+        finishRegistration(verified.message);
         return;
       }
       setVerifyCtx({ email, password: formData.password });
       setOtp("");
       setPhase("verify");
-      setAgreementAcceptedBeforePayment(false);
+      setAgreementAcceptedBeforeVerify(false);
       toast.message(m.verifyDescription);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : m.errFailed;
@@ -244,10 +177,14 @@ const MentorRegisterPage = () => {
       setError(m.errVerify);
       return;
     }
+    if (!agreementAcceptedBeforeVerify) {
+      setError("Please confirm the coach agreement before completing registration.");
+      return;
+    }
     setError("");
     try {
-      await verifyMentorEmail({ email: verifyCtx.email, code: otp.replace(/\D/g, "") });
-      await completeMentorOnboarding(verifyCtx.email, verifyCtx.password);
+      const verified = await verifyMentorEmail({ email: verifyCtx.email, code: otp.replace(/\D/g, "") });
+      finishRegistration(verified.message);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : m.errVerify;
       setError(msg);
@@ -312,85 +249,16 @@ const MentorRegisterPage = () => {
                     </InputOTPGroup>
                   </InputOTP>
                 </div>
-                {onboardingCurrenciesQuery.data?.length ? (
-                  <CheckoutCurrencySelect
-                    id="onboarding-checkout-ccy"
-                    label="Onboarding fee currency"
-                    value={onboardingCheckoutCurrency}
-                    onChange={setOnboardingCheckoutCurrency}
-                    currencies={onboardingCurrenciesQuery.data}
-                  />
-                ) : null}
-                <div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-4">
-                  <p className="text-sm font-medium">{m.onboardingPaymentPlanLabel}</p>
-                  <label className="flex cursor-pointer items-start gap-3 text-sm">
-                    <input
-                      type="radio"
-                      name="onboarding-plan"
-                      className="mt-1"
-                      checked={onboardingPaymentPlan === "full"}
-                      onChange={() => setOnboardingPaymentPlan("full")}
-                    />
-                    <span>
-                      {m.onboardingPayOnce.replace(
-                        "{amount}",
-                        onboardingPlansQuery.data?.full_eur ?? "70.00",
-                      )}
-                    </span>
-                  </label>
-                  <label className="flex cursor-pointer items-start gap-3 text-sm">
-                    <input
-                      type="radio"
-                      name="onboarding-plan"
-                      className="mt-1"
-                      checked={onboardingPaymentPlan === "installments"}
-                      onChange={() => setOnboardingPaymentPlan("installments")}
-                    />
-                    <span>
-                      {m.onboardingPayInstallments.replace(
-                        /\{amount\}/g,
-                        onboardingPlansQuery.data?.installment_eur ?? "35.00",
-                      )}
-                    </span>
-                  </label>
-                  {onboardingPaymentPlan === "installments" ? (
-                    <p className="text-xs text-muted-foreground">{m.onboardingInstallmentNote}</p>
-                  ) : null}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="onboarding-promo">{m.promoCodeLabel}</Label>
-                  <div className="flex flex-wrap gap-2">
-                    <Input
-                      id="onboarding-promo"
-                      placeholder={m.promoCodePlaceholder}
-                      value={promoCodeInput}
-                      onChange={(event) => setPromoCodeInput(event.target.value)}
-                      disabled={validatingPromo}
-                      className="max-w-xs"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => void handleApplyPromo()}
-                      disabled={validatingPromo || !promoCodeInput.trim()}
-                    >
-                      {m.promoApply}
-                    </Button>
-                  </div>
-                  {promoError ? <p className="text-xs text-destructive">{promoError}</p> : null}
-                  {promoCode && !promoError ? (
-                    <p className="text-xs text-green-600 dark:text-green-400">
-                      {m.promoApplied.replace("{amount}", promoDiscountEur ?? "0.00")}
-                    </p>
-                  ) : null}
-                </div>
+                <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-foreground">
+                  {m.onboardingFreeNote}
+                </p>
                 <div className="space-y-2">
                   <label className="flex items-start gap-3 text-sm">
                     <input
                       type="checkbox"
                       className="mt-1 h-4 w-4"
-                      checked={agreementAcceptedBeforePayment}
-                      onChange={(e) => setAgreementAcceptedBeforePayment(e.target.checked)}
+                      checked={agreementAcceptedBeforeVerify}
+                      onChange={(e) => setAgreementAcceptedBeforeVerify(e.target.checked)}
                     />
                     <span>
                       I confirm I agree to the{" "}
@@ -620,14 +488,22 @@ const MentorRegisterPage = () => {
                   <p className="text-sm text-muted-foreground">{m.backgroundHint}</p>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="prevco">{m.prevCompanies}</Label>
+                      <Label htmlFor="company">{m.companyName}</Label>
                       <Input
-                        id="prevco"
-                        placeholder={m.phCompanies}
-                        value={formData.previousCompaniesCsv}
-                        onChange={(event) =>
-                          setFormData((prev) => ({ ...prev, previousCompaniesCsv: event.target.value }))
-                        }
+                        id="company"
+                        placeholder={m.phCompanyName}
+                        value={formData.companyName}
+                        onChange={(event) => setFormData((prev) => ({ ...prev, companyName: event.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="kvk">{m.kvkNumber}</Label>
+                      <Input
+                        id="kvk"
+                        inputMode="numeric"
+                        placeholder={m.phKvkNumber}
+                        value={formData.kvkNumber}
+                        onChange={(event) => setFormData((prev) => ({ ...prev, kvkNumber: event.target.value }))}
                       />
                     </div>
                     <div className="space-y-2 md:col-span-2">

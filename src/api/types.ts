@@ -105,6 +105,7 @@ export function getMentorAvailabilityStatus(
 export interface MentorDetail extends MentorPublic {
   bio: string | null;
   current_company: string | null;
+  kvk_number: string | null;
   previous_companies: unknown[] | null;
   education: unknown[] | null;
   certifications: unknown[] | null;

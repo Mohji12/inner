@@ -97,8 +97,8 @@ class Settings(BaseSettings):
     fx_rates_http_timeout_seconds: float = 10.0
     # Public session tiers: €/min × 5 | 10 | 20 | 30 (stored in platform_pricing; bootstrap fills defaults).
     session_price_eur_per_minute: Decimal = Decimal("0.90")
-    #: One-time coach onboarding checkout amount in EUR (including tax when add-on percent is 0).
-    mentor_onboarding_fee_eur: Decimal = Decimal("70")
+    #: One-time coach onboarding checkout amount in EUR (0 = free registration).
+    mentor_onboarding_fee_eur: Decimal = Decimal("0")
     #: Optional percent added on top of fee at checkout (0 = fee is all-in, tax included).
     mentor_onboarding_fee_add_percent: Decimal = Decimal("0")
     #: Number of installments when coach chooses split payment (2 × half of total).

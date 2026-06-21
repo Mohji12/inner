@@ -40,6 +40,11 @@ def ensure_mentors_banner_image_column() -> None:
         raise
 
 
+def ensure_mentor_kvk_number_column() -> None:
+    """Chamber of Commerce (KVK) number for coach onboarding."""
+    _safe_add_column("ALTER TABLE mentors ADD COLUMN kvk_number VARCHAR(32) NULL")
+
+
 def ensure_localization_i18n_columns() -> None:
     """Safety net for migration 015 (DB-backed localization columns)."""
     _safe_add_column("ALTER TABLE mentors ADD COLUMN headline_i18n JSON NULL")

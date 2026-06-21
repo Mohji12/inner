@@ -31,6 +31,8 @@ export interface MentorRegisterBody {
   headline?: string | null;
   bio?: string | null;
   profile_image?: string | null;
+  current_company?: string | null;
+  kvk_number?: string | null;
   agreement_accepted: boolean;
   agreement_version: string;
   agreement_text_snapshot: string;
@@ -111,8 +113,8 @@ export function verifyUserEmail(body: VerifyEmailBody): Promise<{ message: strin
   });
 }
 
-export function verifyMentorEmail(body: VerifyEmailBody): Promise<{ message: string }> {
-  return apiFetch<{ message: string }>("/auth/mentor/verify-email", {
+export function verifyMentorEmail(body: VerifyEmailBody): Promise<{ message: string; account_active?: boolean }> {
+  return apiFetch<{ message: string; account_active?: boolean }>("/auth/mentor/verify-email", {
     method: "POST",
     body: JSON.stringify(body),
     skipAuth: true,
@@ -189,6 +191,7 @@ export function getMentorOnboardingPlans(): Promise<{
   full_eur: string;
   installment_eur: string;
   installment_count: number;
+  is_free: boolean;
 }> {
   return apiFetch("/auth/mentor/onboarding-plans", { skipAuth: true });
 }

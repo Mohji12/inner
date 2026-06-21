@@ -1,11 +1,13 @@
 import { useEffect } from "react";
 import { heartbeatUserPresence } from "@/api/users";
-import { useAuth } from "@/auth/AuthContext";
+import { useAuthOptional } from "@/auth/AuthContext";
 
 const HEARTBEAT_MS = 30_000;
 
 export default function UserPresenceHeartbeat() {
-  const { role, userAccessToken } = useAuth();
+  const auth = useAuthOptional();
+  const role = auth?.role ?? null;
+  const userAccessToken = auth?.userAccessToken ?? null;
 
   useEffect(() => {
     if (role !== "user" || !userAccessToken) return;

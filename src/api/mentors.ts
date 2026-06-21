@@ -21,6 +21,7 @@ export type MentorPatchBody = Partial<{
   languages_spoken: unknown[] | null;
   years_of_experience: number | null;
   current_company: string | null;
+  kvk_number: string | null;
   previous_companies: unknown[] | null;
   education: unknown[] | null;
   certifications: unknown[] | null;

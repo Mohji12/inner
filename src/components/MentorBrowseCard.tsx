@@ -1,6 +1,6 @@
 import { ArrowRight, Clock, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/auth/AuthContext";
+import { useAuthOptional } from "@/auth/AuthContext";
 import { getMentorAvailabilityStatus, type MentorPublic, type PlatformPricing } from "@/api/types";
 import { mediaUrlFromApi } from "@/lib/mediaUrl";
 import { cn } from "@/lib/utils";
@@ -41,7 +41,9 @@ function RatingStars({ value }: { value: number }) {
 /** Horizontal coach card themed with site accent/primary gradients */
 export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNowLabel }: MentorBrowseCardProps) {
   const navigate = useNavigate();
-  const { role, userAccessToken } = useAuth();
+  const auth = useAuthOptional();
+  const role = auth?.role ?? null;
+  const userAccessToken = auth?.userAccessToken ?? null;
   const availability = getMentorAvailabilityStatus(mentor);
 
   const expertise = unknownListToStrings(mentor.expertise_areas);

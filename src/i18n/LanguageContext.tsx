@@ -26,14 +26,20 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
     document.documentElement.lang = language;
   }, [language]);
 
-  const t = useMemo(
-    () =>
-      ({
+  const t = useMemo((): FullTranslations => {
+    try {
+      return {
         ...(translations[language] as Translations),
         app: mergeDeep(appEn, appOverrides[language]),
-      }) as FullTranslations,
-    [language],
-  );
+      } as FullTranslations;
+    } catch (err) {
+      console.error("[i18n] Failed to merge locale copy; falling back to English.", err);
+      return {
+        ...(translations.en as Translations),
+        app: appEn,
+      } as FullTranslations;
+    }
+  }, [language]);
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>

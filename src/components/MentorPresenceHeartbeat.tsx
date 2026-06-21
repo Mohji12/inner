@@ -1,12 +1,14 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { heartbeatMentorPresence } from "@/api/mentors";
-import { useAuth } from "@/auth/AuthContext";
+import { useAuthOptional } from "@/auth/AuthContext";
 
 const HEARTBEAT_MS = 30_000;
 
 export default function MentorPresenceHeartbeat() {
-  const { role, mentorAccessToken } = useAuth();
+  const auth = useAuthOptional();
+  const role = auth?.role ?? null;
+  const mentorAccessToken = auth?.mentorAccessToken ?? null;
   const queryClient = useQueryClient();
 
   useEffect(() => {

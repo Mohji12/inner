@@ -46,15 +46,21 @@ def onboarding_amount_eur(*, payment_plan: PaymentPlan, installment_number: int)
     return per
 
 
-def onboarding_plans_public() -> dict[str, str | int]:
+def onboarding_fee_is_free() -> bool:
+    return _q(settings.mentor_onboarding_charge_eur) <= Decimal("0.00")
+
+
+def onboarding_plans_public() -> dict[str, str | int | bool]:
     total = _q(settings.mentor_onboarding_charge_eur)
     per = _q(settings.mentor_onboarding_installment_charge_eur)
     parts = onboarding_installment_total()
+    is_free = onboarding_fee_is_free()
     return {
         "total_eur": str(total),
         "full_eur": str(total),
         "installment_eur": str(per),
         "installment_count": parts,
+        "is_free": is_free,
     }
 
 
@@ -86,6 +92,9 @@ def paid_onboarding_rows(db: Session, mentor_id: str) -> list[MentorOnboardingPa
 
 
 def mentor_onboarding_is_complete(db: Session, mentor_id: str) -> bool:
+    mentor = db.query(Mentor).filter(Mentor.id == mentor_id).first()
+    if mentor and mentor.email_verified and mentor.is_approved and mentor.status == "active":
+        return True
     paid = paid_onboarding_rows(db, mentor_id)
     if not paid:
         return False
@@ -98,8 +107,17 @@ def mentor_onboarding_is_complete(db: Session, mentor_id: str) -> bool:
 
 
 def mentor_onboarding_status(db: Session, mentor_id: str) -> dict:
-    paid_rows = paid_onboarding_rows(db, mentor_id)
     complete = mentor_onboarding_is_complete(db, mentor_id)
+    if complete or onboarding_fee_is_free():
+        return {
+            "is_complete": complete,
+            "payment_plan": "full" if complete else None,
+            "installments_paid": 1 if complete else 0,
+            "installment_total": 1,
+            "next_installment_number": None,
+            "next_amount_eur": None,
+        }
+    paid_rows = paid_onboarding_rows(db, mentor_id)
     plan: str | None = None
     installment_total = 1
     paid_installments: set[int] = set()
@@ -353,6 +371,40 @@ def create_onboarding_checkout(
     return row
 
 
+def activate_coach_after_email_verification(
+    db: Session,
+    *,
+    mentor: Mentor,
+    redirect_url: str | None = None,
+) -> MentorOnboardingPayment | None:
+    """Activate coach after email OTP — no payment step."""
+    if mentor_onboarding_is_complete(db, mentor.id):
+        if not mentor.is_approved or mentor.status != "active":
+            mentor.is_approved = True
+            mentor.status = "active"
+            mentor.updated_at = _utcnow()
+            db.flush()
+        return None
+    login_url = redirect_url or f"{settings.mollie_redirect_base_url.rstrip('/')}/login?role=mentor"
+    return _create_onboarding_promo_waiver(
+        db,
+        mentor=mentor,
+        redirect_url=login_url,
+        promo_code="",
+        original_amount_eur=Decimal("0.00"),
+    )
+
+
+def ensure_free_onboarding_completed(
+    db: Session,
+    *,
+    mentor: Mentor,
+    redirect_url: str | None = None,
+) -> MentorOnboardingPayment | None:
+    """Back-compat alias — coach onboarding is free after email verification."""
+    return activate_coach_after_email_verification(db, mentor=mentor, redirect_url=redirect_url)
+
+
 def _create_onboarding_promo_waiver(
     db: Session,
     *,
@@ -368,7 +420,7 @@ def _create_onboarding_promo_waiver(
         "installment_number": 1,
         "installment_total": 1,
         "promo_code": promo_code,
-        "payment_gateway": "promo",
+        "payment_gateway": "free" if not promo_code else "promo",
         "original_amount_eur": str(original_amount_eur),
     }
     now = _utcnow()

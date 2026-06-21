@@ -31,6 +31,7 @@ from pydantic import BaseModel, EmailStr, Field
 from typing import Literal
 from services.otp_service import create_and_send_otp, verify_otp
 from services.onboarding_payment_service import (
+    activate_coach_after_email_verification,
     create_onboarding_checkout,
     onboarding_amount_eur,
     onboarding_plans_public,
@@ -67,11 +68,17 @@ class MentorOnboardingPromoValidateOut(BaseModel):
     message: str | None = None
 
 
+class MentorVerifyEmailResponse(BaseModel):
+    message: str
+    account_active: bool = False
+
+
 class MentorOnboardingPlansOut(BaseModel):
     total_eur: str
     full_eur: str
     installment_eur: str
     installment_count: int
+    is_free: bool = False
 
 
 class MentorOnboardingPaymentResponse(BaseModel):
@@ -148,7 +155,8 @@ def register_mentor(request: Request, db: DbSession, payload: MentorRegister) ->
         bio_i18n=payload.bio_i18n or to_i18n_map(payload.bio),
         languages_spoken=None,
         years_of_experience=0,
-        current_company=None,
+        current_company=(payload.current_company.strip()[:255] or None) if payload.current_company else None,
+        kvk_number=(payload.kvk_number.strip()[:32] or None) if payload.kvk_number else None,
         previous_companies=None,
         education=None,
         certifications=None,
@@ -192,8 +200,8 @@ def register_mentor(request: Request, db: DbSession, payload: MentorRegister) ->
     )
 
 
-@router.post("/verify-email", response_model=MessageResponse)
-def verify_mentor_email(db: DbSession, payload: VerifyEmailRequest) -> MessageResponse:
+@router.post("/verify-email", response_model=MentorVerifyEmailResponse)
+def verify_mentor_email(db: DbSession, payload: VerifyEmailRequest) -> MentorVerifyEmailResponse:
     email = str(payload.email).lower()
     subject_id = verify_otp(db, email=email, role="mentor", code=payload.code)
     if not subject_id:
@@ -203,8 +211,18 @@ def verify_mentor_email(db: DbSession, payload: VerifyEmailRequest) -> MessageRe
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid verification")
     mentor.email_verified = True
     mentor.updated_at = datetime.now(timezone.utc)
+    activate_coach_after_email_verification(db, mentor=mentor)
     db.commit()
-    return MessageResponse(message="Email verified. You can sign in now.")
+    db.refresh(mentor)
+    active = bool(mentor.is_approved and mentor.status == "active")
+    return MentorVerifyEmailResponse(
+        message=(
+            "Email verified. Your coach profile is live on the platform — you can sign in now."
+            if active
+            else "Email verified. You can sign in now."
+        ),
+        account_active=active,
+    )
 
 
 @router.post("/resend-verify-email", response_model=MessageResponse)
@@ -303,6 +321,8 @@ def login_mentor(request: Request, db: DbSession, payload: MentorLogin, response
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Please verify your email before signing in")
     if mentor.status == "rejected":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Your coach account was rejected. Please contact support.")
+
+    activate_coach_after_email_verification(db, mentor=mentor)
 
     if mentor.is_totp_enabled:
         temp_token = create_2fa_temp_token(mentor.id, "mentor")

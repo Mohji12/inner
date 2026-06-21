@@ -20,6 +20,8 @@ class MentorRegister(BaseModel):
     headline_i18n: dict[str, str] | None = None
     bio_i18n: dict[str, str] | None = None
     profile_image: str | None = Field(default=None, max_length=512)
+    current_company: str | None = Field(default=None, max_length=255)
+    kvk_number: str | None = Field(default=None, max_length=32)
     agreement_accepted: bool = False
     agreement_version: str | None = None
     agreement_text_snapshot: str | None = None
@@ -73,6 +75,7 @@ class MentorPublicOut(BaseModel):
 class MentorDetailOut(MentorPublicOut):
     bio: str | None
     current_company: str | None
+    kvk_number: str | None = None
     previous_companies: list[Any] | None
     education: list[Any] | None
     certifications: list[Any] | None
@@ -118,6 +121,7 @@ class MentorUpdate(BaseModel):
     languages_spoken: list[Any] | None = None
     years_of_experience: int | None = None
     current_company: str | None = None
+    kvk_number: str | None = Field(default=None, max_length=32)
     previous_companies: list[Any] | None = None
     education: list[Any] | None = None
     certifications: list[Any] | None = None

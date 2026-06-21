@@ -26,6 +26,7 @@ class Mentor(Base):
     languages_spoken: Mapped[list | None] = mapped_column(JSON, nullable=True)
     years_of_experience: Mapped[int] = mapped_column(Integer, default=0)
     current_company: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    kvk_number: Mapped[str | None] = mapped_column(String(32), nullable=True)
     previous_companies: Mapped[list | None] = mapped_column(JSON, nullable=True)
     education: Mapped[list | None] = mapped_column(JSON, nullable=True)
     certifications: Mapped[list | None] = mapped_column(JSON, nullable=True)
