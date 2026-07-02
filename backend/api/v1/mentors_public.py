@@ -13,9 +13,10 @@ from models.booking import Booking
 from models.mentor import Mentor
 from schemas.mentor import MentorDetailOut, MentorPublicOut, PlatformPricingPublicOut
 from schemas.slot import SlotOut
-from services.presence_service import presence_service
+from services.mentor_card_visibility import apply_card_visibility_to_public, normalize_card_visibility
 from services.chat_service import mentor_ids_with_live_chat, mentor_chat_busy
 from services.i18n_service import resolve_i18n_text
+from services.presence_service import presence_service
 from services.pricing_service import effective_chat_price_per_minute_eur, get_platform_pricing
 
 
@@ -79,7 +80,7 @@ def _mentor_public_out(
     if mentor.total_sessions_completed >= 50:
         badges.append("Expert")
 
-    return base.model_copy(update={
+    out = base.model_copy(update={
         "headline": resolve_i18n_text(getattr(mentor, "headline_i18n", None), mentor.headline, lang),
         "chat_price_per_minute": chat_rate,
         "chat_available": available,
@@ -88,6 +89,8 @@ def _mentor_public_out(
         "badges": badges,
         "session_packages_available": packages_ok,
     })
+    visibility = normalize_card_visibility(getattr(mentor, "public_card_visibility", None))
+    return apply_card_visibility_to_public(out, visibility)
 
 
 def _listed_status_filter():

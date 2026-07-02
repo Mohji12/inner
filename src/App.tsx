@@ -61,6 +61,7 @@ import { AccessibilityProvider } from "@/accessibility/AccessibilityContext";
 import AccessibilityWidget from "@/components/accessibility/AccessibilityWidget";
 import MentorPresenceHeartbeat from "@/components/MentorPresenceHeartbeat";
 import UserPresenceHeartbeat from "@/components/UserPresenceHeartbeat";
+import MetaPixel from "@/components/MetaPixel";
 
 const queryClient = new QueryClient();
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
@@ -77,6 +78,7 @@ const App = () => (
               <Toaster />
               <Sonner />
               <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                <MetaPixel />
                 <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<LoginPage />} />

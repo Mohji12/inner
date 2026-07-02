@@ -109,6 +109,25 @@ export const appOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
       errHeadlineBio: "L'accroche et la bio sont requises.",
       errFailed: "Inscription impossible.",
       toastOk: "Compte coach créé",
+      coachAgreementLink: "Contrat coach",
+      agreementCheckboxBeforeLink: "J'accepte le ",
+      agreementCheckboxAfterLink:
+        ". La plateforme conserve 30 % ; vous recevez 70 % du tarif à la minute (y compris vos obligations fiscales).",
+      agreementProofNote:
+        "Votre acceptation est enregistrée comme preuve (version du contrat et instantané du texte).",
+      verifyAgreementBeforeLink: "Je confirme accepter le ",
+      verifyAgreementAfterLink:
+        " (plateforme 30 % ; vous recevez 70 % du tarif à la minute, taxes incluses).",
+      medicalGuidelines: [
+        "Les coachs ne doivent pas agir en tant que médecins ou professionnels de santé, sauf s'ils sont officiellement agréés.",
+        "Les coachs ne sont pas autorisés à fournir des conseils médicaux, des diagnostics, des ordonnances ou des recommandations de traitement.",
+        "Les coachs doivent éviter toute affirmation clinique ou liée à la santé auprès des utilisateurs.",
+        "Tout accompagnement doit se limiter au mentorat, à la motivation, au bien-être et au développement personnel.",
+        "Les utilisateurs ayant des préoccupations médicales, des symptômes ou des urgences doivent être orientés immédiatement vers un professionnel de santé qualifié.",
+        "Les coachs ne doivent pas suggérer d'arrêter, de commencer ou de modifier un médicament ou un traitement médical.",
+        "Toute discussion liée à la santé doit être clairement présentée comme non médicale et uniquement informative.",
+        "Le non-respect de ces règles peut entraîner une suspension ou une exclusion de la plateforme.",
+      ],
     },
     mentorsPage: {
       loading: "Recherche de coachs…",
@@ -527,6 +546,25 @@ export const appOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
       successFreeRedirect: "Registratie voltooid! Doorverwijzen naar coach inloggen…",
       onboardingFreeNote:
         "Coachregistratie is gratis. Na e-mailverificatie is je account actief en kun je inloggen.",
+      coachAgreementLink: "Coachovereenkomst",
+      agreementCheckboxBeforeLink: "Ik ga akkoord met de ",
+      agreementCheckboxAfterLink:
+        ". Het platform behoudt 30%; jij ontvangt 70% van het minuuttarief (inclusief je belastingverplichtingen).",
+      agreementProofNote:
+        "Je acceptatie wordt opgeslagen als bewijs (versie van de overeenkomst en momentopname van de tekst).",
+      verifyAgreementBeforeLink: "Ik bevestig dat ik akkoord ga met de ",
+      verifyAgreementAfterLink:
+        " (platform 30%; jij ontvangt 70% van het minuuttarief, inclusief belasting).",
+      medicalGuidelines: [
+        "Coaches mogen niet optreden als artsen of zorgprofessionals, tenzij officieel bevoegd.",
+        "Coaches mogen geen medisch advies, diagnoses, recepten of behandelingsaanbevelingen geven.",
+        "Coaches moeten klinische of gezondheidsgerelateerde claims aan gebruikers vermijden.",
+        "Alle begeleiding moet beperkt blijven tot mentoring, motivatie, welzijnsondersteuning en persoonlijke ontwikkeling.",
+        "Gebruikers met medische zorgen, symptomen of noodgevallen moeten onmiddellijk worden doorverwezen naar een gekwalificeerde zorgprofessional.",
+        "Coaches mogen niet voorstellen om medicatie of medische behandeling te stoppen, starten of wijzigen.",
+        "Elk gezondheidsgerelateerd gesprek moet duidelijk als niet-medisch en alleen informatief worden gecommuniceerd.",
+        "Overtreding van deze richtlijnen kan leiden tot schorsing of verwijdering van het platform.",
+      ],
     },
     becomeCoach: {
       label: "Coach onboarding",
@@ -984,6 +1022,25 @@ export const appOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
       errHeadlineBio: "Titular y bio son obligatorios.",
       errFailed: "No se pudo registrar.",
       toastOk: "Cuenta de coach creada",
+      coachAgreementLink: "Acuerdo de coach",
+      agreementCheckboxBeforeLink: "Acepto el ",
+      agreementCheckboxAfterLink:
+        ". La plataforma retiene el 30%; tú recibes el 70% de la tarifa por minuto (incluidas tus obligaciones fiscales).",
+      agreementProofNote:
+        "Tu aceptación se guarda como prueba (versión del acuerdo e instantánea del texto).",
+      verifyAgreementBeforeLink: "Confirmo que acepto el ",
+      verifyAgreementAfterLink:
+        " (plataforma 30%; tú recibes el 70% de la tarifa por minuto, impuestos incluidos).",
+      medicalGuidelines: [
+        "Los coaches no deben actuar como médicos o profesionales sanitarios salvo que estén oficialmente autorizados.",
+        "Los coaches no pueden ofrecer consejo médico, diagnósticos, recetas ni recomendaciones de tratamiento.",
+        "Los coaches deben evitar afirmaciones clínicas o relacionadas con la salud ante los usuarios.",
+        "Toda la orientación debe limitarse a mentoría, motivación, apoyo al bienestar y desarrollo personal.",
+        "Los usuarios con preocupaciones médicas, síntomas o emergencias deben ser derivados de inmediato a un profesional sanitario cualificado.",
+        "Los coaches no deben sugerir dejar, empezar o cambiar ningún medicamento o tratamiento médico.",
+        "Cualquier conversación sobre salud debe comunicarse claramente como no médica y solo informativa.",
+        "El incumplimiento de estas normas puede suponer suspensión o expulsión de la plataforma.",
+      ],
     },
     mentorsPage: {
       loading: "Buscando coaches…",
@@ -1241,6 +1298,23 @@ export const appOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
       errHeadlineBio: "العنوان والنبذة مطلوبان.",
       errFailed: "فشل التسجيل.",
       toastOk: "تم إنشاء حساب المرشد",
+      coachAgreementLink: "اتفاقية المدرب",
+      agreementCheckboxBeforeLink: "أوافق على ",
+      agreementCheckboxAfterLink:
+        ". تحتفظ المنصة بـ 30%؛ وتتلقى أنت 70% من سعر الدقيقة (بما في ذلك التزاماتك الضريبية).",
+      agreementProofNote: "يُحفظ قبولك كإثبات (إصدار الاتفاقية ولقطة من النص).",
+      verifyAgreementBeforeLink: "أؤكد موافقتي على ",
+      verifyAgreementAfterLink: " (المنصة 30%؛ وتتلقى أنت 70% من سعر الدقيقة، شاملاً الضرائب).",
+      medicalGuidelines: [
+        "لا يجوز للمدربين التصرف كأطباء أو متخصصين في الرعاية الصحية إلا إذا كانوا مرخّصين رسمياً.",
+        "لا يُسمح للمدربين بتقديم نصائح طبية أو تشخيصات أو وصفات أو توصيات علاجية.",
+        "يجب على المدربين تجنب أي ادعاءات سريرية أو متعلقة بالصحة تجاه المستخدمين.",
+        "يجب أن يقتصر كل التوجيه على الإرشاد والتحفيز ودعم العافية والتطوير الشخصي.",
+        "يجب إحالة المستخدمين الذين لديهم مخاوف طبية أو أعراض أو حالات طوارئ فوراً إلى مختص رعاية صحية مؤهل.",
+        "لا يجوز للمدربين اقتراح إيقاف أو بدء أو تغيير أي دواء أو علاج طبي.",
+        "يجب توضيح أن أي نقاش متعلق بالصحة غير طبي وإعلامي فقط.",
+        "قد يؤدي مخالفة هذه الإرشادات إلى تعليق الحساب أو إزالته من المنصة.",
+      ],
     },
     mentorsPage: {
       loading: "جاري البحث عن مرشدين…",
@@ -1498,6 +1572,22 @@ export const appOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
       errHeadlineBio: "请填写标题和简介。",
       errFailed: "注册失败。",
       toastOk: "教练账户已创建",
+      coachAgreementLink: "教练协议",
+      agreementCheckboxBeforeLink: "我同意",
+      agreementCheckboxAfterLink: "。平台保留30%；您获得每分钟费率的70%（含您的税务义务）。",
+      agreementProofNote: "您的接受记录将作为凭证保存（协议版本及文本快照）。",
+      verifyAgreementBeforeLink: "我确认同意",
+      verifyAgreementAfterLink: "（平台30%；您获得每分钟费率的70%，含税费）。",
+      medicalGuidelines: [
+        "除非持有正式执照，教练不得充当医生或医疗专业人员。",
+        "教练不得提供医疗建议、诊断、处方或治疗建议。",
+        "教练应避免向用户作出任何临床或健康相关声明。",
+        "所有指导应限于辅导、激励、健康支持和个人发展。",
+        "有医疗顾虑、症状或紧急情况的用户必须立即转介给合格的医疗专业人员。",
+        "教练不得建议停止、开始或更改任何药物或医疗治疗。",
+        "任何与健康相关的讨论应明确说明为非医疗性、仅供参考。",
+        "违反这些准则可能导致暂停或从平台移除。",
+      ],
     },
     mentorsPage: {
       loading: "正在查找教练…",
@@ -1756,6 +1846,25 @@ export const appOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
       errHeadlineBio: "Нужны заголовок и описание.",
       errFailed: "Не удалось зарегистрироваться.",
       toastOk: "Аккаунт коуча создан",
+      coachAgreementLink: "Соглашение коуча",
+      agreementCheckboxBeforeLink: "Я соглашаюсь с ",
+      agreementCheckboxAfterLink:
+        ". Платформа удерживает 30%; вы получаете 70% поминутной ставки (включая ваши налоговые обязательства).",
+      agreementProofNote:
+        "Ваше согласие сохраняется как подтверждение (версия соглашения и снимок текста).",
+      verifyAgreementBeforeLink: "Я подтверждаю, что соглашаюсь с ",
+      verifyAgreementAfterLink:
+        " (платформа 30%; вы получаете 70% поминутной ставки, включая налоги).",
+      medicalGuidelines: [
+        "Коучи не должны выступать в роли врачей или медработников, если у них нет официальной лицензии.",
+        "Коучам запрещено давать медицинские советы, диагнозы, рецепты или рекомендации по лечению.",
+        "Коучи должны избегать клинических заявлений или заявлений о здоровье в адрес пользователей.",
+        "Всё сопровождение должно ограничиваться наставничеством, мотивацией, поддержкой благополучия и личностным развитием.",
+        "Пользователей с медицинскими проблемами, симптомами или в экстренных случаях нужно немедленно направлять к квалифицированному медработнику.",
+        "Коучи не должны предлагать прекращать, начинать или менять какие-либо лекарства или медицинское лечение.",
+        "Любое обсуждение здоровья должно быть явно обозначено как немедицинское и только информационное.",
+        "Нарушение этих правил может привести к приостановке или удалению с платформы.",
+      ],
     },
     mentorsPage: {
       loading: "Ищем коучей…",

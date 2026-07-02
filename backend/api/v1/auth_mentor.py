@@ -30,6 +30,7 @@ from schemas.mentor import MentorAccountOut, MentorLogin, MentorRegister, Mentor
 from pydantic import BaseModel, EmailStr, Field
 from typing import Literal
 from services.otp_service import create_and_send_otp, verify_otp
+from services.mentor_card_visibility import normalize_card_visibility
 from services.onboarding_payment_service import (
     activate_coach_after_email_verification,
     create_onboarding_checkout,
@@ -153,17 +154,22 @@ def register_mentor(request: Request, db: DbSession, payload: MentorRegister) ->
         headline_i18n=payload.headline_i18n or to_i18n_map(payload.headline),
         bio=payload.bio,
         bio_i18n=payload.bio_i18n or to_i18n_map(payload.bio),
-        languages_spoken=None,
-        years_of_experience=0,
+        languages_spoken=payload.languages_spoken,
+        years_of_experience=int(payload.years_of_experience or 0),
         current_company=(payload.current_company.strip()[:255] or None) if payload.current_company else None,
         kvk_number=(payload.kvk_number.strip()[:32] or None) if payload.kvk_number else None,
         previous_companies=None,
-        education=None,
-        certifications=None,
-        expertise_areas=None,
-        skills=None,
-        tools_technologies=None,
-        session_modes=None,
+        education=payload.education,
+        certifications=payload.certifications,
+        expertise_areas=payload.expertise_areas,
+        skills=payload.skills,
+        tools_technologies=payload.tools_technologies,
+        session_modes=payload.session_modes,
+        public_card_visibility=normalize_card_visibility(
+            payload.public_card_visibility.model_dump()
+            if payload.public_card_visibility is not None and hasattr(payload.public_card_visibility, "model_dump")
+            else payload.public_card_visibility
+        ),
         average_rating=Decimal("0"),
         total_reviews=0,
         total_sessions_completed=0,

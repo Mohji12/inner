@@ -62,6 +62,7 @@ class Mentor(Base):
     agreement_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
     agreement_text_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)
     agreement_text_snapshot_i18n: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    public_card_visibility: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 

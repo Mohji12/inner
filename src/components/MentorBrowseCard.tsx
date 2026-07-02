@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { unknownListToStrings } from "@/lib/dbJsonFields";
+import { normalizeCoachCardVisibility } from "@/lib/coachCardVisibility";
 
 export type MentorBrowseCardProps = {
   mentor: MentorPublic;
@@ -45,13 +46,14 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
   const role = auth?.role ?? null;
   const userAccessToken = auth?.userAccessToken ?? null;
   const availability = getMentorAvailabilityStatus(mentor);
+  const cardVis = normalizeCoachCardVisibility(mentor.public_card_visibility);
 
   const expertise = unknownListToStrings(mentor.expertise_areas);
   const skills = unknownListToStrings(mentor.skills);
   const combinedTags = [...new Set([...expertise, ...skills])];
 
   const showPackages =
-    Boolean(pricing?.is_active && mentor.session_packages_available);
+    cardVis.session_packages && Boolean(pricing?.is_active && mentor.session_packages_available);
   const pricingHint = !pricing
     ? "Loading session prices..."
     : !pricing.is_active
@@ -60,8 +62,9 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
         ? "Packages are hidden until this coach account is approved and active."
         : null;
 
-  const bannerSrc = mediaUrlFromApi(mentor.banner_image) ?? mediaUrlFromApi(mentor.profile_image);
-  const profileSrc = mediaUrlFromApi(mentor.profile_image);
+  const bannerSrc =
+    cardVis.banner_photo && (mediaUrlFromApi(mentor.banner_image) ?? (cardVis.profile_photo ? mediaUrlFromApi(mentor.profile_image) : null));
+  const profileSrc = cardVis.profile_photo ? mediaUrlFromApi(mentor.profile_image) : null;
 
   const roundedStars = Math.min(5, Math.max(0, Math.round(Number(mentor.average_rating) || 0)));
   const tags = combinedTags.slice(0, 2);
@@ -106,14 +109,15 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
             </span>
           </div>
 
-          {mentor.headline ? (
+          {cardVis.headline && mentor.headline ? (
             <p className="text-sm font-semibold leading-snug text-primary-foreground/95">{truncate(mentor.headline, 90)}</p>
           ) : null}
 
-          {mentor.current_company ? (
+          {cardVis.company && mentor.current_company ? (
             <p className="text-xs text-primary-foreground/85">{truncate(mentor.current_company, 72)}</p>
           ) : null}
 
+          {cardVis.expertise_tags ? (
           <div className="flex flex-wrap gap-2 pt-1">
             {tags.map((tag) => (
               <Badge
@@ -133,19 +137,26 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
               </Badge>
             ) : null}
           </div>
+          ) : null}
         </div>
 
         <div className="relative z-[1] space-y-3">
+          {cardVis.years_experience || cardVis.rating ? (
           <div className="flex flex-wrap items-center gap-4 text-xs text-primary-foreground/85">
+            {cardVis.years_experience ? (
             <span className="inline-flex items-center gap-1.5 font-medium">
               <Clock className="h-3.5 w-3.5" />
               {mentor.years_of_experience} years
             </span>
+            ) : null}
+            {cardVis.rating ? (
             <span className="inline-flex items-center gap-2">
               <RatingStars value={roundedStars} />
               <span className="tabular-nums font-semibold">{mentor.average_rating}</span>
             </span>
+            ) : null}
           </div>
+          ) : null}
 
           {showPackages && pricing ? (
             <div className="flex flex-wrap gap-2">
@@ -206,7 +217,7 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
           </div>
         )}
         {/* overlay avatar when we have banner + profile */}
-        {mentor.banner_image && profileSrc ? (
+        {mentor.banner_image && cardVis.banner_photo && profileSrc && cardVis.profile_photo ? (
           <div className="absolute bottom-3 right-3 md:right-4">
             <img
               src={profileSrc}

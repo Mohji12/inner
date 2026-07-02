@@ -33,6 +33,15 @@ export interface MentorRegisterBody {
   profile_image?: string | null;
   current_company?: string | null;
   kvk_number?: string | null;
+  languages_spoken?: string[] | null;
+  years_of_experience?: number | null;
+  expertise_areas?: string[] | null;
+  skills?: string[] | null;
+  education?: string[] | null;
+  certifications?: string[] | null;
+  tools_technologies?: string[] | null;
+  session_modes?: string[] | null;
+  public_card_visibility?: Record<string, boolean> | null;
   agreement_accepted: boolean;
   agreement_version: string;
   agreement_text_snapshot: string;

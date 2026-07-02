@@ -4,7 +4,8 @@ import { getMentorMe, patchMentorMe } from "@/api/mentors";
 import type { MentorAccount } from "@/api/types";
 import { commaSeparatedToStringList, stringListToCommaSeparated, unknownListToStrings } from "@/lib/dbJsonFields";
 import { normalizeSpokenLanguagesFromApi } from "@/lib/spokenLanguageOptions";
-import SpokenLanguageCheckboxGroup from "@/components/SpokenLanguageCheckboxGroup";
+import CoachCardVisibilityPicker from "@/components/CoachCardVisibilityPicker";
+import { DEFAULT_COACH_CARD_VISIBILITY, normalizeCoachCardVisibility, type CoachCardVisibility } from "@/lib/coachCardVisibility";
 import { resolveBrowserTimeZone } from "@/lib/timeZone";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { Button } from "@/components/ui/button";
@@ -61,6 +62,7 @@ const MentorProfilePage = () => {
   const [chatPrice, setChatPrice] = useState("0");
   const [chatCurrency, setChatCurrency] = useState("EUR");
   const [chatMinMinutes, setChatMinMinutes] = useState("1");
+  const [cardVisibility, setCardVisibility] = useState<CoachCardVisibility>(DEFAULT_COACH_CARD_VISIBILITY);
 
   useEffect(() => {
     getMentorMe()
@@ -86,6 +88,7 @@ const MentorProfilePage = () => {
         setChatPrice(String(m.chat_price_per_minute ?? "0"));
         setChatCurrency(m.chat_currency ?? "EUR");
         setChatMinMinutes(String(m.chat_min_purchase_minutes ?? 1));
+        setCardVisibility(normalizeCoachCardVisibility(m.public_card_visibility));
       })
       .catch(() => toast.error(mpf.toastLoadErr))
       .finally(() => setLoading(false));
@@ -120,6 +123,7 @@ const MentorProfilePage = () => {
         chat_price_per_minute: chatPrice,
         chat_currency: chatCurrency.trim() || "EUR",
         chat_min_purchase_minutes: Number(chatMinMinutes) || 1,
+        public_card_visibility: cardVisibility,
       });
       setMe(next);
       toast.success(mpf.toastOk);
@@ -359,6 +363,13 @@ const MentorProfilePage = () => {
               <Label htmlFor="modes">{mr.sessionModes}</Label>
               <Input id="modes" placeholder={mr.phModes} value={sessionModesCsv} onChange={(ev) => setSessionModesCsv(ev.target.value)} />
             </div>
+            <CoachCardVisibilityPicker
+              title={mr.cardVisibilityTitle}
+              description={mr.cardVisibilityDescription}
+              value={cardVisibility}
+              onChange={setCardVisibility}
+              labels={mr.cardVisibilityFields}
+            />
           </div>
 
           <div className="space-y-4">

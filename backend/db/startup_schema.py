@@ -45,6 +45,11 @@ def ensure_mentor_kvk_number_column() -> None:
     _safe_add_column("ALTER TABLE mentors ADD COLUMN kvk_number VARCHAR(32) NULL")
 
 
+def ensure_mentor_public_card_visibility_column() -> None:
+    """Coach-controlled visibility of profile fields on public browse cards."""
+    _safe_add_column("ALTER TABLE mentors ADD COLUMN public_card_visibility JSON NULL")
+
+
 def ensure_localization_i18n_columns() -> None:
     """Safety net for migration 015 (DB-backed localization columns)."""
     _safe_add_column("ALTER TABLE mentors ADD COLUMN headline_i18n JSON NULL")

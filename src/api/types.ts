@@ -89,6 +89,8 @@ export interface MentorPublic {
   badges?: string[];
   /** From API — global pricing on + mentor approved/active */
   session_packages_available?: boolean;
+  /** Coach-selected fields visible on public browse cards */
+  public_card_visibility?: Partial<Record<string, boolean>> | null;
 }
 
 export type MentorAvailabilityStatus = "available" | "busy" | "offline";
@@ -122,6 +124,7 @@ export interface MentorAccount extends MentorDetail {
   agreement_accepted_at?: string | null;
   agreement_version?: string | null;
   updated_at: string;
+  public_card_visibility?: Partial<Record<string, boolean>> | null;
 }
 
 /** POST /auth/mentor/register — includes dev OTP when SMTP is not configured */

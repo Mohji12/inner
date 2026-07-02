@@ -16,7 +16,10 @@ import { toast } from "sonner";
 import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
 import { AuthSuccessOverlay } from "@/components/ui/SuccessBurst";
 import { uploadRegistrationMentorAvatar } from "@/api/uploads";
-import { COACH_AGREEMENT_TEXT, COACH_AGREEMENT_VERSION, COACH_MEDICAL_GUIDELINES, readCoachAgreementAcceptance } from "@/lib/coachAgreement";
+import { commaSeparatedToStringList } from "@/lib/dbJsonFields";
+import CoachCardVisibilityPicker from "@/components/CoachCardVisibilityPicker";
+import { DEFAULT_COACH_CARD_VISIBILITY, type CoachCardVisibility } from "@/lib/coachCardVisibility";
+import { COACH_AGREEMENT_TEXT, COACH_AGREEMENT_VERSION, readCoachAgreementAcceptance } from "@/lib/coachAgreement";
 import SpokenLanguageCheckboxGroup from "@/components/SpokenLanguageCheckboxGroup";
 
 const TAB_ORDER = ["account", "profile", "background"] as const;
@@ -39,6 +42,7 @@ const MentorRegisterPage = () => {
   const pendingAvatarFileRef = useRef<File | null>(null);
   const [localAvatarPreview, setLocalAvatarPreview] = useState<string | null>(null);
   const [successDescription, setSuccessDescription] = useState(m.successFreeRedirect);
+  const [cardVisibility, setCardVisibility] = useState<CoachCardVisibility>(DEFAULT_COACH_CARD_VISIBILITY);
 
   useEffect(() => {
     return () => {
@@ -130,6 +134,15 @@ const MentorRegisterPage = () => {
         profile_image: pendingFile ? null : urlOnly ? urlOnly : null,
         current_company: formData.companyName.trim() || null,
         kvk_number: formData.kvkNumber.trim() || null,
+        languages_spoken: formData.spokenLanguages.length ? formData.spokenLanguages : null,
+        years_of_experience: Number(formData.yearsExperience) || 0,
+        expertise_areas: commaSeparatedToStringList(formData.expertiseAreasCsv) || null,
+        skills: commaSeparatedToStringList(formData.skillsCsv) || null,
+        education: commaSeparatedToStringList(formData.educationCsv) || null,
+        certifications: commaSeparatedToStringList(formData.certificationsCsv) || null,
+        tools_technologies: commaSeparatedToStringList(formData.toolsCsv) || null,
+        session_modes: commaSeparatedToStringList(formData.sessionModesCsv) || null,
+        public_card_visibility: cardVisibility,
         agreement_accepted: true,
         agreement_version: COACH_AGREEMENT_VERSION,
         agreement_text_snapshot: COACH_AGREEMENT_TEXT,
@@ -261,11 +274,11 @@ const MentorRegisterPage = () => {
                       onChange={(e) => setAgreementAcceptedBeforeVerify(e.target.checked)}
                     />
                     <span>
-                      I confirm I agree to the{" "}
+                      {m.verifyAgreementBeforeLink}
                       <Link to="/coach-agreement" className="text-accent underline underline-offset-4">
-                        Coach Agreement
-                      </Link>{" "}
-                      (platform 30%; you receive 70% of the 1-minute rate, including tax).
+                        {m.coachAgreementLink}
+                      </Link>
+                      {m.verifyAgreementAfterLink}
                     </span>
                   </label>
                 </div>
@@ -457,6 +470,13 @@ const MentorRegisterPage = () => {
                       />
                     </div>
                   </div>
+                  <CoachCardVisibilityPicker
+                    title={m.cardVisibilityTitle}
+                    description={m.cardVisibilityDescription}
+                    value={cardVisibility}
+                    onChange={setCardVisibility}
+                    labels={m.cardVisibilityFields}
+                  />
                 </TabsContent>
 
                 <TabsContent value="background" className="mt-6 space-y-4">
@@ -469,20 +489,20 @@ const MentorRegisterPage = () => {
                         onChange={(e) => setAgreementAccepted(e.target.checked)}
                       />
                       <span>
-                        I agree to the{" "}
+                        {m.agreementCheckboxBeforeLink}
                         <Link to="/coach-agreement" className="text-accent underline underline-offset-4">
-                          Coach Agreement
+                          {m.coachAgreementLink}
                         </Link>
-                        . Platform retains 30%; you receive 70% of the 1-minute rate (including your tax obligations).
+                        {m.agreementCheckboxAfterLink}
                       </span>
                     </label>
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Your acceptance is stored as proof (agreement version and snapshot text).
+                      {m.agreementProofNote}
                     </p>
                   </div>
                   <ul className="list-disc space-y-2 pl-5 text-sm font-bold leading-relaxed text-foreground">
-                    {COACH_MEDICAL_GUIDELINES.map((guideline) => (
-                      <li key={guideline}>{guideline}</li>
+                    {m.medicalGuidelines.map((guideline, index) => (
+                      <li key={index}>{guideline}</li>
                     ))}
                   </ul>
                   <p className="text-sm text-muted-foreground">{m.backgroundHint}</p>

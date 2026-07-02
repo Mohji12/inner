@@ -32,6 +32,7 @@ export type MentorPatchBody = Partial<{
   chat_price_per_minute: string | null;
   chat_currency: string | null;
   chat_min_purchase_minutes: number | null;
+  public_card_visibility: Record<string, boolean> | null;
 }>;
 
 export interface SlotCreateBody {

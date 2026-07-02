@@ -34,6 +34,7 @@ from db.startup_schema import (
     ensure_universal_promo_codes,
     ensure_mentors_banner_image_column,
     ensure_mentor_kvk_number_column,
+    ensure_mentor_public_card_visibility_column,
     ensure_platform_pricing_table,
     ensure_platform_pricing_60_min_column,
 )
@@ -48,6 +49,7 @@ async def lifespan(app: FastAPI):
     logger.info("CORS allow_origins: %s", settings.cors_origins_list)
     ensure_mentors_banner_image_column()
     ensure_mentor_kvk_number_column()
+    ensure_mentor_public_card_visibility_column()
     ensure_localization_i18n_columns()
     ensure_phase5_booking_columns()
     ensure_platform_pricing_table()

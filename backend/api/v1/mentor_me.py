@@ -36,6 +36,7 @@ from services.mentor_monthly_invoice_pdf import build_mentor_monthly_invoice_pdf
 from services.platform_invoice_service import load_mentor_monthly_statement, load_mentor_onboarding_invoice
 from services.payout_bank_service import mask_bic, mask_iban, normalize_bic, validate_and_normalize_iban
 from services.mollie_service import MollieServiceError, resolve_mollie_webhook_url
+from services.mentor_card_visibility import normalize_card_visibility
 from services.onboarding_payment_service import create_onboarding_checkout, mentor_onboarding_status
 from services.i18n_service import resolve_i18n_text, to_i18n_map
 from core.coach_agreement import COACH_AGREEMENT_TEXT, COACH_AGREEMENT_VERSION
@@ -143,6 +144,7 @@ def mentor_profile(me: CurrentMentor, lang: RequestLang) -> MentorAccountOut:
     out["headline"] = resolve_i18n_text(getattr(me, "headline_i18n", None), me.headline, lang)
     out["bio"] = resolve_i18n_text(getattr(me, "bio_i18n", None), me.bio, lang)
     out["chat_price_per_minute"] = effective_chat_price_per_minute_eur(me)
+    out["public_card_visibility"] = normalize_card_visibility(getattr(me, "public_card_visibility", None))
     return MentorAccountOut.model_validate(out)
 
 
@@ -196,6 +198,11 @@ def mentor_update(db: DbSession, me: CurrentMentor, payload: MentorUpdate, lang:
         data["headline_i18n"] = to_i18n_map(data["headline"])
     if "bio" in data and "bio_i18n" not in data:
         data["bio_i18n"] = to_i18n_map(data["bio"])
+    if "public_card_visibility" in data and data["public_card_visibility"] is not None:
+        raw = data["public_card_visibility"]
+        if hasattr(raw, "model_dump"):
+            raw = raw.model_dump()
+        data["public_card_visibility"] = normalize_card_visibility(raw)
     for k, v in data.items():
         setattr(me, k, v)
     me.updated_at = datetime.now(timezone.utc)
@@ -205,6 +212,7 @@ def mentor_update(db: DbSession, me: CurrentMentor, payload: MentorUpdate, lang:
     out["headline"] = resolve_i18n_text(getattr(me, "headline_i18n", None), me.headline, lang)
     out["bio"] = resolve_i18n_text(getattr(me, "bio_i18n", None), me.bio, lang)
     out["chat_price_per_minute"] = effective_chat_price_per_minute_eur(me)
+    out["public_card_visibility"] = normalize_card_visibility(getattr(me, "public_card_visibility", None))
     return MentorAccountOut.model_validate(out)
 
 
@@ -233,6 +241,7 @@ def accept_coach_agreement(
     out["headline"] = resolve_i18n_text(getattr(me, "headline_i18n", None), me.headline, lang)
     out["bio"] = resolve_i18n_text(getattr(me, "bio_i18n", None), me.bio, lang)
     out["chat_price_per_minute"] = effective_chat_price_per_minute_eur(me)
+    out["public_card_visibility"] = normalize_card_visibility(getattr(me, "public_card_visibility", None))
     return MentorAccountOut.model_validate(out)
 
 

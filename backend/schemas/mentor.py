@@ -10,6 +10,17 @@ class MentorLogin(BaseModel):
     password: str
 
 
+class PublicCardVisibility(BaseModel):
+    headline: bool = True
+    company: bool = True
+    expertise_tags: bool = True
+    years_experience: bool = True
+    rating: bool = True
+    session_packages: bool = True
+    profile_photo: bool = True
+    banner_photo: bool = True
+
+
 class MentorRegister(BaseModel):
     full_name: str
     email: EmailStr
@@ -22,6 +33,15 @@ class MentorRegister(BaseModel):
     profile_image: str | None = Field(default=None, max_length=512)
     current_company: str | None = Field(default=None, max_length=255)
     kvk_number: str | None = Field(default=None, max_length=32)
+    languages_spoken: list[str] | None = None
+    years_of_experience: int | None = None
+    expertise_areas: list[str] | None = None
+    skills: list[str] | None = None
+    education: list[str] | None = None
+    certifications: list[str] | None = None
+    tools_technologies: list[str] | None = None
+    session_modes: list[str] | None = None
+    public_card_visibility: PublicCardVisibility | dict[str, bool] | None = None
     agreement_accepted: bool = False
     agreement_version: str | None = None
     agreement_text_snapshot: str | None = None
@@ -70,6 +90,7 @@ class MentorPublicOut(BaseModel):
     badges: list[str] = Field(default_factory=list)
     # Global session pricing active and mentor approved + active — show 10/20/30 packages
     session_packages_available: bool = False
+    public_card_visibility: dict[str, bool] | None = None
 
 
 class MentorDetailOut(MentorPublicOut):
@@ -132,6 +153,7 @@ class MentorUpdate(BaseModel):
     chat_price_per_minute: Decimal | None = None
     chat_currency: str | None = None
     chat_min_purchase_minutes: int | None = None
+    public_card_visibility: PublicCardVisibility | dict[str, bool] | None = None
 
 
 class PlatformPricingPublicOut(BaseModel):
