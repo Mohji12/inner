@@ -175,9 +175,43 @@ export const appEn = {
     heroTitle: "How to Become a Coach",
     heroSub:
       "Join Mijn Levenspad as a spiritual coach. Follow the steps below from registration to your first live session.",
+    introLabel: "Join our community",
+    introTitle: "Your gift deserves a stage",
+    introP1:
+      "You've spent years developing your intuition, your empathy, your ability to really see people. Mijn Levenspad exists so that gift does not stay a hobby - it becomes a practice people can actually find.",
+    introP2:
+      "We built a platform where spiritual coaches, mediums, and guides can work on their own terms, reach people who are genuinely looking for what they offer, and get paid fairly and fast for the sessions they give - without spending their evenings on marketing, invoicing, or chasing clients.",
+    ctaApply: "Start your application",
     ctaRegister: "Start registration",
     ctaAgreement: "Coach agreement",
     ctaLogin: "Coach login",
+    benefitsLabel: "Why coaches choose Mijn Levenspad",
+    benefits: [
+      {
+        title: "You focus on people, we bring the clients",
+        desc: "Your profile is listed in our coach directory where people already come looking for guidance. No ads to run, no algorithm to chase - just show up and coach.",
+      },
+      {
+        title: "Set your own hours, your own path",
+        desc: "Work from home, choose when you're available, and shape your practice around your specialty - whether that's tarot, energy work, mediumship, or personal development coaching.",
+      },
+      {
+        title: "Transparent earnings, fast payouts",
+        desc: "You keep 70% of every metered session, with no hidden fees. Payouts go straight to your account - no waiting on end-of-month invoicing.",
+      },
+      {
+        title: "A platform that protects the craft",
+        desc: "Clear medical guidelines keep every coach on solid, professional ground - so clients trust the platform, and that trust flows back to you.",
+      },
+    ],
+    socialProofTemplate: "Join {count} coaches already active on the platform.",
+    fitLabel: "Is this you?",
+    fitItems: [
+      "You have real experience or training in coaching, tarot, astrology, mediumship, energy work, or a related discipline.",
+      "You're empathetic, professional, and genuinely want to help people move forward.",
+      "You can commit a few hours a week, on a schedule that works for you.",
+      "You're comfortable coaching by chat and/or call.",
+    ],
     stepsLabel: "The process",
     stepsHeading: "Six steps to go live",
     steps: [
@@ -244,13 +278,13 @@ export const appEn = {
       "Password: 8+ characters with uppercase, lowercase, a digit, and a special character",
       "Professional headline and bio in your coaching niche",
       "Agreement to platform fee terms (70% coach share / 30% platform fee on metered chat)",
-      "Commitment to medical guidelines — no medical advice, diagnosis, or prescriptions",
+      "Commitment to medical guidelines - no medical advice, diagnosis, or prescriptions",
       "Valid email address for verification (registration is free)",
     ],
     guidelinesLabel: "Medical guidelines",
     guidelinesHeading: "Important rules for all coaches",
     guidelinesIntro:
-      "Coaches provide mentoring and personal development support only. You must follow these guidelines at all times:",
+      "We protect the profession with clear standards so clients can trust the platform, and that trust flows back to every coach.",
     guidelines: [
       "Do not act as a medical doctor or healthcare professional unless officially licensed.",
       "Do not provide medical advice, diagnosis, prescriptions, or treatment recommendations.",

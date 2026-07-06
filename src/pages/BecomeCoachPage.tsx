@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import {
-  ArrowRight,
   BadgeCheck,
   ClipboardList,
   CreditCard,
@@ -10,12 +10,16 @@ import {
   UserPlus,
   Wallet,
 } from "lucide-react";
+import { listMentors } from "@/api/mentors";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLanguage } from "@/i18n/LanguageContext";
 import CoachApplicationForm from "@/components/CoachApplicationForm";
+import { BecomeCoachBenefits } from "@/components/become-coach/BecomeCoachBenefits";
+import { BecomeCoachFitChecklist } from "@/components/become-coach/BecomeCoachFitChecklist";
+import { BecomeCoachIntroHero } from "@/components/become-coach/BecomeCoachIntroHero";
 import { cn } from "@/lib/utils";
 
 const STEP_ICONS = [UserPlus, Mail, CreditCard, BadgeCheck, Wallet, Rocket] as const;
@@ -23,35 +27,31 @@ const STEP_ICONS = [UserPlus, Mail, CreditCard, BadgeCheck, Wallet, Rocket] as c
 const BecomeCoachPage = () => {
   const { t } = useLanguage();
   const b = t.app.becomeCoach;
+  const { data: mentors = [] } = useQuery({
+    queryKey: ["mentors", "public", "become-coach-count", import.meta.env.PROD],
+    queryFn: () => listMentors(import.meta.env.PROD),
+  });
+  const socialProof =
+    mentors.length > 0 ? b.socialProofTemplate.replace("{count}", String(mentors.length)) : null;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
 
       <main>
-        <section className="border-b border-border/60 bg-gradient-to-b from-accent/10 via-background to-background py-16 md:py-24">
-          <div className="container mx-auto px-6">
-            <span className="text-sm font-medium uppercase tracking-widest text-accent">{b.label}</span>
-            <h1 className="mt-3 max-w-3xl font-serif text-4xl font-semibold tracking-tight md:text-5xl lg:text-6xl">
-              {b.heroTitle}
-            </h1>
-            <p className="mt-4 max-w-2xl text-lg text-muted-foreground">{b.heroSub}</p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Button asChild className="gradient-cta text-white">
-                <Link to="/mentor/register">
-                  {b.ctaRegister}
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-              <Button asChild variant="outline">
-                <Link to="/coach-agreement">{b.ctaAgreement}</Link>
-              </Button>
-              <Button asChild variant="ghost">
-                <Link to="/login?role=mentor">{b.ctaLogin}</Link>
-              </Button>
-            </div>
-          </div>
-        </section>
+        <BecomeCoachIntroHero
+          label={b.introLabel}
+          title={b.introTitle}
+          introP1={b.introP1}
+          introP2={b.introP2}
+          ctaApply={b.ctaApply}
+          ctaAgreement={b.ctaAgreement}
+          ctaLogin={b.ctaLogin}
+        />
+
+        <BecomeCoachBenefits label={b.benefitsLabel} benefits={b.benefits} socialProof={socialProof} />
+
+        <BecomeCoachFitChecklist label={b.fitLabel} items={b.fitItems} />
 
         <section className="py-16 md:py-24">
           <div className="container mx-auto px-6">

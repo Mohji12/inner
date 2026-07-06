@@ -571,9 +571,43 @@ export const appOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
       heroTitle: "Hoe word je coach?",
       heroSub:
         "Word coach bij Mijn Levenspad. Volg onderstaande stappen van registratie tot je eerste live sessie.",
+      introLabel: "Word deel van onze community",
+      introTitle: "Jouw gave verdient een podium",
+      introP1:
+        "Je hebt jaren gewerkt aan je intuïtie, je empathie en je vermogen om mensen echt te zien. Mijn Levenspad zorgt ervoor dat die gave geen hobby blijft, maar een praktijk wordt die mensen ook echt kunnen vinden.",
+      introP2:
+        "We bouwden een platform waar spirituele coaches, mediums en gidsen op hun eigen voorwaarden kunnen werken, mensen bereiken die echt op zoek zijn naar hun aanbod, en eerlijk en snel betaald worden voor de sessies die ze geven - zonder avonden kwijt te zijn aan marketing, facturatie of het najagen van klanten.",
+      ctaApply: "Start je aanmelding",
       ctaRegister: "Start registratie",
       ctaAgreement: "Coachovereenkomst",
       ctaLogin: "Coach inloggen",
+      benefitsLabel: "Waarom coaches kiezen voor Mijn Levenspad",
+      benefits: [
+        {
+          title: "Jij focust op mensen, wij brengen de cliënten",
+          desc: "Je profiel staat in onze coachdirectory waar mensen al komen voor begeleiding. Geen advertenties, geen algoritme om te pleasen - gewoon verschijnen en coachen.",
+        },
+        {
+          title: "Bepaal je uren en je eigen pad",
+          desc: "Werk vanuit huis, kies wanneer je beschikbaar bent en vorm je praktijk rond je specialisatie - of dat nu tarot, energiewerk, mediumschap of persoonlijke ontwikkeling is.",
+        },
+        {
+          title: "Transparante inkomsten, snelle uitbetalingen",
+          desc: "Je houdt 70% van elke gemeten sessie, zonder verborgen kosten. Uitbetalingen gaan rechtstreeks naar je rekening - je hoeft niet tot het einde van de maand te wachten.",
+        },
+        {
+          title: "Een platform dat het vak beschermt",
+          desc: "Duidelijke medische richtlijnen houden elke coach op professionele, solide grond - zodat cliënten het platform vertrouwen en dat vertrouwen terugkomt bij jou.",
+        },
+      ],
+      socialProofTemplate: "Sluit je aan bij {count} coaches die al actief zijn op het platform.",
+      fitLabel: "Past dit bij jou?",
+      fitItems: [
+        "Je hebt echte ervaring of opleiding in coaching, tarot, astrologie, mediumschap, energiewerk of een verwante discipline.",
+        "Je bent empathisch, professioneel en wilt mensen echt helpen vooruit te komen.",
+        "Je kunt wekelijks een paar uur vrijmaken op tijden die bij jou passen.",
+        "Je voelt je comfortabel met coachen via chat en/of call.",
+      ],
       stepsLabel: "Het proces",
       stepsHeading: "Zes stappen naar live",
       steps: [
@@ -646,7 +680,7 @@ export const appOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
       guidelinesLabel: "Medische richtlijnen",
       guidelinesHeading: "Belangrijke regels voor alle coaches",
       guidelinesIntro:
-        "Coaches bieden alleen mentoring en persoonlijke ontwikkeling. Je moet deze richtlijnen altijd volgen:",
+        "Met duidelijke professionele standaarden beschermen we het vak, zodat cliënten het platform vertrouwen - en dat vertrouwen terugvloeit naar elke coach.",
       guidelines: [
         "Niet optreden als arts of zorgverlener tenzij officieel erkend.",
         "Geen medisch advies, diagnose, voorschriften of behandelingsaanbevelingen geven.",

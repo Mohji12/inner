@@ -1,4 +1,9 @@
-const META_PIXEL_ID = (import.meta.env.VITE_META_PIXEL_ID as string | undefined)?.trim() ?? "";
+/** Public ID (also in `index.html` noscript). Set `VITE_META_PIXEL_ID` to override; empty in dev unless set. */
+const DEFAULT_META_PIXEL_ID = "1366382905461724";
+
+const META_PIXEL_ID =
+  (import.meta.env.VITE_META_PIXEL_ID as string | undefined)?.trim() ||
+  (import.meta.env.PROD ? DEFAULT_META_PIXEL_ID : "");
 
 let initialized = false;
 
