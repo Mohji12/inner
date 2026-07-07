@@ -30,6 +30,7 @@ from models.payment import Payment
 from models.user import User
 from core.security import new_uuid
 from core.chat_states import CHAT_PURCHASE_FAILED, CHAT_PURCHASE_SUCCEEDED, CHAT_SESSION_ACTIVE, CHAT_SESSION_PAUSED
+from services.meta_capi_service import track_booking_purchase
 
 
 logger = logging.getLogger(__name__)
@@ -422,6 +423,13 @@ def _mark_booking_paid(db: Session, payment: Payment) -> None:
         user = db.query(User).filter(User.id == booking.user_id).first()
         user_name = user.full_name if user else "A user"
         comm_label = "video" if mode == "video" else "phone call"
+        track_booking_purchase(
+            booking_id=booking.id,
+            email=user.email if user else None,
+            phone_number=user.phone_number if user else None,
+            amount=payment.amount,
+            currency=payment.currency,
+        )
 
         if session_id:
             create_notification(

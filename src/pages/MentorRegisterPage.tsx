@@ -14,7 +14,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
-import { AuthSuccessOverlay } from "@/components/ui/SuccessBurst";
 import { uploadRegistrationMentorAvatar } from "@/api/uploads";
 import { commaSeparatedToStringList } from "@/lib/dbJsonFields";
 import CoachCardVisibilityPicker from "@/components/CoachCardVisibilityPicker";
@@ -24,9 +23,7 @@ import SpokenLanguageCheckboxGroup from "@/components/SpokenLanguageCheckboxGrou
 
 const TAB_ORDER = ["account", "profile", "background"] as const;
 type TabId = (typeof TAB_ORDER)[number];
-type Phase = "form" | "verify" | "success";
-
-const REGISTER_SUCCESS_DELAY_MS = 1200;
+type Phase = "form" | "verify";
 
 const MentorRegisterPage = () => {
   const navigate = useNavigate();
@@ -41,7 +38,6 @@ const MentorRegisterPage = () => {
   const [agreementAcceptedBeforeVerify, setAgreementAcceptedBeforeVerify] = useState(false);
   const pendingAvatarFileRef = useRef<File | null>(null);
   const [localAvatarPreview, setLocalAvatarPreview] = useState<string | null>(null);
-  const [successDescription, setSuccessDescription] = useState(m.successFreeRedirect);
   const [cardVisibility, setCardVisibility] = useState<CoachCardVisibility>(DEFAULT_COACH_CARD_VISIBILITY);
 
   useEffect(() => {
@@ -94,11 +90,9 @@ const MentorRegisterPage = () => {
   const stepLabel = m.stepOf.replace("{current}", String(tabIndex + 1)).replace("{total}", String(TAB_ORDER.length));
 
   const finishRegistration = (message?: string) => {
-    setSuccessDescription(message ?? m.successFreeRedirect);
-    setPhase("success");
-    window.setTimeout(() => {
-      window.location.href = "/login?role=mentor";
-    }, REGISTER_SUCCESS_DELAY_MS);
+    const finalMessage = (message ?? m.successFreeRedirect).trim();
+    const query = finalMessage ? `?message=${encodeURIComponent(finalMessage)}` : "";
+    navigate(`/mentor/register/thank-you${query}`);
   };
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -218,12 +212,6 @@ const MentorRegisterPage = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {phase === "success" ? (
-        <AuthSuccessOverlay
-          message={m.successTitle}
-          description={successDescription}
-        />
-      ) : null}
       <AppPageHeader />
       <main className="container mx-auto px-6 py-10">
         <Card className="mx-auto max-w-4xl border-border/60">

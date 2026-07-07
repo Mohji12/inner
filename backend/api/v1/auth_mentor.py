@@ -44,6 +44,7 @@ from services.two_factor_service import two_factor_service
 from services.social_auth_service import social_auth_service
 from core.coach_agreement import COACH_AGREEMENT_TEXT, COACH_AGREEMENT_VERSION
 from services.i18n_service import to_i18n_map
+from services.meta_capi_service import track_mentor_registration_verified
 
 router = APIRouter(prefix="/auth/mentor", tags=["auth-mentor"])
 
@@ -220,6 +221,11 @@ def verify_mentor_email(db: DbSession, payload: VerifyEmailRequest) -> MentorVer
     activate_coach_after_email_verification(db, mentor=mentor)
     db.commit()
     db.refresh(mentor)
+    track_mentor_registration_verified(
+        mentor_id=mentor.id,
+        email=mentor.email,
+        phone_number=mentor.phone_number,
+    )
     active = bool(mentor.is_approved and mentor.status == "active")
     return MentorVerifyEmailResponse(
         message=(

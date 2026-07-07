@@ -30,6 +30,7 @@ from services.otp_service import create_and_send_otp, verify_otp
 from services.token_service import revoke_refresh_token, rotate_refresh_token, store_refresh_token
 from services.two_factor_service import two_factor_service
 from services.social_auth_service import social_auth_service
+from services.meta_capi_service import track_user_registration_verified
 
 router = APIRouter(prefix="/auth/user", tags=["auth-user"])
 
@@ -127,6 +128,11 @@ def verify_user_email(db: DbSession, payload: VerifyEmailRequest) -> MessageResp
     user.email_verified = True
     user.updated_at = datetime.now(timezone.utc)
     db.commit()
+    track_user_registration_verified(
+        user_id=user.id,
+        email=user.email,
+        phone_number=user.phone_number,
+    )
     return MessageResponse(message="Email verified. You can sign in now.")
 
 

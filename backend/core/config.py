@@ -123,6 +123,11 @@ class Settings(BaseSettings):
     cloudinary_cloud_name: str = ""
     cloudinary_api_key: str = ""
     cloudinary_api_secret: str = ""
+    # Meta Conversions API (server-side events)
+    meta_pixel_id: str = ""
+    meta_capi_access_token: str = ""
+    # Optional for Meta Events Manager Test Events view.
+    meta_test_event_code: str = ""
     redis_url: str = "redis://localhost:6379/0"
     #: If set, Celery stores task results in this backend. If empty, results are disabled — the API process will not open a result-backend connection on `.delay()` (avoids Redis reconnect loops when you only enqueue from the web app).
     celery_result_backend_url: str = ""
