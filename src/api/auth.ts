@@ -122,8 +122,18 @@ export function verifyUserEmail(body: VerifyEmailBody): Promise<{ message: strin
   });
 }
 
-export function verifyMentorEmail(body: VerifyEmailBody): Promise<{ message: string; account_active?: boolean }> {
-  return apiFetch<{ message: string; account_active?: boolean }>("/auth/mentor/verify-email", {
+export function sendMentorMetaCompleteRegistration(mentorId: string): Promise<void> {
+  return apiFetch<void>("/auth/mentor/meta/complete-registration", {
+    method: "POST",
+    body: JSON.stringify({ mentor_id: mentorId }),
+    skipAuth: true,
+  });
+}
+
+export function verifyMentorEmail(
+  body: VerifyEmailBody,
+): Promise<{ message: string; account_active?: boolean; mentor_id: string }> {
+  return apiFetch<{ message: string; account_active?: boolean; mentor_id: string }>("/auth/mentor/verify-email", {
     method: "POST",
     body: JSON.stringify(body),
     skipAuth: true,

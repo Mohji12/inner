@@ -56,3 +56,25 @@ export function trackPageView(): void {
   }
   window.fbq("track", "PageView");
 }
+
+/** Browser Pixel — pair `eventId` with server CAPI for deduplication. */
+export function trackCompleteRegistration(options?: {
+  eventId?: string;
+  contentName?: string;
+  registrationRole?: string;
+}): void {
+  if (!isMetaPixelEnabled() || !initialized || typeof window === "undefined" || !window.fbq) {
+    return;
+  }
+  const params: Record<string, unknown> = {
+    content_name: options?.contentName ?? "coach_registration",
+    status: true,
+  };
+  if (options?.registrationRole) {
+    params.content_category = options.registrationRole;
+  }
+  if (options?.eventId) {
+    params.eventID = options.eventId;
+  }
+  window.fbq("track", "CompleteRegistration", params);
+}

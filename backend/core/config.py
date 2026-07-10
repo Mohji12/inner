@@ -124,7 +124,7 @@ class Settings(BaseSettings):
     cloudinary_api_key: str = ""
     cloudinary_api_secret: str = ""
     # Meta Conversions API (server-side events)
-    meta_pixel_id: str = ""
+    meta_pixel_id: str = "1366382905461724"
     meta_capi_access_token: str = ""
     # Optional for Meta Events Manager Test Events view.
     meta_test_event_code: str = ""
@@ -196,6 +196,5 @@ class _SettingsProxy:
 
     def __getattr__(self, name: str):
         return getattr(get_settings(), name)
-
 
 settings = _SettingsProxy()

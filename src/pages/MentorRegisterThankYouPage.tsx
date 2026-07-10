@@ -1,12 +1,33 @@
+import { useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import AppPageHeader from "@/components/AppPageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SuccessBurst } from "@/components/ui/SuccessBurst";
+import { initMetaPixel, trackCompleteRegistration } from "@/lib/metaPixel";
+import { sendMentorMetaCompleteRegistration } from "@/api/auth";
 
 const MentorRegisterThankYouPage = () => {
   const [searchParams] = useSearchParams();
   const message = searchParams.get("message")?.trim();
+  const mentorId = searchParams.get("mentorId")?.trim() ?? "";
+  const trackedRef = useRef(false);
+
+  useEffect(() => {
+    if (trackedRef.current || !mentorId) {
+      return;
+    }
+    trackedRef.current = true;
+    initMetaPixel();
+    trackCompleteRegistration({
+      eventId: `mentor-verify-${mentorId}`,
+      contentName: "coach_registration",
+      registrationRole: "mentor",
+    });
+    void sendMentorMetaCompleteRegistration(mentorId).catch(() => {
+      // Pixel still fires if CAPI call fails; server also sends on email verify.
+    });
+  }, [mentorId]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">

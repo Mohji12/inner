@@ -73,6 +73,11 @@ class MentorOnboardingPromoValidateOut(BaseModel):
 class MentorVerifyEmailResponse(BaseModel):
     message: str
     account_active: bool = False
+    mentor_id: str
+
+
+class MentorMetaCompleteRegistrationIn(BaseModel):
+    mentor_id: str
 
 
 class MentorOnboardingPlansOut(BaseModel):
@@ -225,6 +230,7 @@ def verify_mentor_email(db: DbSession, payload: VerifyEmailRequest) -> MentorVer
         mentor_id=mentor.id,
         email=mentor.email,
         phone_number=mentor.phone_number,
+        request=None,
     )
     active = bool(mentor.is_approved and mentor.status == "active")
     return MentorVerifyEmailResponse(
@@ -234,6 +240,29 @@ def verify_mentor_email(db: DbSession, payload: VerifyEmailRequest) -> MentorVer
             else "Email verified. You can sign in now."
         ),
         account_active=active,
+        mentor_id=mentor.id,
+    )
+
+
+@router.post("/meta/complete-registration", status_code=status.HTTP_204_NO_CONTENT)
+def mentor_meta_complete_registration(
+    request: Request,
+    db: DbSession,
+    payload: MentorMetaCompleteRegistrationIn,
+) -> None:
+    """Browser thank-you page calls this to send enriched Meta CAPI (IP, UA, cookies)."""
+    mentor = (
+        db.query(Mentor)
+        .filter(Mentor.id == payload.mentor_id.strip(), Mentor.email_verified.is_(True))
+        .first()
+    )
+    if not mentor:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Verified coach not found")
+    track_mentor_registration_verified(
+        mentor_id=mentor.id,
+        email=mentor.email,
+        phone_number=mentor.phone_number,
+        request=request,
     )
 
 

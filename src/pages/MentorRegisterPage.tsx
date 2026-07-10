@@ -32,7 +32,7 @@ const MentorRegisterPage = () => {
   const [error, setError] = useState("");
   const [phase, setPhase] = useState<Phase>("form");
   const [otp, setOtp] = useState("");
-  const [verifyCtx, setVerifyCtx] = useState<{ email: string; password: string } | null>(null);
+  const [verifyCtx, setVerifyCtx] = useState<{ email: string; password: string; mentorId: string } | null>(null);
   const [tab, setTab] = useState<TabId>("account");
   const [agreementAccepted, setAgreementAccepted] = useState(false);
   const [agreementAcceptedBeforeVerify, setAgreementAcceptedBeforeVerify] = useState(false);
@@ -89,10 +89,17 @@ const MentorRegisterPage = () => {
 
   const stepLabel = m.stepOf.replace("{current}", String(tabIndex + 1)).replace("{total}", String(TAB_ORDER.length));
 
-  const finishRegistration = (message?: string) => {
+  const finishRegistration = (message?: string, mentorId?: string) => {
+    const params = new URLSearchParams();
+    if (mentorId) {
+      params.set("mentorId", mentorId);
+    }
     const finalMessage = (message ?? m.successFreeRedirect).trim();
-    const query = finalMessage ? `?message=${encodeURIComponent(finalMessage)}` : "";
-    navigate(`/mentor/register/thank-you${query}`);
+    if (finalMessage) {
+      params.set("message", finalMessage);
+    }
+    const query = params.toString();
+    navigate(`/mentor/register/thank-you${query ? `?${query}` : ""}`);
   };
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -164,10 +171,10 @@ const MentorRegisterPage = () => {
       }
       if (reg.dev_verification_code) {
         const verified = await verifyMentorEmail({ email, code: reg.dev_verification_code });
-        finishRegistration(verified.message);
+        finishRegistration(verified.message, verified.mentor_id || reg.id);
         return;
       }
-      setVerifyCtx({ email, password: formData.password });
+      setVerifyCtx({ email, password: formData.password, mentorId: reg.id });
       setOtp("");
       setPhase("verify");
       setAgreementAcceptedBeforeVerify(false);
@@ -191,7 +198,7 @@ const MentorRegisterPage = () => {
     setError("");
     try {
       const verified = await verifyMentorEmail({ email: verifyCtx.email, code: otp.replace(/\D/g, "") });
-      finishRegistration(verified.message);
+      finishRegistration(verified.message, verified.mentor_id || verifyCtx.mentorId);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : m.errVerify;
       setError(msg);
