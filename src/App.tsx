@@ -25,6 +25,7 @@ import TermsAndConditionsPage from "./pages/TermsAndConditionsPage.tsx";
 import CoachAgreementPage from "./pages/CoachAgreementPage.tsx";
 import BecomeCoachPage from "./pages/BecomeCoachPage.tsx";
 import MentorRegisterThankYouPage from "./pages/MentorRegisterThankYouPage.tsx";
+import UserRegisterThankYouPage from "./pages/UserRegisterThankYouPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import UserProfilePage from "./pages/user/UserProfilePage.tsx";
 import UserDashboardHomePage from "./pages/user/UserDashboardHomePage.tsx";
@@ -87,6 +88,8 @@ const App = () => (
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
                 <Route path="/register" element={<UserRegisterPage />} />
                 <Route path="/user/register" element={<UserRegisterPage />} />
+                <Route path="/user/register/thank-you" element={<UserRegisterThankYouPage />} />
+                <Route path="/register/thank-you" element={<UserRegisterThankYouPage />} />
                 <Route path="/mentor/register" element={<MentorRegisterPage />} />
                 <Route path="/mentor/register/thank-you" element={<MentorRegisterThankYouPage />} />
                 <Route path="/mentors" element={<MentorsPage />} />

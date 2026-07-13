@@ -261,7 +261,7 @@ def create_intent(
         db.commit()
 
         return CreateIntentResponse(
-            checkout_url=f"/user/appointments?bookingId={booking.id}",
+            checkout_url=f"/booking/success?bookingId={booking.id}",
             payment_id=fake_payment_id,
             amount=0.0,
             currency="EUR",
@@ -276,7 +276,7 @@ def create_intent(
         raise HTTPException(status_code=502, detail=str(e)) from e
 
     try:
-        redirect_url = f"{settings.mollie_redirect_base_url.rstrip('/')}/user/appointments?bookingId={booking.id}"
+        redirect_url = f"{settings.mollie_redirect_base_url.rstrip('/')}/booking/success?bookingId={booking.id}"
         webhook_url = resolve_mollie_webhook_url(request)
         mollie_payment_id, checkout_url = create_mollie_payment(
             amount=charged,

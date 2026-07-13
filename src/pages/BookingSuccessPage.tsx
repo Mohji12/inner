@@ -1,8 +1,9 @@
 import { Link, useSearchParams } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AppPageHeader from "@/components/AppPageHeader";
 import { getUserBooking, getBookingCalendarUrl } from "@/api/bookings";
 import { getMentor, getPlatformPricing } from "@/api/mentors";
+import { syncMolliePaymentAfterCheckout } from "@/api/payments";
 import type { Booking, MentorDetail, PlatformPricing } from "@/api/types";
 import { slotPriceForDuration } from "@/api/types";
 import { CalendarIcon } from "lucide-react";
@@ -11,6 +12,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SuccessBurst } from "@/components/ui/SuccessBurst";
 import { formatDateLocal, formatTimeLocal } from "@/lib/timeZone";
 import { useEffectiveTimeZone } from "@/hooks/useEffectiveTimeZone";
+import {
+  clearPendingMolliePaymentId,
+  peekPendingMolliePaymentId,
+} from "@/lib/molliePendingPayment";
 
 const BookingSuccessPage = () => {
   const [searchParams] = useSearchParams();
@@ -22,23 +27,54 @@ const BookingSuccessPage = () => {
   const [pricing, setPricing] = useState<PlatformPricing | undefined>();
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const loadBookingDetails = useCallback(async () => {
     if (!bookingId) {
+      setBooking(undefined);
+      setMentor(undefined);
+      setPricing(undefined);
       setLoading(false);
       return;
     }
-    getUserBooking(bookingId)
-      .then((b) => {
-        setBooking(b);
-        return Promise.all([getMentor(b.mentor_id), getPlatformPricing()]);
-      })
-      .then(([m, p]) => {
-        setMentor(m);
-        setPricing(p);
-      })
-      .catch(() => setMentor(undefined))
-      .finally(() => setLoading(false));
+    setLoading(true);
+    try {
+      const b = await getUserBooking(bookingId);
+      setBooking(b);
+      const [m, p] = await Promise.all([getMentor(b.mentor_id), getPlatformPricing()]);
+      setMentor(m);
+      setPricing(p);
+    } catch {
+      setBooking(undefined);
+      setMentor(undefined);
+      setPricing(undefined);
+    } finally {
+      setLoading(false);
+    }
   }, [bookingId]);
+
+  useEffect(() => {
+    const pending = peekPendingMolliePaymentId();
+    if (!pending) {
+      void loadBookingDetails();
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        await syncMolliePaymentAfterCheckout(pending);
+        if (cancelled) return;
+        clearPendingMolliePaymentId();
+      } catch {
+        /* webhook may arrive later */
+      } finally {
+        if (!cancelled) {
+          void loadBookingDetails();
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loadBookingDetails]);
 
   if (loading) {
     return (
