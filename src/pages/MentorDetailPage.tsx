@@ -220,9 +220,6 @@ const MentorDetailPage = () => {
               </div>
             </div>
             <p className="text-muted-foreground">{mentor.headline ?? ""}</p>
-            {mentor.current_company ? (
-              <p className="text-sm text-muted-foreground">Currently at {mentor.current_company}</p>
-            ) : null}
           </CardHeader>
           <CardContent className="space-y-6">
             {mentor.bio ? <p>{mentor.bio}</p> : null}

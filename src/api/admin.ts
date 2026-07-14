@@ -26,10 +26,29 @@ export interface AdminMentorRow {
   email: string;
   phone_number: string;
   headline: string | null;
+  bio?: string | null;
+  current_company?: string | null;
+  kvk_number?: string | null;
+  languages_spoken?: unknown[] | null;
+  years_of_experience?: number;
+  education?: unknown[] | null;
+  certifications?: unknown[] | null;
+  expertise_areas?: unknown[] | null;
+  skills?: unknown[] | null;
+  tools_technologies?: unknown[] | null;
+  session_modes?: unknown[] | null;
+  previous_companies?: unknown[] | null;
+  profile_image?: string | null;
+  country_code?: string | null;
+  timezone?: string | null;
+  average_rating?: string | number | null;
+  total_reviews?: number;
   status: string;
   is_approved: boolean;
   email_verified: boolean;
+  is_verified?: boolean;
   created_at: string;
+  updated_at?: string | null;
 }
 
 export type MentorApprovalAction = "approve" | "reject";

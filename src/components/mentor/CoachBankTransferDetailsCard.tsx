@@ -11,9 +11,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { useLanguage } from "@/i18n/LanguageContext";
 import { marketplaceStatusTone, titleizeMarketplaceStatus } from "@/lib/marketplaceStatus";
 
 export function CoachBankTransferDetailsCard() {
+  const { t } = useLanguage();
+  const m = t.app.coachBankTransfer;
   const queryClient = useQueryClient();
   const [holder, setHolder] = useState("");
   const [iban, setIban] = useState("");
@@ -38,7 +41,7 @@ export function CoachBankTransferDetailsCard() {
         bic: bic.trim() || null,
       }),
     onSuccess: (out) => {
-      toast.success("Bank details saved.");
+      toast.success(m.toastSaved);
       void queryClient.setQueryData(["mentor", "payout-bank-details"], out);
       setIban("");
       setBic("");
@@ -51,83 +54,77 @@ export function CoachBankTransferDetailsCard() {
   return (
     <Card className="border-border/60">
       <CardHeader>
-        <CardTitle className="font-serif text-2xl">Your bank account — no Mollie required</CardTitle>
-        <CardDescription>
-          If you do not want a Mollie account, use this form: we store your IBAN and account holder so the platform can
-          pay your share by bank transfer. Mollie Connect below is only for pulling money from your in-app wallet
-          automatically.
-        </CardDescription>
+        <CardTitle className="font-serif text-2xl">{m.title}</CardTitle>
+        <CardDescription>{m.description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {detailsQ.isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <p className="text-sm text-muted-foreground">{m.loading}</p>
         ) : existing?.has_bank_details ? (
           <div className="rounded-lg border border-border/60 bg-muted/30 p-4 text-sm space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-muted-foreground">Status</span>
+              <span className="text-muted-foreground">{m.status}</span>
               <Badge variant={marketplaceStatusTone(existing.status)}>
                 {titleizeMarketplaceStatus(existing.status)}
               </Badge>
             </div>
             <p>
-              <span className="text-muted-foreground">Account holder</span>
+              <span className="text-muted-foreground">{m.accountHolder}</span>
               <br />
               <span className="font-medium">{existing.account_holder_name ?? "—"}</span>
             </p>
             <p>
-              <span className="text-muted-foreground">IBAN</span>
+              <span className="text-muted-foreground">{m.iban}</span>
               <br />
               <span className="font-mono">{existing.iban_masked ?? "—"}</span>
             </p>
             {existing.bic_masked ? (
               <p>
-                <span className="text-muted-foreground">BIC / SWIFT</span>
+                <span className="text-muted-foreground">{m.bic}</span>
                 <br />
                 <span className="font-mono">{existing.bic_masked}</span>
               </p>
             ) : null}
             {existing.updated_at ? (
               <p className="text-xs text-muted-foreground">
-                Last updated {new Date(existing.updated_at).toLocaleString()}
+                {m.lastUpdated.replace("{date}", new Date(existing.updated_at).toLocaleString())}
               </p>
             ) : null}
-            <p className="text-xs text-muted-foreground">
-              For security, full IBAN is not shown after saving. Enter details again to replace them.
-            </p>
+            <p className="text-xs text-muted-foreground">{m.securityNote}</p>
           </div>
         ) : null}
 
         <div className="space-y-3 max-w-md">
           <div className="space-y-1">
-            <Label htmlFor="bt-holder">Account holder (as on the bank account)</Label>
+            <Label htmlFor="bt-holder">{m.holderLabel}</Label>
             <Input
               id="bt-holder"
               value={holder}
               onChange={(e) => setHolder(e.target.value)}
               autoComplete="name"
-              placeholder="e.g. Jane Coach"
+              placeholder={m.holderPlaceholder}
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="bt-iban">IBAN</Label>
+            <Label htmlFor="bt-iban">{m.iban}</Label>
             <Input
               id="bt-iban"
               value={iban}
               onChange={(e) => setIban(e.target.value)}
               autoComplete="off"
               spellCheck={false}
-              placeholder={existing?.has_bank_details ? "Enter new IBAN to update" : "e.g. NL00 BANK 0123 4567 89"}
+              placeholder={existing?.has_bank_details ? m.ibanUpdatePlaceholder : m.ibanPlaceholder}
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="bt-bic">BIC / SWIFT (optional)</Label>
+            <Label htmlFor="bt-bic">{m.bicLabel}</Label>
             <Input
               id="bt-bic"
               value={bic}
               onChange={(e) => setBic(e.target.value)}
               autoComplete="off"
               spellCheck={false}
-              placeholder="8 or 11 characters if required by your bank"
+              placeholder={m.bicPlaceholder}
             />
           </div>
           <Button
@@ -135,7 +132,7 @@ export function CoachBankTransferDetailsCard() {
             disabled={saveMut.isPending || !holder.trim() || !iban.trim()}
             onClick={() => saveMut.mutate()}
           >
-            {saveMut.isPending ? "Saving…" : existing?.has_bank_details ? "Update bank details" : "Save bank details"}
+            {saveMut.isPending ? m.saving : existing?.has_bank_details ? m.update : m.save}
           </Button>
         </div>
       </CardContent>

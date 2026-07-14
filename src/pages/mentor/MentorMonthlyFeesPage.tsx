@@ -8,9 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useLanguage } from "@/i18n/LanguageContext";
 import { toast } from "sonner";
 
 export default function MentorMonthlyFeesPage() {
+  const { t } = useLanguage();
+  const m = t.app.mentorMonthlyFees;
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["mentor", "monthly-invoices"],
@@ -42,18 +45,18 @@ export default function MentorMonthlyFeesPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (isLoading) return <p className="text-muted-foreground">Loading…</p>;
+  if (isLoading) return <p className="text-muted-foreground">{m.loading}</p>;
   const rows = data ?? [];
 
   return (
     <Card className="border-border/60 glass-card">
       <CardHeader className="space-y-4">
-        <CardTitle className="font-serif text-2xl">Monthly Platform Fees</CardTitle>
+        <CardTitle className="font-serif text-2xl">{m.title}</CardTitle>
         {currenciesQuery.data?.length ? (
           <div className="max-w-xs">
             <CheckoutCurrencySelect
               id="monthly-fee-ccy"
-              label="Checkout currency"
+              label={m.checkoutCurrency}
               value={checkoutCurrency}
               onChange={setCheckoutCurrency}
               currencies={currenciesQuery.data}
@@ -64,16 +67,16 @@ export default function MentorMonthlyFeesPage() {
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? (
-          <p className="text-muted-foreground">No monthly fee invoices yet.</p>
+          <p className="text-muted-foreground">{m.empty}</p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Month</TableHead>
-                <TableHead>Gross revenue</TableHead>
-                <TableHead>Fee (27%)</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Action</TableHead>
+                <TableHead>{m.colMonth}</TableHead>
+                <TableHead>{m.colGross}</TableHead>
+                <TableHead>{m.colFee}</TableHead>
+                <TableHead>{m.colStatus}</TableHead>
+                <TableHead className="text-right">{m.colAction}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -93,7 +96,7 @@ export default function MentorMonthlyFeesPage() {
                             variant="outline"
                             onClick={() => window.open(r.mollie_checkout_url ?? "", "_blank")}
                           >
-                            Open current link
+                            {m.openLink}
                           </Button>
                         ) : null}
                         <Button
@@ -103,7 +106,7 @@ export default function MentorMonthlyFeesPage() {
                           disabled={prepareCheckoutMut.isPending}
                           onClick={() => prepareCheckoutMut.mutate(r.id)}
                         >
-                          Prepare checkout
+                          {prepareCheckoutMut.isPending ? m.preparing : m.prepareCheckout}
                         </Button>
                       </div>
                     ) : (

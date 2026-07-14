@@ -191,6 +191,9 @@ def get_mentor(mentor_id: str, db: DbSession, lang: RequestLang) -> MentorDetail
     detail = {**base_detail.model_dump(), **out.model_dump()}
     detail["bio"] = resolve_i18n_text(getattr(mentor, "bio_i18n", None), mentor.bio, lang)
     detail["chat_price_per_minute"] = effective_chat_price_per_minute_eur(mentor)
+    # Never expose company / KVK on the public coach profile.
+    detail["current_company"] = None
+    detail["kvk_number"] = None
     return MentorDetailOut.model_validate(detail)
 
 

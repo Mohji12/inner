@@ -1,9 +1,10 @@
 import type { AppCopy } from "./appBase";
 import type { Language } from "./translations";
 import type { DeepPartial } from "./mergeDeep";
+import { coachDashboardOverrides } from "./coachDashboardOverrides";
+import { mergeDeep } from "./mergeDeep";
 
-/** Per-locale overrides merged onto `appEn`. */
-export const appOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
+const baseOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
   fr: {
     header: {
       backHome: "Retour à l'accueil",
@@ -2245,4 +2246,23 @@ export const appOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
     },
     common: { save: "Сохранить", cancel: "Отмена", loading: "Загрузка…" },
   },
+};
+
+function withCoachDashboard(
+  locale: Language,
+  base: DeepPartial<AppCopy>,
+): DeepPartial<AppCopy> {
+  const extra = coachDashboardOverrides[locale];
+  if (!extra) return base;
+  return mergeDeep(base as AppCopy, extra) as DeepPartial<AppCopy>;
+}
+
+/** Per-locale overrides merged onto `appEn`. */
+export const appOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
+  fr: withCoachDashboard("fr", baseOverrides.fr!),
+  nl: withCoachDashboard("nl", baseOverrides.nl!),
+  es: withCoachDashboard("es", baseOverrides.es!),
+  ar: withCoachDashboard("ar", baseOverrides.ar!),
+  zh: withCoachDashboard("zh", baseOverrides.zh!),
+  ru: withCoachDashboard("ru", baseOverrides.ru!),
 };

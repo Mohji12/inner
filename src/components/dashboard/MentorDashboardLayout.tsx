@@ -60,10 +60,10 @@ export function MentorDashboardLayout() {
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Dashboard">
+                  <SidebarMenuButton asChild tooltip={d.dashboard}>
                     <NavLink to="/mentor/dashboard" className={dashboardNavLinkClass}>
                       <LayoutDashboard />
-                      <span>Dashboard</span>
+                      <span>{d.dashboard}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -85,10 +85,10 @@ export function MentorDashboardLayout() {
                 </SidebarMenuItem>
                 {activeChat?.id ? (
                   <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip="Active chat">
+                    <SidebarMenuButton asChild tooltip={d.activeChat}>
                       <NavLink to={`/mentor/chat/${activeChat.id}`} className={dashboardNavLinkClass}>
                         <MessageSquare />
-                        <span>Active chat</span>
+                        <span>{d.activeChat}</span>
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

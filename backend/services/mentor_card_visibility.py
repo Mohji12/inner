@@ -8,7 +8,6 @@ from schemas.mentor import MentorPublicOut
 
 DEFAULT_CARD_VISIBILITY: dict[str, bool] = {
     "headline": True,
-    "company": True,
     "expertise_tags": True,
     "years_experience": True,
     "rating": True,
@@ -37,10 +36,10 @@ def apply_card_visibility_to_public(
     vis = normalize_card_visibility(visibility)
     updates: dict[str, Any] = {"public_card_visibility": vis}
 
+    # Company name and KVK are never exposed on public cards/API.
+    updates["current_company"] = None
     if not vis["headline"]:
         updates["headline"] = None
-    if not vis["company"]:
-        updates["current_company"] = None
     if not vis["expertise_tags"]:
         updates["expertise_areas"] = None
         updates["skills"] = None

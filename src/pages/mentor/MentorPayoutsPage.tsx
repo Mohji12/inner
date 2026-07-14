@@ -11,9 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useLanguage } from "@/i18n/LanguageContext";
 import { marketplaceStatusTone, titleizeMarketplaceStatus } from "@/lib/marketplaceStatus";
 
 export default function MentorPayoutsPage() {
+  const { t } = useLanguage();
+  const m = t.app.mentorPayouts;
+  const common = t.app.common;
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [amount, setAmount] = useState("10.00");
@@ -22,16 +26,16 @@ export default function MentorPayoutsPage() {
     const c = searchParams.get("connect");
     if (!c) return;
     if (c === "success") {
-      toast.success('Mollie account linked. Use "Refresh status" after KYC if payouts stay disabled.');
+      toast.success(m.toastConnectSuccess);
     } else if (c === "failed") {
       const reason = searchParams.get("reason");
-      toast.error(reason ? `Connect failed: ${reason}` : "Mollie Connect did not complete.");
+      toast.error(reason ? m.toastConnectFailedReason.replace("{reason}", reason) : m.toastConnectFailed);
     }
     const next = new URLSearchParams(searchParams);
     next.delete("connect");
     next.delete("reason");
     setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, m]);
 
   const walletQ = useQuery({
     queryKey: ["mentor", "marketplace", "wallet"],
@@ -51,7 +55,7 @@ export default function MentorPayoutsPage() {
         idempotency_key: `mentor-payout-${Date.now()}`,
       }),
     onSuccess: () => {
-      toast.success("Payout request submitted");
+      toast.success(m.toastRequested);
       void queryClient.invalidateQueries({ queryKey: ["mentor", "marketplace", "wallet"] });
       void queryClient.invalidateQueries({ queryKey: ["mentor", "marketplace", "payout-requests"] });
       setAmount("10.00");
@@ -62,7 +66,7 @@ export default function MentorPayoutsPage() {
   const onRequest = () => {
     const v = Number(amount);
     if (!Number.isFinite(v) || v <= 0) {
-      toast.error("Enter a valid amount");
+      toast.error(m.toastInvalidAmount);
       return;
     }
     requestMut.mutate(v);
@@ -74,23 +78,21 @@ export default function MentorPayoutsPage() {
       <CoachConnectStatusCard />
       <Card className="border-border/60">
         <CardHeader>
-          <CardTitle className="font-serif text-2xl">Payouts</CardTitle>
+          <CardTitle className="font-serif text-2xl">{m.title}</CardTitle>
           <CardDescription>
-            <strong className="text-foreground">No Mollie account?</strong> You can still get paid: add your bank
-            details in the first section so the platform can transfer your share manually. Mollie below is only needed
-            if you want automated withdrawals from your in-app wallet to your own bank via Mollie Connect.
+            <strong className="text-foreground">{m.descriptionLead}</strong> {m.description}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 md:grid-cols-2">
             <div className="rounded-lg border border-border/60 p-3 text-sm">
-              <p className="text-muted-foreground">Pending balance</p>
+              <p className="text-muted-foreground">{m.pendingBalance}</p>
               <p className="text-lg font-semibold">
                 {walletQ.data?.currency ?? "EUR"} {walletQ.data?.pending_balance ?? "0.00"}
               </p>
             </div>
             <div className="rounded-lg border border-border/60 p-3 text-sm">
-              <p className="text-muted-foreground">Withdrawable balance</p>
+              <p className="text-muted-foreground">{m.withdrawableBalance}</p>
               <p className="text-lg font-semibold">
                 {walletQ.data?.currency ?? "EUR"} {walletQ.data?.withdrawable_balance ?? "0.00"}
               </p>
@@ -98,7 +100,7 @@ export default function MentorPayoutsPage() {
           </div>
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Withdrawal amount (EUR)</p>
+              <p className="text-xs text-muted-foreground">{m.withdrawalAmount}</p>
               <Input
                 type="number"
                 min="0.01"
@@ -109,7 +111,7 @@ export default function MentorPayoutsPage() {
               />
             </div>
             <Button type="button" onClick={onRequest} disabled={requestMut.isPending}>
-              {requestMut.isPending ? "Requesting..." : "Request payout"}
+              {requestMut.isPending ? m.requesting : m.requestPayout}
             </Button>
           </div>
         </CardContent>
@@ -117,22 +119,22 @@ export default function MentorPayoutsPage() {
 
       <Card className="border-border/60">
         <CardHeader>
-          <CardTitle className="font-serif text-2xl">Payout history</CardTitle>
+          <CardTitle className="font-serif text-2xl">{m.historyTitle}</CardTitle>
         </CardHeader>
         <CardContent>
           {payoutsQ.isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
+            <p className="text-sm text-muted-foreground">{common.loading}</p>
           ) : (payoutsQ.data ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">No payout requests yet.</p>
+            <p className="text-sm text-muted-foreground">{m.emptyHistory}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Requested</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Processed</TableHead>
-                  <TableHead>Failure</TableHead>
+                  <TableHead>{m.colRequested}</TableHead>
+                  <TableHead>{m.colAmount}</TableHead>
+                  <TableHead>{m.colStatus}</TableHead>
+                  <TableHead>{m.colProcessed}</TableHead>
+                  <TableHead>{m.colFailure}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

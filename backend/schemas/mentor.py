@@ -12,7 +12,6 @@ class MentorLogin(BaseModel):
 
 class PublicCardVisibility(BaseModel):
     headline: bool = True
-    company: bool = True
     expertise_tags: bool = True
     years_experience: bool = True
     rating: bool = True

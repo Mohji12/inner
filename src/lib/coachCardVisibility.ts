@@ -1,7 +1,6 @@
 /** Keys coaches can toggle for public browse cards. */
 export type CoachCardVisibilityKey =
   | "headline"
-  | "company"
   | "expertise_tags"
   | "years_experience"
   | "rating"
@@ -13,7 +12,6 @@ export type CoachCardVisibility = Record<CoachCardVisibilityKey, boolean>;
 
 export const DEFAULT_COACH_CARD_VISIBILITY: CoachCardVisibility = {
   headline: true,
-  company: true,
   expertise_tags: true,
   years_experience: true,
   rating: true,

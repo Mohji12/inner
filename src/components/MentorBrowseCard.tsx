@@ -113,10 +113,6 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
             <p className="text-sm font-semibold leading-snug text-primary-foreground/95">{truncate(mentor.headline, 90)}</p>
           ) : null}
 
-          {cardVis.company && mentor.current_company ? (
-            <p className="text-xs text-primary-foreground/85">{truncate(mentor.current_company, 72)}</p>
-          ) : null}
-
           {cardVis.expertise_tags ? (
           <div className="flex flex-wrap gap-2 pt-1">
             {tags.map((tag) => (

@@ -225,10 +225,29 @@ def admin_list_mentors(
             email=m.email,
             phone_number=m.phone_number,
             headline=resolve_i18n_text(getattr(m, "headline_i18n", None), m.headline, lang),
+            bio=resolve_i18n_text(getattr(m, "bio_i18n", None), m.bio, lang),
+            current_company=m.current_company,
+            kvk_number=m.kvk_number,
+            languages_spoken=m.languages_spoken,
+            years_of_experience=m.years_of_experience or 0,
+            education=m.education,
+            certifications=m.certifications,
+            expertise_areas=m.expertise_areas,
+            skills=m.skills,
+            tools_technologies=m.tools_technologies,
+            session_modes=m.session_modes,
+            previous_companies=m.previous_companies,
+            profile_image=m.profile_image,
+            country_code=m.country_code,
+            timezone=m.timezone,
+            average_rating=m.average_rating,
+            total_reviews=m.total_reviews or 0,
             status=m.status,
             is_approved=m.is_approved,
             email_verified=m.email_verified,
+            is_verified=m.is_verified,
             created_at=m.created_at,
+            updated_at=m.updated_at,
         )
         for m in rows
     ]
@@ -255,7 +274,36 @@ def admin_update_mentor_approval(
 
     db.commit()
     db.refresh(mentor)
-    return AdminMentorRow.model_validate(mentor)
+    return AdminMentorRow(
+        id=mentor.id,
+        full_name=mentor.full_name,
+        email=mentor.email,
+        phone_number=mentor.phone_number,
+        headline=mentor.headline,
+        bio=mentor.bio,
+        current_company=mentor.current_company,
+        kvk_number=mentor.kvk_number,
+        languages_spoken=mentor.languages_spoken,
+        years_of_experience=mentor.years_of_experience or 0,
+        education=mentor.education,
+        certifications=mentor.certifications,
+        expertise_areas=mentor.expertise_areas,
+        skills=mentor.skills,
+        tools_technologies=mentor.tools_technologies,
+        session_modes=mentor.session_modes,
+        previous_companies=mentor.previous_companies,
+        profile_image=mentor.profile_image,
+        country_code=mentor.country_code,
+        timezone=mentor.timezone,
+        average_rating=mentor.average_rating,
+        total_reviews=mentor.total_reviews or 0,
+        status=mentor.status,
+        is_approved=mentor.is_approved,
+        email_verified=mentor.email_verified,
+        is_verified=mentor.is_verified,
+        created_at=mentor.created_at,
+        updated_at=mentor.updated_at,
+    )
 
 
 @router.get("/coach-applications", response_model=AdminCoachApplicationList)

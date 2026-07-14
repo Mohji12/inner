@@ -38,10 +38,29 @@ class AdminMentorRow(BaseModel):
     email: str
     phone_number: str
     headline: str | None
+    bio: str | None = None
+    current_company: str | None = None
+    kvk_number: str | None = None
+    languages_spoken: list | None = None
+    years_of_experience: int = 0
+    education: list | None = None
+    certifications: list | None = None
+    expertise_areas: list | None = None
+    skills: list | None = None
+    tools_technologies: list | None = None
+    session_modes: list | None = None
+    previous_companies: list | None = None
+    profile_image: str | None = None
+    country_code: str | None = None
+    timezone: str | None = None
+    average_rating: Decimal | None = None
+    total_reviews: int = 0
     status: str
     is_approved: bool
     email_verified: bool
+    is_verified: bool = False
     created_at: datetime
+    updated_at: datetime | None = None
 
 
 class AdminMentorList(BaseModel):
