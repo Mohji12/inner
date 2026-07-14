@@ -41,10 +41,10 @@ const PasswordStrengthMeter = ({ password }: PasswordStrengthMeterProps) => {
     <div className="space-y-2">
       <div className="flex justify-between text-xs">
         <span className="text-muted-foreground">{copy.title}</span>
-        <span
+                        <span
           className={cn(
             "font-medium",
-            score <= 2 ? "text-destructive" : score <= 4 ? "text-orange-500" : "text-green-500",
+            score <= 2 ? "text-destructive" : score <= 4 ? "text-amber-800" : "text-emerald-900",
           )}
         >
           {getLabel(score)}
@@ -52,11 +52,21 @@ const PasswordStrengthMeter = ({ password }: PasswordStrengthMeterProps) => {
       </div>
       <Progress value={percentage} className="h-1" indicatorClassName={getColorClass(score)} />
       <ul className="grid list-inside list-disc grid-cols-2 gap-x-2 text-[10px] text-muted-foreground">
-        <li className={password.length >= 8 ? "text-green-500" : ""}>{copy.minChars}</li>
-        <li className={/[A-Z]/.test(password) ? "text-green-500" : ""}>{copy.uppercase}</li>
-        <li className={/[a-z]/.test(password) ? "text-green-500" : ""}>{copy.lowercase}</li>
-        <li className={/[0-9]/.test(password) ? "text-green-500" : ""}>{copy.digit}</li>
-        <li className={/[!@#$%^&*(),.?":{}|<>]/.test(password) ? "text-green-500" : ""}>{copy.special}</li>
+        <li className={password.length >= 8 ? "font-medium text-emerald-900" : "text-foreground/55"}>
+          {copy.minChars}
+        </li>
+        <li className={/[A-Z]/.test(password) ? "font-medium text-emerald-900" : "text-foreground/55"}>
+          {copy.uppercase}
+        </li>
+        <li className={/[a-z]/.test(password) ? "font-medium text-emerald-900" : "text-foreground/55"}>
+          {copy.lowercase}
+        </li>
+        <li className={/[0-9]/.test(password) ? "font-medium text-emerald-900" : "text-foreground/55"}>
+          {copy.digit}
+        </li>
+        <li className={/[!@#$%^&*(),.?":{}|<>]/.test(password) ? "font-medium text-emerald-900" : "text-foreground/55"}>
+          {copy.special}
+        </li>
       </ul>
     </div>
   );

@@ -625,14 +625,16 @@ const MentorRegisterPage = () => {
 
               {error ? <p className="text-sm font-medium text-destructive">{error}</p> : null}
 
-              <div className="flex flex-wrap justify-end gap-3">
-                <Button type="button" variant="outline" onClick={() => navigate("/mentors")}>
-                  {m.viewMentors}
-                </Button>
-                <Button type="submit" className="gradient-cta text-white">
-                  {m.submit}
-                </Button>
-              </div>
+              {tabIndex === TAB_ORDER.length - 1 ? (
+                <div className="flex flex-wrap justify-end gap-3">
+                  <Button type="button" variant="outline" onClick={() => navigate("/mentors")}>
+                    {m.viewMentors}
+                  </Button>
+                  <Button type="submit" className="gradient-cta text-white">
+                    {m.submit}
+                  </Button>
+                </div>
+              ) : null}
               <p className="text-sm text-muted-foreground">
                 {m.already}{" "}
                 <Link to="/login?role=mentor" className="text-accent underline-offset-4 hover:underline">
