@@ -14,6 +14,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
+import PhoneWithDialCode from "@/components/PhoneWithDialCode";
+import { composeE164Phone, DEFAULT_DIAL_ISO, dialCodeForIso } from "@/lib/countryDialCodes";
 
 const LANGUAGE_OPTIONS = Object.keys(languageLabels) as Language[];
 
@@ -30,6 +32,7 @@ const UserRegisterPage = () => {
     name: "",
     email: "",
     phone: "",
+    phoneDialIso: DEFAULT_DIAL_ISO,
     password: "",
     city: "",
     goals: "",
@@ -68,13 +71,18 @@ const UserRegisterPage = () => {
       setError(a.errFields);
       return;
     }
+    const phoneE164 = composeE164Phone(dialCodeForIso(formData.phoneDialIso), formData.phone);
+    if (!phoneE164 || phoneE164.replace(/\D/g, "").length < 8) {
+      setError(a.errFields);
+      return;
+    }
 
     try {
       const email = formData.email.trim();
       const reg = await registerUser({
         full_name: formData.name.trim(),
         email,
-        phone_number: formData.phone.trim(),
+        phone_number: phoneE164,
         password: formData.password,
         preferred_language: formData.preferredLanguage.trim() || language,
       });
@@ -201,10 +209,12 @@ const UserRegisterPage = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">{a.phone}</Label>
-                  <Input
+                  <PhoneWithDialCode
                     id="phone"
-                    value={formData.phone}
-                    onChange={(event) => setFormData((prev) => ({ ...prev, phone: event.target.value }))}
+                    dialIso={formData.phoneDialIso}
+                    localNumber={formData.phone}
+                    onDialIsoChange={(phoneDialIso) => setFormData((prev) => ({ ...prev, phoneDialIso }))}
+                    onLocalNumberChange={(phone) => setFormData((prev) => ({ ...prev, phone }))}
                   />
                 </div>
                 <div className="space-y-2">

@@ -29,19 +29,19 @@ export default function AdminBookingsPage() {
       <CardHeader>
         <CardTitle className="font-serif text-2xl">{d.bookings}</CardTitle>
         <CardDescription>
-          {data.total} total · showing {data.items.length}
+          {d.showingCount.replace("{total}", String(data.total)).replace("{count}", String(data.items.length))}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Time</TableHead>
-              <TableHead>User</TableHead>
-              <TableHead>Coach</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Payment</TableHead>
+              <TableHead>{d.date}</TableHead>
+              <TableHead>{d.time}</TableHead>
+              <TableHead>{d.user}</TableHead>
+              <TableHead>{d.coach}</TableHead>
+              <TableHead>{d.status}</TableHead>
+              <TableHead>{d.payment}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

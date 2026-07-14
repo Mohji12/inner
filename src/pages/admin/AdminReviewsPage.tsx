@@ -25,18 +25,18 @@ export default function AdminReviewsPage() {
       <CardHeader>
         <CardTitle className="font-serif text-2xl">{d.reviews}</CardTitle>
         <CardDescription>
-          {data.total} total · showing {data.items.length}
+          {d.showingCount.replace("{total}", String(data.total)).replace("{count}", String(data.items.length))}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>When</TableHead>
-              <TableHead>Rating</TableHead>
-              <TableHead>User</TableHead>
-              <TableHead>Coach</TableHead>
-              <TableHead>Text</TableHead>
+              <TableHead>{d.when}</TableHead>
+              <TableHead>{d.rating}</TableHead>
+              <TableHead>{d.user}</TableHead>
+              <TableHead>{d.coach}</TableHead>
+              <TableHead>{d.text}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

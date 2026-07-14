@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import AppPageHeader from "@/components/AppPageHeader";
 import { useAuth } from "@/auth/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
@@ -19,6 +19,8 @@ import { uploadRegistrationMentorAvatar } from "@/api/uploads";
 import { commaSeparatedToStringList } from "@/lib/dbJsonFields";
 import CoachCardVisibilityPicker from "@/components/CoachCardVisibilityPicker";
 import { DEFAULT_COACH_CARD_VISIBILITY, type CoachCardVisibility } from "@/lib/coachCardVisibility";
+import { composeE164Phone, DEFAULT_DIAL_ISO, dialCodeForIso } from "@/lib/countryDialCodes";
+import PhoneWithDialCode from "@/components/PhoneWithDialCode";
 import { COACH_AGREEMENT_TEXT, COACH_AGREEMENT_VERSION, readCoachAgreementAcceptance } from "@/lib/coachAgreement";
 import SpokenLanguageCheckboxGroup from "@/components/SpokenLanguageCheckboxGroup";
 
@@ -26,8 +28,13 @@ const TAB_ORDER = ["account", "profile", "background"] as const;
 type TabId = (typeof TAB_ORDER)[number];
 type Phase = "form" | "verify";
 
+function isTabId(value: string | null): value is TabId {
+  return value === "account" || value === "profile" || value === "background";
+}
+
 const MentorRegisterPage = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { loginMentorSession } = useAuth();
   const { t, htmlLang } = useLanguage();
   const m = t.app.mentorRegister;
@@ -35,12 +42,79 @@ const MentorRegisterPage = () => {
   const [phase, setPhase] = useState<Phase>("form");
   const [otp, setOtp] = useState("");
   const [verifyCtx, setVerifyCtx] = useState<{ email: string; password: string; mentorId: string } | null>(null);
-  const [tab, setTab] = useState<TabId>("account");
+  const initialTab = searchParams.get("tab");
+  const [tab, setTab] = useState<TabId>(isTabId(initialTab) ? initialTab : "account");
   const [agreementAccepted, setAgreementAccepted] = useState(false);
   const [agreementAcceptedBeforeVerify, setAgreementAcceptedBeforeVerify] = useState(false);
   const pendingAvatarFileRef = useRef<File | null>(null);
   const [localAvatarPreview, setLocalAvatarPreview] = useState<string | null>(null);
   const [cardVisibility, setCardVisibility] = useState<CoachCardVisibility>(DEFAULT_COACH_CARD_VISIBILITY);
+  const [formData, setFormData] = useState(() => {
+    const empty = {
+      name: "",
+      email: "",
+      phone: "",
+      phoneDialIso: DEFAULT_DIAL_ISO,
+      password: "",
+      headline: "",
+      expertiseAreasCsv: "",
+      bio: "",
+      profileImage: "",
+      spokenLanguages: [] as string[],
+      companyName: "",
+      kvkNumber: "",
+      educationCsv: "",
+      certificationsCsv: "",
+      skillsCsv: "",
+      toolsCsv: "",
+      sessionModesCsv: "",
+      yearsExperience: "3",
+    };
+    try {
+      const raw = sessionStorage.getItem("ipd_mentor_register_draft");
+      if (!raw) return empty;
+      const parsed = JSON.parse(raw) as Partial<typeof empty> & { cardVisibility?: CoachCardVisibility };
+      return {
+        ...empty,
+        ...parsed,
+        password: "",
+        spokenLanguages: Array.isArray(parsed.spokenLanguages) ? parsed.spokenLanguages : [],
+      };
+    } catch {
+      return empty;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("ipd_mentor_register_draft");
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { cardVisibility?: CoachCardVisibility; agreementAccepted?: boolean };
+      if (parsed.cardVisibility) setCardVisibility({ ...DEFAULT_COACH_CARD_VISIBILITY, ...parsed.cardVisibility });
+      if (parsed.agreementAccepted) {
+        setAgreementAccepted(true);
+        setAgreementAcceptedBeforeVerify(true);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    const fromUrl = searchParams.get("tab");
+    if (isTabId(fromUrl) && fromUrl !== tab) {
+      setTab(fromUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync only when URL tab changes
+  }, [searchParams]);
+
+  const onTabChange = (value: string) => {
+    if (!isTabId(value)) return;
+    setTab(value);
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", value);
+    setSearchParams(next, { replace: true });
+  };
 
   useEffect(() => {
     return () => {
@@ -61,32 +135,20 @@ const MentorRegisterPage = () => {
     }));
   }, []);
 
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    password: "",
-    headline: "",
-    expertiseAreasCsv: "",
-    bio: "",
-    profileImage: "",
-    spokenLanguages: [] as string[],
-    companyName: "",
-    kvkNumber: "",
-    educationCsv: "",
-    certificationsCsv: "",
-    skillsCsv: "",
-    toolsCsv: "",
-    sessionModesCsv: "",
-    yearsExperience: "3",
-  });
+  useEffect(() => {
+    const { password: _password, ...rest } = formData;
+    sessionStorage.setItem(
+      "ipd_mentor_register_draft",
+      JSON.stringify({ ...rest, cardVisibility, agreementAccepted }),
+    );
+  }, [formData, cardVisibility, agreementAccepted]);
 
   const tabIndex = TAB_ORDER.indexOf(tab);
   const goNext = () => {
-    if (tabIndex < TAB_ORDER.length - 1) setTab(TAB_ORDER[tabIndex + 1]);
+    if (tabIndex < TAB_ORDER.length - 1) onTabChange(TAB_ORDER[tabIndex + 1]);
   };
   const goPrev = () => {
-    if (tabIndex > 0) setTab(TAB_ORDER[tabIndex - 1]);
+    if (tabIndex > 0) onTabChange(TAB_ORDER[tabIndex - 1]);
   };
 
   const stepLabel = m.stepOf.replace("{current}", String(tabIndex + 1)).replace("{total}", String(TAB_ORDER.length));
@@ -101,6 +163,7 @@ const MentorRegisterPage = () => {
       params.set("message", finalMessage);
     }
     const query = params.toString();
+    sessionStorage.removeItem("ipd_mentor_register_draft");
     navigate(`/mentor/register/thank-you${query ? `?${query}` : ""}`);
   };
 
@@ -123,6 +186,11 @@ const MentorRegisterPage = () => {
       setError(m.errPassword);
       return;
     }
+    const phoneE164 = composeE164Phone(dialCodeForIso(formData.phoneDialIso), formData.phone);
+    if (!phoneE164 || phoneE164.replace(/\D/g, "").length < 8) {
+      setError(m.errAccount);
+      return;
+    }
     if (!formData.headline.trim() || !formData.bio.trim()) {
       setError(m.errHeadlineBio);
       return;
@@ -139,8 +207,9 @@ const MentorRegisterPage = () => {
       const reg = await registerMentor({
         full_name: formData.name.trim(),
         email,
-        phone_number: formData.phone.trim(),
+        phone_number: phoneE164,
         password: formData.password,
+        country_code: formData.phoneDialIso,
         headline: formData.headline.trim(),
         bio: formData.bio.trim() || null,
         profile_image: pendingFile ? null : urlOnly ? urlOnly : null,
@@ -291,7 +360,10 @@ const MentorRegisterPage = () => {
                     />
                     <span>
                       {m.verifyAgreementBeforeLink}
-                      <Link to="/coach-agreement" className="text-accent underline underline-offset-4">
+                      <Link
+                        to="/coach-agreement?from=register&tab=background&returnTo=%2Fmentor%2Fregister"
+                        className="text-accent underline underline-offset-4"
+                      >
                         {m.coachAgreementLink}
                       </Link>
                       {m.verifyAgreementAfterLink}
@@ -322,7 +394,7 @@ const MentorRegisterPage = () => {
               </div>
             ) : (
             <form lang={htmlLang} onSubmit={(e) => void onSubmit(e)} className="space-y-6">
-              <Tabs value={tab} onValueChange={(v) => setTab(v as TabId)} className="w-full">
+              <Tabs value={tab} onValueChange={onTabChange} className="w-full">
                 <TabsList className="grid h-auto w-full grid-cols-2 gap-1 p-1 sm:grid-cols-3">
                   <TabsTrigger value="account" className="text-xs sm:text-sm">
                     {m.tabAccount}
@@ -361,11 +433,12 @@ const MentorRegisterPage = () => {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="phone">{m.phone}</Label>
-                      <Input
+                      <PhoneWithDialCode
                         id="phone"
-                        autoComplete="tel"
-                        value={formData.phone}
-                        onChange={(event) => setFormData((prev) => ({ ...prev, phone: event.target.value }))}
+                        dialIso={formData.phoneDialIso}
+                        localNumber={formData.phone}
+                        onDialIsoChange={(phoneDialIso) => setFormData((prev) => ({ ...prev, phoneDialIso }))}
+                        onLocalNumberChange={(phone) => setFormData((prev) => ({ ...prev, phone }))}
                       />
                     </div>
                     <div className="space-y-2 md:col-span-2">
@@ -516,7 +589,10 @@ const MentorRegisterPage = () => {
                       />
                       <span>
                         {m.agreementCheckboxBeforeLink}
-                        <Link to="/coach-agreement" className="text-accent underline underline-offset-4">
+                        <Link
+                          to="/coach-agreement?from=register&tab=background&returnTo=%2Fmentor%2Fregister"
+                          className="text-accent underline underline-offset-4"
+                        >
                           {m.coachAgreementLink}
                         </Link>
                         {m.agreementCheckboxAfterLink}
@@ -627,9 +703,6 @@ const MentorRegisterPage = () => {
 
               {tabIndex === TAB_ORDER.length - 1 ? (
                 <div className="flex flex-wrap justify-end gap-3">
-                  <Button type="button" variant="outline" onClick={() => navigate("/mentors")}>
-                    {m.viewMentors}
-                  </Button>
                   <Button type="submit" className="gradient-cta text-white">
                     {m.submit}
                   </Button>

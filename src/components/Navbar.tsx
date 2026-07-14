@@ -36,8 +36,10 @@ const Navbar = () => {
   return (
     <nav
       className={cn(
-        "fixed left-0 right-0 top-0 z-50 border-0 bg-transparent text-zinc-950 shadow-none ring-0 outline-none backdrop-blur-none backdrop-saturate-100 transition-all duration-300",
-        scrolled ? "py-3" : "py-4",
+        "fixed left-0 right-0 top-0 z-50 border-0 text-zinc-950 shadow-none ring-0 outline-none transition-all duration-300",
+        scrolled || !onHome
+          ? "border-b border-border/50 bg-background/95 py-3 backdrop-blur-md"
+          : "bg-transparent py-4 backdrop-blur-none backdrop-saturate-100",
       )}
     >
       <div className="container mx-auto flex items-center justify-between px-6">

@@ -40,6 +40,7 @@ import {
   dashboardNavLinkClass,
 } from "@/components/dashboard/dashboardNav";
 import { DashboardBrandHeader } from "@/components/dashboard/DashboardBrandHeader";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export function AdminDashboardLayout() {
   const navigate = useNavigate();
@@ -112,18 +113,18 @@ export function AdminDashboardLayout() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="All invoices">
+                  <SidebarMenuButton asChild tooltip={d.allInvoices}>
                     <NavLink to="/admin/invoices" className={dashboardNavLinkClass}>
                       <FileText />
-                      <span>All invoices</span>
+                      <span>{d.allInvoices}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="All transactions">
+                  <SidebarMenuButton asChild tooltip={d.allTransactions}>
                     <NavLink to="/admin/transactions" className={dashboardNavLinkClass}>
                       <Receipt />
-                      <span>Transactions</span>
+                      <span>{d.allTransactions}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -201,6 +202,9 @@ export function AdminDashboardLayout() {
           <SidebarTrigger className="transition-transform duration-200 hover:scale-105 active:scale-95" />
           <Separator orientation="vertical" className="h-6" />
           <span className="text-sm text-muted-foreground">{d.hub}</span>
+          <div className="ml-auto">
+            <LanguageSwitcher compact />
+          </div>
         </header>
         <div className="relative z-10 flex-1 overflow-auto p-6">
           <DashboardContentArea />

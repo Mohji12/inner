@@ -69,11 +69,11 @@ export default function AdminCoachApplicationsPage() {
       admin_notes: string | null;
     }) => updateAdminCoachApplication(id, { status, admin_notes }),
     onSuccess: (row) => {
-      toast.success("Application updated");
+      toast.success(d.successGeneric);
       setSelected(row);
       queryClient.invalidateQueries({ queryKey: ["admin", "coach-applications"] });
     },
-    onError: (e: Error) => toast.error(e.message || "Update failed"),
+    onError: (e: Error) => toast.error(e.message || d.errorGeneric),
   });
 
   const openDetail = (row: AdminCoachApplicationRow) => {
@@ -99,9 +99,9 @@ export default function AdminCoachApplicationsPage() {
     return (
       <Card className="border-destructive/40">
         <CardContent className="py-8 text-center">
-          <p className="text-destructive">{error instanceof Error ? error.message : "Could not load applications."}</p>
+          <p className="text-destructive">{error instanceof Error ? error.message : d.errorGeneric}</p>
           <Button className="mt-4" variant="outline" onClick={() => void refetch()}>
-            Retry
+            {d.refresh}
           </Button>
         </CardContent>
       </Card>
@@ -112,14 +112,14 @@ export default function AdminCoachApplicationsPage() {
     <>
       <Card className="border-border/60 glass-card">
         <CardHeader>
-          <CardTitle className="font-serif text-2xl">{d.coachApplications}</CardTitle>
+          <CardTitle className="font-serif text-2xl">{d.applicationsTitle}</CardTitle>
           <CardDescription>
-            {data.total} total · showing {data.items.length}
+            {d.showingCount.replace("{total}", String(data.total)).replace("{count}", String(data.items.length))}
           </CardDescription>
           <div className="flex flex-wrap gap-3 pt-2">
             <Input
               className="max-w-xs"
-              placeholder="Search name, email, headline"
+              placeholder={d.searchEmailName}
               value={q}
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => {
@@ -128,10 +128,10 @@ export default function AdminCoachApplicationsPage() {
             />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder={d.filterStatus} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="all">{d.allStatuses}</SelectItem>
                 {STATUS_OPTIONS.map((s) => (
                   <SelectItem key={s} value={s}>
                     {s}
@@ -140,7 +140,7 @@ export default function AdminCoachApplicationsPage() {
               </SelectContent>
             </Select>
             <Button variant="outline" onClick={() => void refetch()}>
-              Search
+              {d.refresh}
             </Button>
           </div>
         </CardHeader>
@@ -148,12 +148,12 @@ export default function AdminCoachApplicationsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Headline</TableHead>
-                <TableHead>Experience</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Submitted</TableHead>
+                <TableHead>{d.name}</TableHead>
+                <TableHead>{d.email}</TableHead>
+                <TableHead>{d.headline}</TableHead>
+                <TableHead>{d.experience}</TableHead>
+                <TableHead>{d.status}</TableHead>
+                <TableHead>{d.created}</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -161,7 +161,7 @@ export default function AdminCoachApplicationsPage() {
               {data.items.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center text-muted-foreground">
-                    No applications yet.
+                    {d.applicationsEmpty}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -179,7 +179,7 @@ export default function AdminCoachApplicationsPage() {
                     </TableCell>
                     <TableCell>
                       <Button size="sm" variant="secondary" onClick={() => openDetail(row)}>
-                        View
+                        {d.openDetail}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -198,44 +198,44 @@ export default function AdminCoachApplicationsPage() {
       <Dialog open={Boolean(selected)} onOpenChange={(open) => !open && setSelected(null)}>
         <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-serif">{selected?.full_name}</DialogTitle>
+            <DialogTitle className="font-serif">{selected?.full_name ?? d.detailTitle}</DialogTitle>
             <DialogDescription>{selected?.email}</DialogDescription>
           </DialogHeader>
           {selected ? (
             <div className="space-y-4 text-sm">
               <dl className="grid gap-2">
                 <div>
-                  <dt className="text-muted-foreground">Phone</dt>
+                  <dt className="text-muted-foreground">{d.phone}</dt>
                   <dd>{selected.phone_number}</dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">Headline</dt>
+                  <dt className="text-muted-foreground">{d.headline}</dt>
                   <dd>{selected.headline}</dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">Experience</dt>
-                  <dd>{selected.years_of_experience} years</dd>
+                  <dt className="text-muted-foreground">{d.experience}</dt>
+                  <dd>{selected.years_of_experience}</dd>
                 </div>
                 {selected.languages_spoken?.length ? (
                   <div>
-                    <dt className="text-muted-foreground">Languages</dt>
+                    <dt className="text-muted-foreground">{d.languages}</dt>
                     <dd>{selected.languages_spoken.join(", ")}</dd>
                   </div>
                 ) : null}
                 {selected.website_or_social ? (
                   <div>
-                    <dt className="text-muted-foreground">Website / social</dt>
+                    <dt className="text-muted-foreground">{d.website}</dt>
                     <dd className="break-all">{selected.website_or_social}</dd>
                   </div>
                 ) : null}
                 <div>
-                  <dt className="text-muted-foreground">Motivation</dt>
+                  <dt className="text-muted-foreground">{d.motivation}</dt>
                   <dd className="whitespace-pre-wrap leading-relaxed">{selected.motivation}</dd>
                 </div>
               </dl>
 
               <div className="space-y-2">
-                <Label>Status</Label>
+                <Label>{d.status}</Label>
                 <Select value={editStatus} onValueChange={(v) => setEditStatus(v as CoachApplicationStatus)}>
                   <SelectTrigger>
                     <SelectValue />
@@ -251,17 +251,17 @@ export default function AdminCoachApplicationsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Admin notes</Label>
+                <Label>{d.adminNotes}</Label>
                 <Textarea
                   rows={4}
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}
-                  placeholder="Internal notes (not visible to applicant)"
+                  placeholder={d.adminNotes}
                 />
               </div>
 
               <Button onClick={saveDetail} disabled={updateMut.isPending}>
-                {updateMut.isPending ? "Saving…" : "Save changes"}
+                {updateMut.isPending ? d.tableLoading : d.saveChanges}
               </Button>
             </div>
           ) : null}

@@ -5,17 +5,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-
-const TYPE_LABELS: Record<string, string> = {
-  booking_payment: "Booking",
-  chat_purchase: "Chat",
-  onboarding_payment: "Onboarding",
-  wallet_credit: "Wallet credit",
-  wallet_debit: "Wallet debit",
-};
+import { useLanguage } from "@/i18n/LanguageContext";
 
 export default function AdminTransactionsPage() {
+  const { t } = useLanguage();
+  const d = t.app.dashboardAdmin;
   const [limit, setLimit] = useState(100);
+
+  const typeLabels: Record<string, string> = {
+    booking_payment: d.booking,
+    chat_purchase: d.chatInvoices,
+    onboarding_payment: d.type,
+    wallet_credit: d.credit,
+    wallet_debit: d.debit,
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "transactions", limit],
@@ -23,35 +26,35 @@ export default function AdminTransactionsPage() {
   });
 
   if (isLoading || !data) {
-    return <p className="text-muted-foreground">Loading transactions…</p>;
+    return <p className="text-muted-foreground">{d.tableLoading}</p>;
   }
 
   return (
     <Card className="border-border/60 glass-card">
       <CardHeader>
-        <CardTitle className="font-serif text-2xl">All transactions</CardTitle>
+        <CardTitle className="font-serif text-2xl">{d.transactionsTitle}</CardTitle>
         <CardDescription>
-          Booking payments, chat purchases, onboarding fees, and wallet movements · {data.total} total
+          {d.showingCount.replace("{total}", String(data.total)).replace("{count}", String(data.items.length))}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Type</TableHead>
-              <TableHead>Party</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Reference</TableHead>
-              <TableHead>Date</TableHead>
+              <TableHead>{d.type}</TableHead>
+              <TableHead>{d.name}</TableHead>
+              <TableHead>{d.email}</TableHead>
+              <TableHead>{d.amount}</TableHead>
+              <TableHead>{d.status}</TableHead>
+              <TableHead>{d.txnId}</TableHead>
+              <TableHead>{d.date}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {data.items.map((row) => (
               <TableRow key={`${row.transaction_type}-${row.id}`}>
                 <TableCell>
-                  <Badge variant="secondary">{TYPE_LABELS[row.transaction_type] ?? row.transaction_type}</Badge>
+                  <Badge variant="secondary">{typeLabels[row.transaction_type] ?? row.transaction_type}</Badge>
                 </TableCell>
                 <TableCell>{row.party_name}</TableCell>
                 <TableCell className="text-muted-foreground">{row.party_email ?? "—"}</TableCell>
@@ -67,7 +70,7 @@ export default function AdminTransactionsPage() {
         </Table>
         {data.items.length < data.total ? (
           <Button variant="outline" onClick={() => setLimit((l) => l + 100)}>
-            Load more
+            {d.loadMore}
           </Button>
         ) : null}
       </CardContent>

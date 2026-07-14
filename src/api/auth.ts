@@ -28,6 +28,7 @@ export interface MentorRegisterBody {
   email: string;
   phone_number: string;
   password: string;
+  country_code?: string | null;
   headline?: string | null;
   bio?: string | null;
   profile_image?: string | null;

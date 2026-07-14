@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 function fmt(iso: string) {
   try {
@@ -24,6 +25,8 @@ function fmt(iso: string) {
 }
 
 export default function AdminInvoicesPage() {
+  const { t } = useLanguage();
+  const d = t.app.dashboardAdmin;
   const [downloading, setDownloading] = useState<string | null>(null);
 
   const bookingQ = useQuery({ queryKey: ["admin", "booking-invoices"], queryFn: () => fetchAdminBookingInvoices() });
@@ -42,7 +45,7 @@ export default function AdminInvoicesPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Download failed");
+      toast.error(e instanceof Error ? e.message : d.errorGeneric);
     } finally {
       setDownloading(null);
     }
@@ -59,7 +62,7 @@ export default function AdminInvoicesPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Download failed");
+      toast.error(e instanceof Error ? e.message : d.errorGeneric);
     } finally {
       setDownloading(null);
     }
@@ -68,15 +71,15 @@ export default function AdminInvoicesPage() {
   return (
     <Card className="border-border/60 glass-card">
       <CardHeader>
-        <CardTitle className="font-serif text-2xl">All invoices</CardTitle>
-        <CardDescription>Booking, chat, coach monthly, and onboarding invoices</CardDescription>
+        <CardTitle className="font-serif text-2xl">{d.invoicesTitle}</CardTitle>
+        <CardDescription>{d.allInvoices}</CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="booking">
           <TabsList className="mb-4 flex h-auto flex-wrap gap-1">
-            <TabsTrigger value="booking">Booking</TabsTrigger>
-            <TabsTrigger value="chat">Chat</TabsTrigger>
-            <TabsTrigger value="mentor">Coach monthly</TabsTrigger>
+            <TabsTrigger value="booking">{d.booking}</TabsTrigger>
+            <TabsTrigger value="chat">{d.chatInvoices}</TabsTrigger>
+            <TabsTrigger value="mentor">{d.mentorInvoices}</TabsTrigger>
             <TabsTrigger value="onboarding">Onboarding</TabsTrigger>
           </TabsList>
 
@@ -84,11 +87,11 @@ export default function AdminInvoicesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Invoice</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Coach</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Issued</TableHead>
+                  <TableHead>{d.invoicesTitle}</TableHead>
+                  <TableHead>{d.user}</TableHead>
+                  <TableHead>{d.coach}</TableHead>
+                  <TableHead>{d.amount}</TableHead>
+                  <TableHead>{d.created}</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -104,7 +107,7 @@ export default function AdminInvoicesPage() {
                     <TableCell className="text-muted-foreground">{fmt(row.issued_at)}</TableCell>
                     <TableCell>
                       <Button size="sm" variant="outline" disabled={downloading === `book-${row.booking_id}`} onClick={() => void downloadBooking(row.booking_id)}>
-                        <Download className="mr-1 h-4 w-4" /> PDF
+                        <Download className="mr-1 h-4 w-4" /> {d.downloadPdf}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -117,10 +120,10 @@ export default function AdminInvoicesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Invoice</TableHead>
-                  <TableHead>Coach</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Issued</TableHead>
+                  <TableHead>{d.invoicesTitle}</TableHead>
+                  <TableHead>{d.coach}</TableHead>
+                  <TableHead>{d.amount}</TableHead>
+                  <TableHead>{d.created}</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -135,7 +138,7 @@ export default function AdminInvoicesPage() {
                     <TableCell className="text-muted-foreground">{fmt(row.issued_at)}</TableCell>
                     <TableCell>
                       <Button size="sm" variant="outline" disabled={downloading === `chat-${row.session_id}`} onClick={() => void downloadChat(row.session_id)}>
-                        <Download className="mr-1 h-4 w-4" /> PDF
+                        <Download className="mr-1 h-4 w-4" /> {d.downloadPdf}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -148,11 +151,11 @@ export default function AdminInvoicesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Coach</TableHead>
-                  <TableHead>Month</TableHead>
-                  <TableHead>Fee</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
+                  <TableHead>{d.coach}</TableHead>
+                  <TableHead>{d.when}</TableHead>
+                  <TableHead>{d.amount}</TableHead>
+                  <TableHead>{d.status}</TableHead>
+                  <TableHead>{d.created}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -175,11 +178,11 @@ export default function AdminInvoicesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Invoice</TableHead>
-                  <TableHead>Coach</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Issued</TableHead>
+                  <TableHead>{d.invoicesTitle}</TableHead>
+                  <TableHead>{d.coach}</TableHead>
+                  <TableHead>{d.email}</TableHead>
+                  <TableHead>{d.amount}</TableHead>
+                  <TableHead>{d.created}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

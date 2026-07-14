@@ -26,19 +26,19 @@ export default function AdminPaymentsPage() {
       <CardHeader>
         <CardTitle className="font-serif text-2xl">{d.payments}</CardTitle>
         <CardDescription>
-          {data.total} total · showing {data.items.length}
+          {d.showingCount.replace("{total}", String(data.total)).replace("{count}", String(data.items.length))}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>When</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Gateway</TableHead>
-              <TableHead>Booking</TableHead>
-              <TableHead>Txn id</TableHead>
+              <TableHead>{d.when}</TableHead>
+              <TableHead>{d.amount}</TableHead>
+              <TableHead>{d.status}</TableHead>
+              <TableHead>{d.gateway}</TableHead>
+              <TableHead>{d.booking}</TableHead>
+              <TableHead>{d.txnId}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

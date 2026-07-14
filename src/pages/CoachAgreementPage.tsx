@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -19,8 +19,12 @@ import {
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
+/** Coach registration step 3 (Background / agreement checkbox). */
+export const MENTOR_REGISTER_STEP3 = "/mentor/register?tab=background";
+
 export default function CoachAgreementPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { role, mentorAccessToken } = useAuth();
   const { t } = useLanguage();
@@ -38,6 +42,14 @@ export default function CoachAgreementPage() {
   const [signatureName, setSignatureName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [guestAccepted, setGuestAccepted] = useState(() => readCoachAgreementAcceptance());
+
+  const returnToParam = searchParams.get("returnTo");
+  const fromRegister =
+    !isMentor &&
+    (returnToParam === "/mentor/register" ||
+      Boolean(returnToParam?.includes("/mentor/register")) ||
+      searchParams.get("tab") === "background" ||
+      searchParams.get("from") === "register");
 
   useEffect(() => {
     const stored = readCoachAgreementAcceptance();
@@ -61,6 +73,15 @@ export default function CoachAgreementPage() {
 
   const signedAt =
     mentorQuery.data?.agreement_accepted_at ?? guestAccepted?.acceptedAt ?? null;
+
+  const goBack = () => {
+    // Guests / onboarding always return to registration step 3.
+    if (!isMentor || fromRegister) {
+      navigate(MENTOR_REGISTER_STEP3);
+      return;
+    }
+    navigate("/mentor/dashboard");
+  };
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -103,8 +124,8 @@ export default function CoachAgreementPage() {
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Navbar />
       <main className="container mx-auto flex-1 px-6 pb-10 pt-32 md:pt-40 lg:pt-44">
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-          <Button variant="outline" onClick={() => navigate(-1)}>
+        <div className="sticky top-28 z-30 mb-8 flex flex-wrap items-center justify-between gap-4 bg-background/95 py-2 backdrop-blur-sm md:top-32 lg:top-36">
+          <Button type="button" variant="outline" onClick={goBack}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             {p.back}
           </Button>
@@ -114,18 +135,18 @@ export default function CoachAgreementPage() {
           <div className="min-w-0">
             <Card className="border-border/60">
               <CardHeader className="pb-3">
-                <CardTitle className="font-serif text-2xl">Coach Agreement</CardTitle>
+                <CardTitle className="font-serif text-2xl">{p.title}</CardTitle>
                 <CardDescription>{p.footerNote}</CardDescription>
               </CardHeader>
               <CardContent>
                 <pre className="max-h-[min(70vh,640px)] overflow-y-auto whitespace-pre-wrap rounded-lg border border-border/40 bg-muted/20 p-5 text-sm leading-6">
-                  {COACH_AGREEMENT_TEXT}
+                  {p.body}
                 </pre>
               </CardContent>
             </Card>
           </div>
 
-          <div className="min-w-0 lg:sticky lg:top-36">
+          <div className="min-w-0 lg:sticky lg:top-40">
             {(alreadySignedOnServer || guestAccepted) && signedAt ? (
               <Card className="border-emerald-500/30 bg-emerald-500/5">
                 <CardContent className="pt-6">
@@ -138,7 +159,7 @@ export default function CoachAgreementPage() {
                       </p>
                       {!isMentor && guestAccepted && (
                         <Button asChild className="mt-4" variant="outline">
-                          <Link to="/mentor/register">{p.continueRegister}</Link>
+                          <Link to={MENTOR_REGISTER_STEP3}>{p.continueRegister}</Link>
                         </Button>
                       )}
                     </div>
@@ -181,7 +202,7 @@ export default function CoachAgreementPage() {
                       </Button>
                       {!isMentor && (
                         <Button type="button" variant="outline" asChild className="sm:flex-1">
-                          <Link to="/mentor/register">{p.continueRegister}</Link>
+                          <Link to={MENTOR_REGISTER_STEP3}>{p.continueRegister}</Link>
                         </Button>
                       )}
                     </div>

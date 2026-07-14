@@ -28,11 +28,11 @@ export default function AdminUsersPage() {
       <CardHeader>
         <CardTitle className="font-serif text-2xl">{d.users}</CardTitle>
         <CardDescription>
-          {data.total} total · showing {data.items.length}
+          {d.showingCount.replace("{total}", String(data.total)).replace("{count}", String(data.items.length))}
         </CardDescription>
         <div className="max-w-sm pt-2">
           <Input
-            placeholder="Search email or name"
+            placeholder={d.searchEmailName}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
@@ -45,13 +45,13 @@ export default function AdminUsersPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>User ID</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Email verified</TableHead>
-              <TableHead>Created</TableHead>
+              <TableHead>{d.ownerId}</TableHead>
+              <TableHead>{d.name}</TableHead>
+              <TableHead>{d.email}</TableHead>
+              <TableHead>{d.phone}</TableHead>
+              <TableHead>{d.status}</TableHead>
+              <TableHead>{d.emailVerified}</TableHead>
+              <TableHead>{d.created}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -64,7 +64,7 @@ export default function AdminUsersPage() {
                 <TableCell>
                   <Badge variant="outline">{u.account_status}</Badge>
                 </TableCell>
-                <TableCell>{u.email_verified ? "Yes" : "No"}</TableCell>
+                <TableCell>{u.email_verified ? d.yes : d.no}</TableCell>
                 <TableCell className="text-muted-foreground">{new Date(u.created_at).toLocaleString()}</TableCell>
               </TableRow>
             ))}

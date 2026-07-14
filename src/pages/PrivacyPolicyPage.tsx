@@ -278,16 +278,18 @@ const PrivacyPolicyPage = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
-      <main className="flex-1 container mx-auto px-6 py-24 max-w-4xl relative">
-        <Button 
-          variant="ghost" 
-          className="mb-6 -ml-4 flex items-center gap-2 text-muted-foreground hover:text-foreground"
-          onClick={() => navigate(-1)}
-        >
-          <ArrowLeft size={20} />
-          {ui.back}
-        </Button>
-        <h1 className="text-3xl font-bold mb-4">{ui.title}</h1>
+      <main className="relative mx-auto max-w-4xl flex-1 container px-6 pb-16 pt-32 md:pt-40">
+        <div className="sticky top-28 z-30 mb-6 bg-background/95 py-2 backdrop-blur-sm md:top-32 lg:top-36">
+          <Button
+            variant="outline"
+            className="flex items-center gap-2"
+            onClick={() => navigate(-1)}
+          >
+            <ArrowLeft size={20} />
+            {ui.back}
+          </Button>
+        </div>
+        <h1 className="mb-4 text-3xl font-bold">{ui.title}</h1>
         {!hasLocalizedBody && (
           <div className="mb-6 p-4 bg-yellow-100 dark:bg-yellow-900 rounded-md text-sm">
             {ui.fallback}

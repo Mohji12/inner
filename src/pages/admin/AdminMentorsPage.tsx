@@ -75,7 +75,7 @@ export default function AdminMentorsPage() {
       const details = await getAdminMentorPayoutBankDetails(mentorId);
       setBankDetails(details);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not load bank details");
+      toast.error(e instanceof Error ? e.message : d.bankLoadError);
       setBankMentorId(null);
     } finally {
       setBankLoading(false);
@@ -91,11 +91,11 @@ export default function AdminMentorsPage() {
       <CardHeader>
         <CardTitle className="font-serif text-2xl">{d.mentors}</CardTitle>
         <CardDescription>
-          {data.total} total · showing {data.items.length}
+          {d.showingCount.replace("{total}", String(data.total)).replace("{count}", String(data.items.length))}
         </CardDescription>
         <div className="max-w-sm pt-2">
           <Input
-            placeholder="Search email or name"
+            placeholder={d.searchEmailName}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
@@ -108,15 +108,15 @@ export default function AdminMentorsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Company</TableHead>
-              <TableHead>KVK</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Approved</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead>{d.name}</TableHead>
+              <TableHead>{d.email}</TableHead>
+              <TableHead>{d.phone}</TableHead>
+              <TableHead>{d.company}</TableHead>
+              <TableHead>{d.kvk}</TableHead>
+              <TableHead>{d.status}</TableHead>
+              <TableHead>{d.approved}</TableHead>
+              <TableHead>{d.created}</TableHead>
+              <TableHead>{d.actions}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -130,15 +130,15 @@ export default function AdminMentorsPage() {
                 <TableCell>
                   <Badge variant="secondary">{m.status}</Badge>
                 </TableCell>
-                <TableCell>{m.is_approved ? "Yes" : "No"}</TableCell>
+                <TableCell>{m.is_approved ? d.yes : d.no}</TableCell>
                 <TableCell className="text-muted-foreground">{new Date(m.created_at).toLocaleString()}</TableCell>
                 <TableCell>
                   <div className="flex flex-wrap items-center gap-2">
                     <Button size="sm" variant="secondary" onClick={() => setProfileMentor(m)}>
-                      View profile
+                      {d.viewProfile}
                     </Button>
                     <Button size="sm" variant="secondary" onClick={() => void openBankDetails(m.id)}>
-                      Bank details
+                      {d.bankDetails}
                     </Button>
                     <Button
                       size="sm"
@@ -172,63 +172,63 @@ export default function AdminMentorsPage() {
       <Dialog open={Boolean(profileMentor)} onOpenChange={(open) => !open && setProfileMentor(null)}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="font-serif">Coach profile</DialogTitle>
-            <DialogDescription>Full registration details for this coach (admin only)</DialogDescription>
+            <DialogTitle className="font-serif">{d.coachProfileTitle}</DialogTitle>
+            <DialogDescription>{d.coachProfileDesc}</DialogDescription>
           </DialogHeader>
           {profileMentor ? (
             <dl className="grid gap-3 text-sm sm:grid-cols-2">
-              <DetailField label="Full name" value={profileMentor.full_name} />
-              <DetailField label="Email" value={profileMentor.email} />
-              <DetailField label="Phone" value={profileMentor.phone_number} />
-              <DetailField label="Company name" value={profileMentor.current_company} />
-              <DetailField label="KVK number" value={profileMentor.kvk_number} />
-              <DetailField label="Country" value={profileMentor.country_code} />
-              <DetailField label="Timezone" value={profileMentor.timezone} />
-              <DetailField label="Years of experience" value={profileMentor.years_of_experience} />
+              <DetailField label={d.fullName} value={profileMentor.full_name} />
+              <DetailField label={d.email} value={profileMentor.email} />
+              <DetailField label={d.phone} value={profileMentor.phone_number} />
+              <DetailField label={d.company} value={profileMentor.current_company} />
+              <DetailField label={d.kvk} value={profileMentor.kvk_number} />
+              <DetailField label={d.country} value={profileMentor.country_code} />
+              <DetailField label={d.timezone} value={profileMentor.timezone} />
+              <DetailField label={d.yearsExperience} value={profileMentor.years_of_experience} />
               <DetailField
-                label="Rating"
-                value={`${profileMentor.average_rating ?? 0} · ${profileMentor.total_reviews ?? 0} reviews`}
+                label={d.rating}
+                value={`${profileMentor.average_rating ?? 0} · ${d.reviewsCount.replace("{count}", String(profileMentor.total_reviews ?? 0))}`}
               />
-              <DetailField label="Status" value={profileMentor.status} />
-              <DetailField label="Approved" value={profileMentor.is_approved ? "Yes" : "No"} />
-              <DetailField label="Email verified" value={profileMentor.email_verified ? "Yes" : "No"} />
-              <DetailField label="Platform verified" value={profileMentor.is_verified ? "Yes" : "No"} />
+              <DetailField label={d.status} value={profileMentor.status} />
+              <DetailField label={d.approved} value={profileMentor.is_approved ? d.yes : d.no} />
+              <DetailField label={d.emailVerified} value={profileMentor.email_verified ? d.yes : d.no} />
+              <DetailField label={d.platformVerified} value={profileMentor.is_verified ? d.yes : d.no} />
               <div className="sm:col-span-2">
-                <DetailField label="Headline" value={profileMentor.headline} />
+                <DetailField label={d.headline} value={profileMentor.headline} />
               </div>
               <div className="sm:col-span-2">
-                <DetailField label="Bio" value={profileMentor.bio} />
+                <DetailField label={d.bio} value={profileMentor.bio} />
               </div>
               <div className="sm:col-span-2">
-                <DetailField label="Languages" value={formatList(profileMentor.languages_spoken)} />
+                <DetailField label={d.languages} value={formatList(profileMentor.languages_spoken)} />
               </div>
               <div className="sm:col-span-2">
-                <DetailField label="Expertise" value={formatList(profileMentor.expertise_areas)} />
+                <DetailField label={d.expertise} value={formatList(profileMentor.expertise_areas)} />
               </div>
               <div className="sm:col-span-2">
-                <DetailField label="Skills" value={formatList(profileMentor.skills)} />
+                <DetailField label={d.skills} value={formatList(profileMentor.skills)} />
               </div>
               <div className="sm:col-span-2">
-                <DetailField label="Education" value={formatList(profileMentor.education)} />
+                <DetailField label={d.education} value={formatList(profileMentor.education)} />
               </div>
               <div className="sm:col-span-2">
-                <DetailField label="Certifications" value={formatList(profileMentor.certifications)} />
+                <DetailField label={d.certifications} value={formatList(profileMentor.certifications)} />
               </div>
               <div className="sm:col-span-2">
-                <DetailField label="Tools" value={formatList(profileMentor.tools_technologies)} />
+                <DetailField label={d.tools} value={formatList(profileMentor.tools_technologies)} />
               </div>
               <div className="sm:col-span-2">
-                <DetailField label="Session modes" value={formatList(profileMentor.session_modes)} />
+                <DetailField label={d.sessionModes} value={formatList(profileMentor.session_modes)} />
               </div>
               <div className="sm:col-span-2">
-                <DetailField label="Previous companies" value={formatList(profileMentor.previous_companies)} />
+                <DetailField label={d.previousCompanies} value={formatList(profileMentor.previous_companies)} />
               </div>
               <DetailField
-                label="Created"
+                label={d.created}
                 value={profileMentor.created_at ? new Date(profileMentor.created_at).toLocaleString() : "—"}
               />
               <DetailField
-                label="Updated"
+                label={d.updated}
                 value={profileMentor.updated_at ? new Date(profileMentor.updated_at).toLocaleString() : "—"}
               />
             </dl>
@@ -239,36 +239,36 @@ export default function AdminMentorsPage() {
       <Dialog open={Boolean(bankMentorId)} onOpenChange={(open) => !open && setBankMentorId(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-serif">Coach bank details</DialogTitle>
-            <DialogDescription>Payout account information submitted by the coach</DialogDescription>
+            <DialogTitle className="font-serif">{d.bankDetailsTitle}</DialogTitle>
+            <DialogDescription>{d.bankDetailsDesc}</DialogDescription>
           </DialogHeader>
           {bankLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <p className="text-sm text-muted-foreground">{d.tableLoading}</p>
           ) : bankDetails?.has_bank_details ? (
             <dl className="space-y-2 text-sm">
               <div>
-                <dt className="text-muted-foreground">Account holder</dt>
+                <dt className="text-muted-foreground">{d.accountHolder}</dt>
                 <dd className="font-medium">{bankDetails.account_holder_name ?? "—"}</dd>
               </div>
               <div>
-                <dt className="text-muted-foreground">IBAN</dt>
+                <dt className="text-muted-foreground">{d.iban}</dt>
                 <dd className="font-mono">{bankDetails.iban ?? "—"}</dd>
               </div>
               <div>
-                <dt className="text-muted-foreground">BIC</dt>
+                <dt className="text-muted-foreground">{d.bic}</dt>
                 <dd className="font-mono">{bankDetails.bic ?? "—"}</dd>
               </div>
               <div>
-                <dt className="text-muted-foreground">Status</dt>
+                <dt className="text-muted-foreground">{d.status}</dt>
                 <dd>{bankDetails.status}</dd>
               </div>
               <div>
-                <dt className="text-muted-foreground">Provider</dt>
+                <dt className="text-muted-foreground">{d.provider}</dt>
                 <dd>{bankDetails.provider_name || "—"}</dd>
               </div>
             </dl>
           ) : (
-            <p className="text-sm text-muted-foreground">No bank details on file for this coach.</p>
+            <p className="text-sm text-muted-foreground">{d.noBankDetails}</p>
           )}
         </DialogContent>
       </Dialog>

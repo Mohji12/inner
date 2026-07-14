@@ -67,7 +67,7 @@ export default function AdminAnalyticsPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm uppercase tracking-widest text-accent">{d.analytics}</p>
-          <h1 className="font-serif text-3xl">Trends</h1>
+          <h1 className="font-serif text-3xl">{d.trends}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {periodLabel} · {new Date(data.range_start).toLocaleString()} → {new Date(data.range_end).toLocaleString()}
           </p>
@@ -121,7 +121,7 @@ export default function AdminAnalyticsPage() {
         <div className="grid gap-6 lg:grid-cols-2">
           <Card className="border-border/60 glass-card lg:col-span-2">
             <CardHeader>
-              <CardTitle className="font-serif text-lg">Activity by day</CardTitle>
+              <CardTitle className="font-serif text-lg">{d.activityByDay}</CardTitle>
             </CardHeader>
             <CardContent className="h-[320px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -131,16 +131,16 @@ export default function AdminAnalyticsPage() {
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip />
                   <Legend />
-                  <Line type="monotone" dataKey="bookings" name="Bookings" stroke={strokePrimary} strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="users" name="Users" stroke={strokeAccent} strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="reviews" name="Reviews" stroke={strokeMuted} strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="bookings" name={d.bookingsSeries} stroke={strokePrimary} strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="users" name={d.usersSeries} stroke={strokeAccent} strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="reviews" name={d.reviews} stroke={strokeMuted} strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
           <Card className="border-border/60 glass-card lg:col-span-2">
             <CardHeader>
-              <CardTitle className="font-serif text-lg">Revenue by day (completed payments)</CardTitle>
+              <CardTitle className="font-serif text-lg">{d.revenueByDay}</CardTitle>
             </CardHeader>
             <CardContent className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -150,7 +150,7 @@ export default function AdminAnalyticsPage() {
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip />
                   <Legend />
-                  <Line type="monotone" dataKey="revenue" name="EUR" stroke={strokePrimary} strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="revenue" name={d.revenueSeries} stroke={strokePrimary} strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>

@@ -18,9 +18,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useLanguage } from "@/i18n/LanguageContext";
 import { marketplaceStatusTone, titleizeMarketplaceStatus } from "@/lib/marketplaceStatus";
 
 export default function AdminMarketplacePage() {
+  const { t } = useLanguage();
+  const d = t.app.dashboardAdmin;
   const queryClient = useQueryClient();
   const [commissionPct, setCommissionPct] = useState("20");
   const [capability, setCapability] = useState({
@@ -59,62 +62,62 @@ export default function AdminMarketplacePage() {
         currency: "EUR",
       }),
     onSuccess: () => {
-      toast.success("Commission updated");
+      toast.success(d.successGeneric);
       void queryClient.invalidateQueries({ queryKey: ["admin", "marketplace", "commission"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message || d.errorGeneric),
   });
 
   const capabilityMut = useMutation({
     mutationFn: () => upsertAdminMarketplaceCapability(capability),
     onSuccess: () => {
-      toast.success("Capability updated");
+      toast.success(d.successGeneric);
       void queryClient.invalidateQueries({ queryKey: ["admin", "marketplace", "capabilities"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message || d.errorGeneric),
   });
 
   const approveMut = useMutation({
     mutationFn: (id: string) => approveAdminMarketplacePayout(id),
     onSuccess: () => {
-      toast.success("Payout approved");
+      toast.success(d.successGeneric);
       void queryClient.invalidateQueries({ queryKey: ["admin", "marketplace", "payouts"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message || d.errorGeneric),
   });
 
   const executeMut = useMutation({
     mutationFn: (id: string) => executeAdminMarketplacePayout(id),
     onSuccess: () => {
-      toast.success("Payout execution requested");
+      toast.success(d.successGeneric);
       void queryClient.invalidateQueries({ queryKey: ["admin", "marketplace", "payouts"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message || d.errorGeneric),
   });
 
   const releaseMut = useMutation({
     mutationFn: ({ mentorId, amount }: { mentorId: string; amount: number }) =>
       releaseAdminCoachPendingToWithdrawable(mentorId, amount, "EUR"),
     onSuccess: () => {
-      toast.success("Released coach pending balance");
+      toast.success(d.successGeneric);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message || d.errorGeneric),
   });
 
   return (
     <div className="space-y-6">
       <Card className="border-border/60">
         <CardHeader>
-          <CardTitle className="font-serif text-2xl">Marketplace commission</CardTitle>
-          <CardDescription>Global commission settings for coach payouts.</CardDescription>
+          <CardTitle className="font-serif text-2xl">{d.marketplaceTitle}</CardTitle>
+          <CardDescription>{d.marketplace}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Current: {commissionQ.data?.percent ?? "-"} {commissionQ.data?.currency ?? "EUR"}
+            {d.amount}: {commissionQ.data?.percent ?? "—"} {commissionQ.data?.currency ?? "EUR"}
           </p>
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Commission %</p>
+              <p className="text-xs text-muted-foreground">{d.amount}</p>
               <Input
                 type="number"
                 min="0.01"
@@ -126,7 +129,7 @@ export default function AdminMarketplacePage() {
               />
             </div>
             <Button onClick={() => commissionMut.mutate()} disabled={commissionMut.isPending}>
-              {commissionMut.isPending ? "Saving..." : "Update commission"}
+              {commissionMut.isPending ? d.tableLoading : d.saveChanges}
             </Button>
           </div>
         </CardContent>
@@ -134,29 +137,29 @@ export default function AdminMarketplacePage() {
 
       <Card className="border-border/60">
         <CardHeader>
-          <CardTitle className="font-serif text-2xl">Capability matrix</CardTitle>
-          <CardDescription>Country/entity payout and transfer support controls.</CardDescription>
+          <CardTitle className="font-serif text-2xl">{d.marketplaceTitle}</CardTitle>
+          <CardDescription>{d.marketplace}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 md:grid-cols-3">
             <Input
-              placeholder="Country code"
+              placeholder={d.country}
               value={capability.country_code}
               onChange={(e) => setCapability((p) => ({ ...p, country_code: e.target.value.toUpperCase() }))}
             />
             <Input
-              placeholder="Entity type"
+              placeholder={d.type}
               value={capability.entity_type}
               onChange={(e) => setCapability((p) => ({ ...p, entity_type: e.target.value }))}
             />
             <Input
-              placeholder="Currency"
+              placeholder={d.currency}
               value={capability.currency}
               onChange={(e) => setCapability((p) => ({ ...p, currency: e.target.value.toUpperCase() }))}
             />
           </div>
           <Input
-            placeholder="Notes"
+            placeholder={d.note}
             value={capability.notes}
             onChange={(e) => setCapability((p) => ({ ...p, notes: e.target.value }))}
           />
@@ -166,36 +169,36 @@ export default function AdminMarketplacePage() {
                 checked={capability.supports_connect}
                 onCheckedChange={(v) => setCapability((p) => ({ ...p, supports_connect: v }))}
               />
-              Connect
+              {d.provider}
             </label>
             <label className="flex items-center gap-2">
               <Switch
                 checked={capability.supports_payouts}
                 onCheckedChange={(v) => setCapability((p) => ({ ...p, supports_payouts: v }))}
               />
-              Payouts
+              {d.payments}
             </label>
             <label className="flex items-center gap-2">
               <Switch
                 checked={capability.supports_transfers}
                 onCheckedChange={(v) => setCapability((p) => ({ ...p, supports_transfers: v }))}
               />
-              Transfers
+              {d.transactionsTitle}
             </label>
           </div>
           <Button onClick={() => capabilityMut.mutate()} disabled={capabilityMut.isPending}>
-            {capabilityMut.isPending ? "Saving..." : "Upsert capability"}
+            {capabilityMut.isPending ? d.tableLoading : d.submit}
           </Button>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Country</TableHead>
-                <TableHead>Entity</TableHead>
-                <TableHead>Currency</TableHead>
-                <TableHead>Connect</TableHead>
-                <TableHead>Payouts</TableHead>
-                <TableHead>Transfers</TableHead>
-                <TableHead>Updated</TableHead>
+                <TableHead>{d.country}</TableHead>
+                <TableHead>{d.type}</TableHead>
+                <TableHead>{d.currency}</TableHead>
+                <TableHead>{d.provider}</TableHead>
+                <TableHead>{d.payments}</TableHead>
+                <TableHead>{d.transactionsTitle}</TableHead>
+                <TableHead>{d.updated}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -204,9 +207,9 @@ export default function AdminMarketplacePage() {
                   <TableCell>{r.country_code}</TableCell>
                   <TableCell>{r.entity_type}</TableCell>
                   <TableCell>{r.currency}</TableCell>
-                  <TableCell>{r.supports_connect ? "Yes" : "No"}</TableCell>
-                  <TableCell>{r.supports_payouts ? "Yes" : "No"}</TableCell>
-                  <TableCell>{r.supports_transfers ? "Yes" : "No"}</TableCell>
+                  <TableCell>{r.supports_connect ? d.yes : d.no}</TableCell>
+                  <TableCell>{r.supports_payouts ? d.yes : d.no}</TableCell>
+                  <TableCell>{r.supports_transfers ? d.yes : d.no}</TableCell>
                   <TableCell>{new Date(r.updated_at).toLocaleString()}</TableCell>
                 </TableRow>
               ))}
@@ -217,19 +220,19 @@ export default function AdminMarketplacePage() {
 
       <Card className="border-border/60">
         <CardHeader>
-          <CardTitle className="font-serif text-2xl">Payout approvals & execution</CardTitle>
-          <CardDescription>Approve and execute coach payout requests.</CardDescription>
+          <CardTitle className="font-serif text-2xl">{d.marketplaceTitle}</CardTitle>
+          <CardDescription>{d.approvePayout}</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Requested</TableHead>
-                <TableHead>Coach</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Release pending</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{d.created}</TableHead>
+                <TableHead>{d.coach}</TableHead>
+                <TableHead>{d.amount}</TableHead>
+                <TableHead>{d.status}</TableHead>
+                <TableHead>{d.credit}</TableHead>
+                <TableHead className="text-right">{d.actions}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -270,7 +273,7 @@ export default function AdminMarketplacePage() {
                         }
                         disabled={releaseMut.isPending || !(Number(releaseByMentor[p.mentor_id] || "0") > 0)}
                       >
-                        Release
+                        {d.submit}
                       </Button>
                     </div>
                   </TableCell>
@@ -282,14 +285,14 @@ export default function AdminMarketplacePage() {
                         onClick={() => approveMut.mutate(p.id)}
                         disabled={!["requested", "failed"].includes(p.status) || approveMut.isPending}
                       >
-                        Approve
+                        {d.approvePayout}
                       </Button>
                       <Button
                         size="sm"
                         onClick={() => executeMut.mutate(p.id)}
                         disabled={!["approved", "failed"].includes(p.status) || executeMut.isPending}
                       >
-                        Execute
+                        {d.payNow}
                       </Button>
                     </div>
                   </TableCell>

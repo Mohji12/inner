@@ -5,6 +5,40 @@ import type { DeepPartial } from "./mergeDeep";
 /** Coach dashboard / Mollie / payouts copy per locale. */
 export const coachDashboardOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
   fr: {
+    coachAgreementPage: {
+      back: "Retour",
+      title: "Contrat coach",
+      version: "Version",
+      signTitle: "Signer le contrat",
+      signDescription:
+        "Lisez les conditions ci-dessus, confirmez votre acceptation et saisissez votre nom légal complet comme signature électronique.",
+      acceptLabel:
+        "J'ai lu et j'accepte le Contrat coach, y compris la part coach de 70 % et les frais plateforme de 30 % sur les chats minutés.",
+      signatureLabel: "Nom complet (signature électronique)",
+      signaturePlaceholder: "Tapez votre nom légal complet",
+      signatureHint: "Votre nom et votre acceptation sont enregistrés avec la version et le texte du contrat.",
+      submit: "Signer le contrat",
+      submitting: "Signature…",
+      continueRegister: "Continuer l'inscription",
+      alreadySigned: "Vous avez signé ce contrat.",
+      signedOn: "Signé le {date}",
+      footerNote:
+        "Cette page est affichée pour la transparence. Les coaches doivent accepter ce contrat avant de passer en ligne.",
+      toastSigned: "Contrat coach signé avec succès.",
+      toastSaved: "Acceptation enregistrée. Continuez l'inscription coach pour finaliser votre compte.",
+      errMustAccept: "Veuillez confirmer que vous acceptez le Contrat coach.",
+      errSignature: "Saisissez votre nom complet pour signer (au moins 2 caractères).",
+      errFailed: "Impossible d'enregistrer l'acceptation.",
+      body: `Contrat coach
+
+En vous inscrivant comme coach sur cette plateforme, vous acceptez les conditions de paiement suivantes :
+
+1) Chat minuté : vous recevez 70 % du tarif brut à la minute (facturé à la minute/seconde), y compris vos propres obligations fiscales ; la plateforme conserve 30 % comme frais de plateforme.
+2) Les utilisateurs paient également des frais de transaction fixes de 0,50 € par session de chat à la plateforme (non partagés avec les coaches).
+
+Vous reconnaissez et acceptez ces conditions au moment de l'inscription.
+`,
+    },
     dashboardMentor: {
       dashboard: "Tableau de bord",
       activeChat: "Chat actif",
@@ -231,6 +265,40 @@ export const coachDashboardOverrides: Partial<Record<Language, DeepPartial<AppCo
     },
   },
   es: {
+    coachAgreementPage: {
+      back: "Volver",
+      title: "Acuerdo de coach",
+      version: "Versión",
+      signTitle: "Firmar el acuerdo",
+      signDescription:
+        "Lee los términos de arriba, confirma tu aceptación y escribe tu nombre legal completo como firma electrónica.",
+      acceptLabel:
+        "He leído y acepto el Acuerdo de coach, incluida la parte del coach del 70% y la comisión de plataforma del 30% en chats por minuto.",
+      signatureLabel: "Nombre completo (firma electrónica)",
+      signaturePlaceholder: "Escribe tu nombre legal completo",
+      signatureHint: "Tu nombre y aceptación se guardan con la versión y el texto del acuerdo.",
+      submit: "Firmar acuerdo",
+      submitting: "Firmando…",
+      continueRegister: "Continuar al registro",
+      alreadySigned: "Has firmado este acuerdo.",
+      signedOn: "Firmado el {date}",
+      footerNote:
+        "Esta página se muestra por transparencia. Los coaches deben aceptar este acuerdo antes de estar activos en la plataforma.",
+      toastSigned: "Acuerdo de coach firmado correctamente.",
+      toastSaved: "Aceptación guardada. Continúa con el registro de coach para completar tu cuenta.",
+      errMustAccept: "Confirma que aceptas el Acuerdo de coach.",
+      errSignature: "Introduce tu nombre completo para firmar (al menos 2 caracteres).",
+      errFailed: "No se pudo guardar la aceptación.",
+      body: `Acuerdo de coach
+
+Al registrarte como coach en esta plataforma, aceptas las siguientes condiciones de pago:
+
+1) Chat medido: recibes el 70% de la tarifa bruta por minuto (facturada por minuto/segundo), incluidas tus propias obligaciones fiscales; la plataforma retiene el 30% como cargos de plataforma.
+2) Los usuarios también pagan una tasa de transacción fija de 0,50 € por sesión de chat a la plataforma (no se reparte con los coaches).
+
+Reconoces y aceptas estos términos en el momento del registro.
+`,
+    },
     dashboardMentor: {
       dashboard: "Panel",
       activeChat: "Chat activo",
@@ -344,6 +412,40 @@ export const coachDashboardOverrides: Partial<Record<Language, DeepPartial<AppCo
     },
   },
   ar: {
+    coachAgreementPage: {
+      back: "رجوع",
+      title: "اتفاقية المدرب",
+      version: "الإصدار",
+      signTitle: "توقيع الاتفاقية",
+      signDescription:
+        "اقرأ الشروط أعلاه، وأكّد قبولك، واكتب اسمك القانوني الكامل كتوقيع إلكتروني.",
+      acceptLabel:
+        "لقد قرأت وأوافق على اتفاقية المدرب، بما في ذلك حصة المدرب 70% ورسوم المنصة 30% على الدردشات المحتسبة بالدقيقة.",
+      signatureLabel: "الاسم الكامل (توقيع إلكتروني)",
+      signaturePlaceholder: "اكتب اسمك القانوني الكامل",
+      signatureHint: "يُحفظ اسمك وقبولك مع إصدار الاتفاقية ونصها.",
+      submit: "توقيع الاتفاقية",
+      submitting: "جاري التوقيع…",
+      continueRegister: "متابعة التسجيل",
+      alreadySigned: "لقد وقّعت هذه الاتفاقية.",
+      signedOn: "وُقّعت في {date}",
+      footerNote:
+        "تُعرض هذه الصفحة للشفافية. يجب على المدربين قبول هذه الاتفاقية قبل الظهور على المنصة.",
+      toastSigned: "تم توقيع اتفاقية المدرب بنجاح.",
+      toastSaved: "تم حفظ القبول. تابع تسجيل المدرب لإكمال حسابك.",
+      errMustAccept: "يرجى تأكيد موافقتك على اتفاقية المدرب.",
+      errSignature: "أدخل اسمك الكامل للتوقيع (حرفان على الأقل).",
+      errFailed: "تعذّر حفظ القبول.",
+      body: `اتفاقية المدرب
+
+بتسجيلك كمدرب على هذه المنصة، فإنك توافق على شروط الدفع التالية:
+
+1) الدردشة المحتسبة: تتلقى 70% من السعر الإجمالي للدقيقة (يُحاسب بالدقيقة/الثانية)، بما في ذلك التزاماتك الضريبية؛ وتحتفظ المنصة بـ 30% كرسوم منصة.
+2) يدفع المستخدمون أيضًا رسوم معاملة ثابتة قدرها 0.50 يورو لكل جلسة دردشة للمنصة (لا تُقسم مع المدربين).
+
+تقرّ وتقبل هذه الشروط وقت التسجيل.
+`,
+    },
     dashboardMentor: {
       dashboard: "لوحة التحكم",
       activeChat: "محادثة نشطة",
@@ -456,6 +558,37 @@ export const coachDashboardOverrides: Partial<Record<Language, DeepPartial<AppCo
     },
   },
   zh: {
+    coachAgreementPage: {
+      back: "返回",
+      title: "教练协议",
+      version: "版本",
+      signTitle: "签署协议",
+      signDescription: "请阅读上方条款，确认接受，并输入完整法定姓名作为电子签名。",
+      acceptLabel: "我已阅读并同意《教练协议》，包括按分钟计费聊天中教练获得 70%、平台收取 30%。",
+      signatureLabel: "全名（电子签名）",
+      signaturePlaceholder: "输入您的完整法定姓名",
+      signatureHint: "您的姓名与接受记录将与协议版本及文本一并保存。",
+      submit: "签署协议",
+      submitting: "签署中…",
+      continueRegister: "继续注册",
+      alreadySigned: "您已签署本协议。",
+      signedOn: "签署于 {date}",
+      footerNote: "本页用于说明。教练须接受本协议后方可在平台上线。",
+      toastSigned: "教练协议签署成功。",
+      toastSaved: "接受记录已保存。请继续教练注册以完成账户。",
+      errMustAccept: "请确认您接受教练协议。",
+      errSignature: "请输入全名以签署（至少 2 个字符）。",
+      errFailed: "无法保存接受记录。",
+      body: `教练协议
+
+在本平台注册为教练，即表示您同意以下付款条款：
+
+1) 按分钟计费聊天：您获得每分钟毛费率的 70%（按分钟/秒计费），含您自身税务义务；平台保留 30% 作为平台费用。
+2) 用户每次聊天会话还需向平台支付固定 €0.50 交易费（不与教练分成）。
+
+您在注册时确认并接受上述条款。
+`,
+    },
     dashboardMentor: {
       dashboard: "仪表盘",
       activeChat: "进行中的聊天",
@@ -565,6 +698,40 @@ export const coachDashboardOverrides: Partial<Record<Language, DeepPartial<AppCo
     },
   },
   ru: {
+    coachAgreementPage: {
+      back: "Назад",
+      title: "Соглашение коуча",
+      version: "Версия",
+      signTitle: "Подписать соглашение",
+      signDescription:
+        "Прочитайте условия выше, подтвердите согласие и введите полное юридическое имя как электронную подпись.",
+      acceptLabel:
+        "Я прочитал(а) и принимаю Соглашение коуча, включая долю коуча 70% и комиссию платформы 30% за поминутные чаты.",
+      signatureLabel: "Полное имя (электронная подпись)",
+      signaturePlaceholder: "Введите полное юридическое имя",
+      signatureHint: "Ваше имя и согласие сохраняются вместе с версией и текстом соглашения.",
+      submit: "Подписать соглашение",
+      submitting: "Подписание…",
+      continueRegister: "Продолжить регистрацию",
+      alreadySigned: "Вы уже подписали это соглашение.",
+      signedOn: "Подписано {date}",
+      footerNote:
+        "Страница показана для прозрачности. Коучи должны принять это соглашение до выхода на платформу.",
+      toastSigned: "Соглашение коуча успешно подписано.",
+      toastSaved: "Согласие сохранено. Продолжите регистрацию коуча, чтобы завершить аккаунт.",
+      errMustAccept: "Подтвердите, что вы принимаете Соглашение коуча.",
+      errSignature: "Введите полное имя для подписи (не менее 2 символов).",
+      errFailed: "Не удалось сохранить согласие.",
+      body: `Соглашение коуча
+
+Регистрируясь как коуч на этой платформе, вы соглашаетесь со следующими условиями оплаты:
+
+1) Поминутный чат: вы получаете 70% от валовой поминутной ставки (оплата по минутам/секундам), включая ваши налоговые обязательства; платформа удерживает 30% как платформенный сбор.
+2) Пользователи также платят фиксированную комиссию €0,50 за чат-сессию платформе (не делится с коучами).
+
+Вы подтверждаете и принимаете эти условия при регистрации.
+`,
+    },
     dashboardMentor: {
       dashboard: "Панель",
       activeChat: "Активный чат",

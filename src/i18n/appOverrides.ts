@@ -2,6 +2,7 @@ import type { AppCopy } from "./appBase";
 import type { Language } from "./translations";
 import type { DeepPartial } from "./mergeDeep";
 import { coachDashboardOverrides } from "./coachDashboardOverrides";
+import { adminDashboardOverrides } from "./adminDashboardOverrides";
 import { mergeDeep } from "./mergeDeep";
 
 const baseOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
@@ -810,6 +811,7 @@ const baseOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
     },
     coachAgreementPage: {
       back: "Terug",
+      title: "Coachovereenkomst",
       version: "Versie",
       signTitle: "Onderteken de overeenkomst",
       signDescription:
@@ -831,6 +833,15 @@ const baseOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
       errMustAccept: "Bevestig dat je akkoord gaat met de Coachovereenkomst.",
       errSignature: "Vul je volledige naam in om te ondertekenen (minimaal 2 tekens).",
       errFailed: "Kon akkoord niet opslaan.",
+      body: `Coachovereenkomst
+
+Door je als coach op dit platform te registreren, ga je akkoord met de volgende betalingsvoorwaarden:
+
+1) Metered chat: je ontvangt 70% van het bruto minuuttarief (gefactureerd per minuut/seconde), inclusief je eigen belastingverplichtingen; het platform behoudt 30% als platformkosten.
+2) Gebruikers betalen ook een vast transactiekostenbedrag van €0,50 per chatsessie aan het platform (niet gedeeld met coaches).
+
+Je erkent en accepteert deze voorwaarden op het moment van registratie.
+`,
     },
     mentorsPage: {
       loading: "Coaches voor je zoeken…",
@@ -2248,21 +2259,24 @@ const baseOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
   },
 };
 
-function withCoachDashboard(
+function withLocaleExtras(
   locale: Language,
   base: DeepPartial<AppCopy>,
 ): DeepPartial<AppCopy> {
-  const extra = coachDashboardOverrides[locale];
-  if (!extra) return base;
-  return mergeDeep(base as AppCopy, extra) as DeepPartial<AppCopy>;
+  let merged = base;
+  const coach = coachDashboardOverrides[locale];
+  if (coach) merged = mergeDeep(merged as AppCopy, coach) as DeepPartial<AppCopy>;
+  const admin = adminDashboardOverrides[locale];
+  if (admin) merged = mergeDeep(merged as AppCopy, admin) as DeepPartial<AppCopy>;
+  return merged;
 }
 
 /** Per-locale overrides merged onto `appEn`. */
 export const appOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
-  fr: withCoachDashboard("fr", baseOverrides.fr!),
-  nl: withCoachDashboard("nl", baseOverrides.nl!),
-  es: withCoachDashboard("es", baseOverrides.es!),
-  ar: withCoachDashboard("ar", baseOverrides.ar!),
-  zh: withCoachDashboard("zh", baseOverrides.zh!),
-  ru: withCoachDashboard("ru", baseOverrides.ru!),
+  fr: withLocaleExtras("fr", baseOverrides.fr!),
+  nl: withLocaleExtras("nl", baseOverrides.nl!),
+  es: withLocaleExtras("es", baseOverrides.es!),
+  ar: withLocaleExtras("ar", baseOverrides.ar!),
+  zh: withLocaleExtras("zh", baseOverrides.zh!),
+  ru: withLocaleExtras("ru", baseOverrides.ru!),
 };

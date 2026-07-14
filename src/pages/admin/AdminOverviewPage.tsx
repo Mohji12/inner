@@ -61,7 +61,7 @@ export default function AdminOverviewPage() {
               <div>
                 <p className="font-medium">{d.coachApplications}</p>
                 <p className="text-sm text-muted-foreground">
-                  {coachAppsQ.data?.total ?? 0} new submission{(coachAppsQ.data?.total ?? 0) === 1 ? "" : "s"} waiting for review
+                  {d.overviewBanner.replace("{count}", String(coachAppsQ.data?.total ?? 0))}
                 </p>
               </div>
             </div>
@@ -69,7 +69,7 @@ export default function AdminOverviewPage() {
               to="/admin/coach-applications"
               className="text-sm font-medium text-accent underline underline-offset-4 hover:text-accent/80"
             >
-              Review applications →
+              {d.reviewApplications}
             </Link>
           </CardContent>
         </Card>

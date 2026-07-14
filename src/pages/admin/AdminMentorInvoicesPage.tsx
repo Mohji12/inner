@@ -11,9 +11,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useLanguage } from "@/i18n/LanguageContext";
 import { toast } from "sonner";
 
 export default function AdminMentorInvoicesPage() {
+  const { t } = useLanguage();
+  const d = t.app.dashboardAdmin;
   const qc = useQueryClient();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const { data, isLoading } = useQuery({
@@ -24,19 +27,19 @@ export default function AdminMentorInvoicesPage() {
   const regenMut = useMutation({
     mutationFn: (id: string) => regenerateAdminMentorMonthlyInvoiceLink(id),
     onSuccess: () => {
-      toast.success("Payment link regenerated");
+      toast.success(d.successGeneric);
       void qc.invalidateQueries({ queryKey: ["admin", "mentor-monthly-invoices"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message || d.errorGeneric),
   });
 
   const remindMut = useMutation({
     mutationFn: (id: string) => markAdminMentorMonthlyInvoiceReminder(id),
     onSuccess: () => {
-      toast.success("Reminder marked");
+      toast.success(d.successGeneric);
       void qc.invalidateQueries({ queryKey: ["admin", "mentor-monthly-invoices"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message || d.errorGeneric),
   });
 
   const handleDownload = async (invoiceId: string) => {
@@ -52,31 +55,31 @@ export default function AdminMentorInvoicesPage() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success("Invoice downloaded");
+      toast.success(d.successGeneric);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Download failed");
+      toast.error(e instanceof Error ? e.message : d.errorGeneric);
     } finally {
       setDownloadingId(null);
     }
   };
 
-  if (isLoading || !data) return <p className="text-muted-foreground">Loading…</p>;
+  if (isLoading || !data) return <p className="text-muted-foreground">{d.tableLoading}</p>;
 
   return (
     <Card className="border-border/60 glass-card">
       <CardHeader>
-        <CardTitle className="font-serif text-2xl">Coach Monthly Invoices</CardTitle>
+        <CardTitle className="font-serif text-2xl">{d.mentorInvoicesTitle}</CardTitle>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Coach</TableHead>
-              <TableHead>Month</TableHead>
-              <TableHead>Gross</TableHead>
-              <TableHead>Fee</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>{d.coach}</TableHead>
+              <TableHead>{d.when}</TableHead>
+              <TableHead>{d.amount}</TableHead>
+              <TableHead>{d.payment}</TableHead>
+              <TableHead>{d.status}</TableHead>
+              <TableHead className="text-right">{d.actions}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -91,7 +94,7 @@ export default function AdminMentorInvoicesPage() {
                   <div className="flex justify-end gap-2">
                     {r.mollie_checkout_url ? (
                       <Button type="button" size="sm" variant="outline" onClick={() => window.open(r.mollie_checkout_url ?? "", "_blank")}>
-                        Open link
+                        {d.openDetail}
                       </Button>
                     ) : null}
                     <Button
@@ -102,13 +105,13 @@ export default function AdminMentorInvoicesPage() {
                       onClick={() => void handleDownload(r.id)}
                     >
                       <Download className="mr-1 h-3.5 w-3.5" />
-                      Download invoice
+                      {d.downloadPdf}
                     </Button>
                     <Button type="button" size="sm" variant="secondary" onClick={() => regenMut.mutate(r.id)} disabled={regenMut.isPending}>
-                      Regenerate link
+                      {d.refresh}
                     </Button>
                     <Button type="button" size="sm" onClick={() => remindMut.mutate(r.id)} disabled={remindMut.isPending}>
-                      Mark reminder
+                      {d.note}
                     </Button>
                   </div>
                 </TableCell>

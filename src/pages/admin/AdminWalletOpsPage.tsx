@@ -6,9 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useLanguage } from "@/i18n/LanguageContext";
 import { toast } from "sonner";
 
 export default function AdminWalletOpsPage() {
+  const { t } = useLanguage();
+  const d = t.app.dashboardAdmin;
   const qc = useQueryClient();
   const [userId, setUserId] = useState("");
   const [amount, setAmount] = useState("0");
@@ -27,11 +30,11 @@ export default function AdminWalletOpsPage() {
         reference_type: "admin_adjustment",
       }),
     onSuccess: (res) => {
-      setLastResult(`Credit successful. New balance: ${res.balance}`);
-      toast.success("Wallet credited");
+      setLastResult(`${d.credit}: ${res.balance}`);
+      toast.success(d.successGeneric);
       void qc.invalidateQueries({ queryKey: ["admin", "wallet-analytics"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message || d.errorGeneric),
   });
 
   const debitMut = useMutation({
@@ -42,11 +45,11 @@ export default function AdminWalletOpsPage() {
         reference_type: "admin_adjustment",
       }),
     onSuccess: (res) => {
-      setLastResult(`Debit successful. New balance: ${res.balance}`);
-      toast.success("Wallet debited");
+      setLastResult(`${d.debit}: ${res.balance}`);
+      toast.success(d.successGeneric);
       void qc.invalidateQueries({ queryKey: ["admin", "wallet-analytics"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message || d.errorGeneric),
   });
 
   const valid = userId.trim().length > 0 && Number(amount) > 0 && reason.trim().length > 0;
@@ -59,29 +62,29 @@ export default function AdminWalletOpsPage() {
     <div className="space-y-6">
       <Card className="border-border/60 glass-card max-w-2xl">
         <CardHeader>
-          <CardTitle className="font-serif text-2xl">Admin Wallet Operations</CardTitle>
-          <CardDescription>Credit/debit a user wallet with audit reason.</CardDescription>
+          <CardTitle className="font-serif text-2xl">{d.walletTitle}</CardTitle>
+          <CardDescription>{d.walletOps}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="uid">User ID</Label>
+              <Label htmlFor="uid">{d.ownerId}</Label>
               <Input id="uid" value={userId} onChange={(e) => setUserId(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="amt">Amount</Label>
+              <Label htmlFor="amt">{d.amount}</Label>
               <Input id="amt" type="number" min={0} step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="reason">Reason</Label>
+              <Label htmlFor="reason">{d.note}</Label>
               <Input id="reason" value={reason} onChange={(e) => setReason(e.target.value)} />
             </div>
             <div className="flex gap-2">
               <Button type="button" variant="secondary" disabled={!valid || creditMut.isPending} onClick={() => creditMut.mutate()}>
-                Credit
+                {d.credit}
               </Button>
               <Button type="button" variant="outline" disabled={!valid || debitMut.isPending} onClick={() => debitMut.mutate()}>
-                Debit
+                {d.debit}
               </Button>
             </div>
             {lastResult ? <p className="text-sm text-muted-foreground">{lastResult}</p> : null}
@@ -91,28 +94,28 @@ export default function AdminWalletOpsPage() {
 
       <Card className="border-border/60 glass-card">
         <CardHeader>
-          <CardTitle className="font-serif text-2xl">Wallet Analytics (Admin Adjustments)</CardTitle>
+          <CardTitle className="font-serif text-2xl">{d.analytics}</CardTitle>
           <CardDescription>
-            Total credited: {analyticsQ.data?.total_credited ?? "0.00"} | Total debited: {analyticsQ.data?.total_debited ?? "0.00"} | Net: {analyticsQ.data?.total_net ?? "0.00"}
+            {d.credit}: {analyticsQ.data?.total_credited ?? "0.00"} | {d.debit}: {analyticsQ.data?.total_debited ?? "0.00"} | {d.amount}: {analyticsQ.data?.total_net ?? "0.00"}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {analyticsQ.isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading analytics...</p>
+            <p className="text-sm text-muted-foreground">{d.tableLoading}</p>
           ) : !analyticsQ.data || analyticsQ.data.items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No wallet adjustment data yet.</p>
+            <p className="text-sm text-muted-foreground">{d.noData}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>User ID</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Credited</TableHead>
-                  <TableHead>Debited</TableHead>
-                  <TableHead>Net</TableHead>
-                  <TableHead>Transactions</TableHead>
-                  <TableHead>Last activity</TableHead>
+                  <TableHead>{d.ownerId}</TableHead>
+                  <TableHead>{d.name}</TableHead>
+                  <TableHead>{d.email}</TableHead>
+                  <TableHead>{d.credit}</TableHead>
+                  <TableHead>{d.debit}</TableHead>
+                  <TableHead>{d.amount}</TableHead>
+                  <TableHead>{d.payments}</TableHead>
+                  <TableHead>{d.updated}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -126,7 +129,7 @@ export default function AdminWalletOpsPage() {
                     <TableCell>{row.net_total} {row.currency}</TableCell>
                     <TableCell>{row.transaction_count}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {row.last_transaction_at ? new Date(row.last_transaction_at).toLocaleString() : "-"}
+                      {row.last_transaction_at ? new Date(row.last_transaction_at).toLocaleString() : "—"}
                     </TableCell>
                   </TableRow>
                 ))}

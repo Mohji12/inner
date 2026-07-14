@@ -13,9 +13,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { useLanguage } from "@/i18n/LanguageContext";
 import { toast } from "sonner";
 
 export default function AdminSettlementsPage() {
+  const { t } = useLanguage();
+  const d = t.app.dashboardAdmin;
   const [cycleEnd, setCycleEnd] = useState<string>(new Date().toISOString().slice(0, 10));
   const queryClient = useQueryClient();
   const candidatesQ = useQuery({
@@ -30,38 +33,38 @@ export default function AdminSettlementsPage() {
   const generateMut = useMutation({
     mutationFn: () => generateAdminSettlements({ cycle_end: cycleEnd }),
     onSuccess: () => {
-      toast.success("Settlement cycle generated");
+      toast.success(d.successGeneric);
       void queryClient.invalidateQueries({ queryKey: ["admin", "settlement-candidates"] });
       void queryClient.invalidateQueries({ queryKey: ["admin", "settlements"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message || d.errorGeneric),
   });
 
   const approveMut = useMutation({
     mutationFn: (id: string) => approveAdminSettlement(id),
     onSuccess: () => {
-      toast.success("Settlement approved");
+      toast.success(d.successGeneric);
       void queryClient.invalidateQueries({ queryKey: ["admin", "settlements"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message || d.errorGeneric),
   });
 
   const payMut = useMutation({
     mutationFn: (id: string) => payAdminSettlement(id),
     onSuccess: () => {
-      toast.success("Payout attempted");
+      toast.success(d.successGeneric);
       void queryClient.invalidateQueries({ queryKey: ["admin", "settlements"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message || d.errorGeneric),
   });
 
   const markPaidMut = useMutation({
     mutationFn: (id: string) => markAdminSettlementPaid(id),
     onSuccess: () => {
-      toast.success("Marked as paid");
+      toast.success(d.successGeneric);
       void queryClient.invalidateQueries({ queryKey: ["admin", "settlements"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message || d.errorGeneric),
   });
 
   const candidates = candidatesQ.data?.candidates ?? [];
@@ -76,30 +79,30 @@ export default function AdminSettlementsPage() {
     <div className="space-y-6">
       <Card className="border-border/60 glass-card">
         <CardHeader>
-          <CardTitle className="font-serif text-2xl">Coach Settlements</CardTitle>
-          <CardDescription>15-day admin-managed settlement cycle</CardDescription>
+          <CardTitle className="font-serif text-2xl">{d.settlementsTitle}</CardTitle>
+          <CardDescription>{d.settlements}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Cycle end date</p>
+              <p className="text-xs text-muted-foreground">{d.date}</p>
               <Input type="date" value={cycleEnd} onChange={(e) => setCycleEnd(e.target.value)} className="w-[180px]" />
             </div>
             <Button onClick={() => generateMut.mutate()} disabled={generateMut.isPending}>
-              {generateMut.isPending ? "Generating…" : "Generate cycle"}
+              {generateMut.isPending ? d.tableLoading : d.generateCycle}
             </Button>
           </div>
           <p className="text-sm text-muted-foreground">
-            Eligible coaches: {candidates.length} · Net total: EUR {totalCandidateNet.toFixed(2)}
+            {d.mentors}: {candidates.length} · {d.amount}: EUR {totalCandidateNet.toFixed(2)}
           </p>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Coach</TableHead>
-                <TableHead>Items</TableHead>
-                <TableHead>Gross</TableHead>
-                <TableHead>Fee</TableHead>
-                <TableHead>Net</TableHead>
+                <TableHead>{d.coach}</TableHead>
+                <TableHead>{d.bookings}</TableHead>
+                <TableHead>{d.amount}</TableHead>
+                <TableHead>{d.payment}</TableHead>
+                <TableHead>{d.amount}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -119,19 +122,19 @@ export default function AdminSettlementsPage() {
 
       <Card className="border-border/60 glass-card">
         <CardHeader>
-          <CardTitle className="font-serif text-2xl">Settlement Queue</CardTitle>
+          <CardTitle className="font-serif text-2xl">{d.settlementsTitle}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Created</TableHead>
-                <TableHead>Coach</TableHead>
-                <TableHead>Cycle</TableHead>
-                <TableHead>Net</TableHead>
-                <TableHead>Mollie payout</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{d.created}</TableHead>
+                <TableHead>{d.coach}</TableHead>
+                <TableHead>{d.when}</TableHead>
+                <TableHead>{d.amount}</TableHead>
+                <TableHead>{d.provider}</TableHead>
+                <TableHead>{d.status}</TableHead>
+                <TableHead className="text-right">{d.actions}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -148,12 +151,12 @@ export default function AdminSettlementsPage() {
                   <TableCell className="max-w-[220px]">
                     {s.connect_payout_ready === true ? (
                       <Badge variant="secondary" className="font-normal">
-                        Ready
+                        {d.yes}
                       </Badge>
                     ) : (
                       <div className="space-y-1">
                         <Badge variant="outline" className="font-normal text-destructive border-destructive/50">
-                          Not ready
+                          {d.no}
                         </Badge>
                         {s.connect_payout_blocked_reason ? (
                           <p className="text-xs text-muted-foreground leading-snug">{s.connect_payout_blocked_reason}</p>
@@ -172,7 +175,7 @@ export default function AdminSettlementsPage() {
                         onClick={() => approveMut.mutate(s.id)}
                         disabled={s.status !== "pending" || approveMut.isPending}
                       >
-                        Approve
+                        {d.approvePayout}
                       </Button>
                       <Button
                         size="sm"
@@ -180,11 +183,11 @@ export default function AdminSettlementsPage() {
                         disabled={s.status !== "approved" || payMut.isPending || !(s.connect_payout_ready ?? false)}
                         title={
                           s.status === "approved" && !(s.connect_payout_ready ?? false)
-                            ? (s.connect_payout_blocked_reason ?? "Coach must complete Mollie Connect and payout setup")
+                            ? (s.connect_payout_blocked_reason ?? undefined)
                             : undefined
                         }
                       >
-                        Pay
+                        {d.payNow}
                       </Button>
                       <Button
                         size="sm"
@@ -192,7 +195,7 @@ export default function AdminSettlementsPage() {
                         onClick={() => markPaidMut.mutate(s.id)}
                         disabled={!["approved", "failed", "processing"].includes(s.status) || markPaidMut.isPending}
                       >
-                        Mark paid
+                        {d.markPaid}
                       </Button>
                     </div>
                     {s.failure_reason ? <p className="mt-1 text-xs text-destructive">{s.failure_reason}</p> : null}

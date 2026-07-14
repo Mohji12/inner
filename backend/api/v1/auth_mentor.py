@@ -150,7 +150,7 @@ def register_mentor(request: Request, db: DbSession, payload: MentorRegister) ->
         full_name=payload.full_name,
         email=email,
         phone_number=payload.phone_number,
-        country_code=None,
+        country_code=(payload.country_code.strip().upper()[:2] if payload.country_code else None),
         timezone="UTC",
         password_hash=hash_password(payload.password),
         profile_image=(

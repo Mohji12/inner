@@ -25,6 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 function formatDate(iso: string): string {
   try {
@@ -44,6 +45,8 @@ function formatDuration(totalSeconds: number): string {
 }
 
 export default function AdminChatInvoicesPage() {
+  const { t } = useLanguage();
+  const d = t.app.dashboardAdmin;
   const [open, setOpen] = useState(false);
   const [detailSessionId, setDetailSessionId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -82,40 +85,40 @@ export default function AdminChatInvoicesPage() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success("Invoice downloaded");
+      toast.success(d.successGeneric);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Download failed");
+      toast.error(err instanceof Error ? err.message : d.errorGeneric);
     } finally {
       setDownloadingId(null);
     }
   };
 
   if (isLoading) {
-    return <p className="text-muted-foreground">Loading…</p>;
+    return <p className="text-muted-foreground">{d.tableLoading}</p>;
   }
 
   return (
     <div className="space-y-6">
       <Card className="border-border/60 glass-card">
         <CardHeader>
-          <CardTitle className="font-serif text-2xl">Chat Invoices</CardTitle>
+          <CardTitle className="font-serif text-2xl">{d.chatInvoicesTitle}</CardTitle>
           <CardDescription>
-            Invoices for paid conversations between users and coaches ({rows.length} records)
+            {d.showingCount.replace("{total}", String(rows.length)).replace("{count}", String(rows.length))}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {rows.length === 0 ? (
-            <p className="text-muted-foreground">No chat invoices yet.</p>
+            <p className="text-muted-foreground">{d.noData}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Invoice #</TableHead>
-                  <TableHead>Coach</TableHead>
-                  <TableHead>Issued</TableHead>
-                  <TableHead>Minutes</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{d.invoicesTitle}</TableHead>
+                  <TableHead>{d.coach}</TableHead>
+                  <TableHead>{d.created}</TableHead>
+                  <TableHead>{d.time}</TableHead>
+                  <TableHead>{d.amount}</TableHead>
+                  <TableHead className="text-right">{d.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -131,7 +134,7 @@ export default function AdminChatInvoicesPage() {
                     <TableCell className="text-right">
                       <div className="flex flex-wrap justify-end gap-2">
                         <Button type="button" variant="outline" size="sm" onClick={() => openDetail(row.session_id)}>
-                          View
+                          {d.openDetail}
                         </Button>
                         <Button
                           type="button"
@@ -141,7 +144,7 @@ export default function AdminChatInvoicesPage() {
                           onClick={() => void handleDownload(row.session_id)}
                         >
                           <Download className="mr-1 h-3.5 w-3.5" />
-                          Download
+                          {d.downloadPdf}
                         </Button>
                       </div>
                     </TableCell>
@@ -157,22 +160,22 @@ export default function AdminChatInvoicesPage() {
         <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="font-serif">
-              {detail ? `Invoice ${detail.invoice_number}` : "Invoice"}
+              {detail ? `${d.invoicesTitle} ${detail.invoice_number}` : d.invoicesTitle}
             </DialogTitle>
-            <DialogDescription>{detail ? `Issued: ${formatDate(detail.issued_at)}` : ""}</DialogDescription>
+            <DialogDescription>{detail ? `${d.created}: ${formatDate(detail.issued_at)}` : ""}</DialogDescription>
           </DialogHeader>
 
           {detail ? (
             <div className="space-y-6 text-sm">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <p className="text-xs uppercase tracking-widest text-muted-foreground">Bill to</p>
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground">{d.user}</p>
                   <p className="font-medium">{detail.bill_to_name}</p>
                   <p className="text-muted-foreground">{detail.bill_to_email}</p>
                   {detail.bill_to_phone ? <p className="text-muted-foreground">{detail.bill_to_phone}</p> : null}
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-widest text-muted-foreground">Service provider</p>
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground">{d.provider}</p>
                   <p className="font-medium">{detail.service_provider_name}</p>
                   <p className="text-muted-foreground">{detail.service_provider_email}</p>
                 </div>
@@ -180,27 +183,27 @@ export default function AdminChatInvoicesPage() {
 
               <div className="grid gap-2 sm:grid-cols-2">
                 <div>
-                  <p className="text-xs uppercase tracking-widest text-muted-foreground">Minutes purchased</p>
-                  <p className="font-medium">{detail.total_minutes_purchased} min</p>
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground">{d.time}</p>
+                  <p className="font-medium">{detail.total_minutes_purchased}</p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-widest text-muted-foreground">Session duration</p>
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground">{d.when}</p>
                   <p className="font-medium">{formatDuration(detail.session_duration_seconds)}</p>
                   <p className="text-xs text-muted-foreground">
-                    {formatDate(detail.session_started_at)} to {formatDate(detail.session_ended_at)}
+                    {formatDate(detail.session_started_at)} – {formatDate(detail.session_ended_at)}
                   </p>
                 </div>
               </div>
 
               <div>
-                <p className="mb-2 text-xs uppercase tracking-widest text-accent">Line items</p>
+                <p className="mb-2 text-xs uppercase tracking-widest text-accent">{d.payments}</p>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Minutes</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Reference</TableHead>
-                      <TableHead>Issued</TableHead>
+                      <TableHead>{d.time}</TableHead>
+                      <TableHead>{d.amount}</TableHead>
+                      <TableHead>{d.txnId}</TableHead>
+                      <TableHead>{d.created}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -219,9 +222,9 @@ export default function AdminChatInvoicesPage() {
               </div>
 
               <div>
-                <p className="mb-2 text-xs uppercase tracking-widest text-accent">Conversation transcript</p>
+                <p className="mb-2 text-xs uppercase tracking-widest text-accent">{d.text}</p>
                 {(detail.conversation ?? []).length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No messages in this session.</p>
+                  <p className="text-sm text-muted-foreground">{d.noData}</p>
                 ) : (
                   <ScrollArea className="max-h-64 rounded-md border border-border/70 p-3">
                     <div className="space-y-3 pr-3 text-sm">
@@ -248,7 +251,7 @@ export default function AdminChatInvoicesPage() {
               </div>
 
               <div className="flex items-center justify-between border-t border-border/60 pt-4">
-                <span className="font-medium">Total</span>
+                <span className="font-medium">{d.amount}</span>
                 <span className="font-serif text-2xl">
                   {detail.total_amount} {detail.currency}
                 </span>
@@ -262,7 +265,7 @@ export default function AdminChatInvoicesPage() {
                   onClick={() => void handleDownload(detail.session_id)}
                 >
                   <Download className="mr-2 h-4 w-4" />
-                  Download PDF
+                  {d.downloadPdf}
                 </Button>
                 <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
                   Close
@@ -270,7 +273,7 @@ export default function AdminChatInvoicesPage() {
               </div>
             </div>
           ) : (
-            <p className="text-muted-foreground">Loading…</p>
+            <p className="text-muted-foreground">{d.tableLoading}</p>
           )}
         </DialogContent>
       </Dialog>
