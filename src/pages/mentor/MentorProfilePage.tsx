@@ -5,6 +5,7 @@ import type { MentorAccount } from "@/api/types";
 import { commaSeparatedToStringList, stringListToCommaSeparated, unknownListToStrings } from "@/lib/dbJsonFields";
 import { normalizeSpokenLanguagesFromApi } from "@/lib/spokenLanguageOptions";
 import CoachCardVisibilityPicker from "@/components/CoachCardVisibilityPicker";
+import SpokenLanguageCheckboxGroup from "@/components/SpokenLanguageCheckboxGroup";
 import { DEFAULT_COACH_CARD_VISIBILITY, normalizeCoachCardVisibility, type CoachCardVisibility } from "@/lib/coachCardVisibility";
 import { resolveBrowserTimeZone } from "@/lib/timeZone";
 import { useLanguage } from "@/i18n/LanguageContext";
