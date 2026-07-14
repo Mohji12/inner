@@ -1,6 +1,7 @@
 import { Checkbox } from "@/components/ui/checkbox";
+import { useLanguage } from "@/i18n/LanguageContext";
 import { cn } from "@/lib/utils";
-import { SPOKEN_LANGUAGE_OPTIONS } from "@/lib/spokenLanguageOptions";
+import { SPOKEN_LANGUAGE_OPTIONS, spokenLanguageLabel } from "@/lib/spokenLanguageOptions";
 
 type SpokenLanguageCheckboxGroupProps = {
   id?: string;
@@ -15,6 +16,8 @@ export default function SpokenLanguageCheckboxGroup({
   onChange,
   className,
 }: SpokenLanguageCheckboxGroupProps) {
+  const { language, htmlLang } = useLanguage();
+
   const toggle = (lang: string, checked: boolean) => {
     if (checked) {
       onChange(value.includes(lang) ? value : [...value, lang]);
@@ -26,6 +29,7 @@ export default function SpokenLanguageCheckboxGroup({
   return (
     <div
       id={id}
+      lang={htmlLang}
       className={cn(
         "max-h-48 overflow-y-auto rounded-md border border-input bg-background p-3",
         className,
@@ -46,7 +50,7 @@ export default function SpokenLanguageCheckboxGroup({
                 checked={checked}
                 onCheckedChange={(state) => toggle(lang, state === true)}
               />
-              <span>{lang}</span>
+              <span>{spokenLanguageLabel(lang, language)}</span>
             </label>
           );
         })}

@@ -10,6 +10,17 @@ export const languageLabels: Record<Language, string> = {
   es: "Español",
 };
 
+/** BCP-47 tags for `<html lang>` / inputs — improves browser spellcheck dictionaries. */
+export const languageHtmlLang: Record<Language, string> = {
+  en: "en",
+  fr: "fr-FR",
+  nl: "nl-NL",
+  ar: "ar",
+  zh: "zh-CN",
+  ru: "ru-RU",
+  es: "es-ES",
+};
+
 export const rtlLanguages: Language[] = ["ar"];
 
 export type Translations = typeof translations.en;

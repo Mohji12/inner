@@ -1,12 +1,15 @@
-import React from "react";
 import { Progress } from "@/components/ui/progress";
+import { useLanguage } from "@/i18n/LanguageContext";
 import { cn } from "@/lib/utils";
 
 interface PasswordStrengthMeterProps {
-  password: str;
+  password: string;
 }
 
 const PasswordStrengthMeter = ({ password }: PasswordStrengthMeterProps) => {
+  const { t } = useLanguage();
+  const copy = t.app.passwordStrength;
+
   const getStrength = (pwd: string) => {
     let score = 0;
     if (!pwd) return score;
@@ -23,9 +26,9 @@ const PasswordStrengthMeter = ({ password }: PasswordStrengthMeterProps) => {
 
   const getLabel = (s: number) => {
     if (s === 0) return "";
-    if (s <= 2) return "Weak";
-    if (s <= 4) return "Fairly Strong";
-    return "Strong";
+    if (s <= 2) return copy.weak;
+    if (s <= 4) return copy.fair;
+    return copy.strong;
   };
 
   const getColorClass = (s: number) => {
@@ -37,18 +40,23 @@ const PasswordStrengthMeter = ({ password }: PasswordStrengthMeterProps) => {
   return (
     <div className="space-y-2">
       <div className="flex justify-between text-xs">
-        <span className="text-muted-foreground">Password Strength</span>
-        <span className={cn("font-medium", score <= 2 ? "text-destructive" : score <= 4 ? "text-orange-500" : "text-green-500")}>
+        <span className="text-muted-foreground">{copy.title}</span>
+        <span
+          className={cn(
+            "font-medium",
+            score <= 2 ? "text-destructive" : score <= 4 ? "text-orange-500" : "text-green-500",
+          )}
+        >
           {getLabel(score)}
         </span>
       </div>
       <Progress value={percentage} className="h-1" indicatorClassName={getColorClass(score)} />
-      <ul className="text-[10px] text-muted-foreground list-disc list-inside grid grid-cols-2 gap-x-2">
-         <li className={password.length >= 8 ? "text-green-500" : ""}>At least 8 chars</li>
-         <li className={/[A-Z]/.test(password) ? "text-green-500" : ""}>Uppercase letter</li>
-         <li className={/[a-z]/.test(password) ? "text-green-500" : ""}>Lowercase letter</li>
-         <li className={/[0-9]/.test(password) ? "text-green-500" : ""}>At least one digit</li>
-         <li className={/[!@#$%^&*(),.?":{}|<>]/.test(password) ? "text-green-500" : ""}>Special character</li>
+      <ul className="grid list-inside list-disc grid-cols-2 gap-x-2 text-[10px] text-muted-foreground">
+        <li className={password.length >= 8 ? "text-green-500" : ""}>{copy.minChars}</li>
+        <li className={/[A-Z]/.test(password) ? "text-green-500" : ""}>{copy.uppercase}</li>
+        <li className={/[a-z]/.test(password) ? "text-green-500" : ""}>{copy.lowercase}</li>
+        <li className={/[0-9]/.test(password) ? "text-green-500" : ""}>{copy.digit}</li>
+        <li className={/[!@#$%^&*(),.?":{}|<>]/.test(password) ? "text-green-500" : ""}>{copy.special}</li>
       </ul>
     </div>
   );

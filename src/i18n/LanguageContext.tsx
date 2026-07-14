@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from "react";
-import { type Language, type Translations, translations, rtlLanguages } from "./translations";
+import { type Language, type Translations, translations, rtlLanguages, languageHtmlLang } from "./translations";
 import { appEn, type AppCopy } from "./appBase";
 import { appOverrides } from "./appOverrides";
 import { mergeDeep } from "./mergeDeep";
@@ -8,6 +8,8 @@ export type FullTranslations = Translations & { app: AppCopy };
 
 interface LanguageContextType {
   language: Language;
+  /** BCP-47 locale for `lang` attributes (e.g. fr-FR). */
+  htmlLang: string;
   setLanguage: (lang: Language) => void;
   t: FullTranslations;
 }
@@ -20,11 +22,13 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
     return saved && saved in translations ? saved : "en";
   });
 
+  const htmlLang = languageHtmlLang[language] ?? language;
+
   useEffect(() => {
     localStorage.setItem("lang", language);
     document.documentElement.dir = rtlLanguages.includes(language) ? "rtl" : "ltr";
-    document.documentElement.lang = language;
-  }, [language]);
+    document.documentElement.lang = htmlLang;
+  }, [language, htmlLang]);
 
   const t = useMemo((): FullTranslations => {
     try {
@@ -42,7 +46,7 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   }, [language]);
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider value={{ language, htmlLang, setLanguage, t }}>
       {children}
     </LanguageContext.Provider>
   );

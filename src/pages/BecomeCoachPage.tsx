@@ -16,7 +16,6 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLanguage } from "@/i18n/LanguageContext";
-import CoachApplicationForm from "@/components/CoachApplicationForm";
 import { BecomeCoachBenefits } from "@/components/become-coach/BecomeCoachBenefits";
 import { BecomeCoachFitChecklist } from "@/components/become-coach/BecomeCoachFitChecklist";
 import { BecomeCoachIntroHero } from "@/components/become-coach/BecomeCoachIntroHero";
@@ -158,12 +157,6 @@ const BecomeCoachPage = () => {
                 ))}
               </ul>
             </div>
-          </div>
-        </section>
-
-        <section id="apply" className="border-t border-border/60 bg-muted/20 py-16 md:py-24">
-          <div className="container mx-auto px-6">
-            <CoachApplicationForm />
           </div>
         </section>
 

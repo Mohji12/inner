@@ -1,8 +1,9 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AppPageHeader from "@/components/AppPageHeader";
 import { useAuth } from "@/auth/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
+import { languageLabels, type Language } from "@/i18n/translations";
 import { registerUser, resendUserVerifyEmail, verifyUserEmail } from "@/api/auth";
 import { patchUserMe } from "@/api/users";
 import { Button } from "@/components/ui/button";
@@ -14,10 +15,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
 
+const LANGUAGE_OPTIONS = Object.keys(languageLabels) as Language[];
+
 const UserRegisterPage = () => {
   const navigate = useNavigate();
   const { loginUserSession } = useAuth();
-  const { t } = useLanguage();
+  const { t, language, htmlLang } = useLanguage();
   const a = t.app.userRegister;
   const [error, setError] = useState("");
   const [phase, setPhase] = useState<"form" | "verify">("form");
@@ -30,10 +33,14 @@ const UserRegisterPage = () => {
     password: "",
     city: "",
     goals: "",
-    preferredLanguage: "en",
+    preferredLanguage: language,
     gender: "",
     dateOfBirth: "",
   });
+
+  useEffect(() => {
+    setFormData((prev) => ({ ...prev, preferredLanguage: language }));
+  }, [language]);
 
   const finishRegistration = (userId: string) => {
     const params = new URLSearchParams();
@@ -69,7 +76,7 @@ const UserRegisterPage = () => {
         email,
         phone_number: formData.phone.trim(),
         password: formData.password,
-        preferred_language: formData.preferredLanguage.trim() || "en",
+        preferred_language: formData.preferredLanguage.trim() || language,
       });
       if (reg.dev_verification_code) {
         await verifyUserEmail({ email, code: reg.dev_verification_code });
@@ -115,7 +122,7 @@ const UserRegisterPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground" lang={htmlLang}>
       <AppPageHeader />
       <main className="container mx-auto px-6 py-10">
         <Card className="mx-auto max-w-3xl border-border/60">
@@ -172,101 +179,122 @@ const UserRegisterPage = () => {
                 </div>
               </div>
             ) : (
-            <form onSubmit={(e) => void onSubmit(e)} className="grid grid-cols-1 gap-5">
-              <div className="space-y-2">
-                <Label htmlFor="name">{a.fullName}</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(event) => setFormData((prev) => ({ ...prev, name: event.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">{a.email}</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(event) => setFormData((prev) => ({ ...prev, email: event.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">{a.phone}</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(event) => setFormData((prev) => ({ ...prev, phone: event.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">{a.password}</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete="new-password"
-                  value={formData.password}
-                  onChange={(event) => setFormData((prev) => ({ ...prev, password: event.target.value }))}
-                />
-                <PasswordStrengthMeter password={formData.password} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="city">{a.city}</Label>
-                <Input
-                  id="city"
-                  value={formData.city}
-                  onChange={(event) => setFormData((prev) => ({ ...prev, city: event.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="gender">{a.gender}</Label>
-                <Input
-                  id="gender"
-                  value={formData.gender}
-                  onChange={(event) => setFormData((prev) => ({ ...prev, gender: event.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="dob">{a.dob}</Label>
-                <Input
-                  id="dob"
-                  type="date"
-                  value={formData.dateOfBirth}
-                  onChange={(event) => setFormData((prev) => ({ ...prev, dateOfBirth: event.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lang">{a.preferredLang}</Label>
-                <Input
-                  id="lang"
-                  value={formData.preferredLanguage}
-                  onChange={(event) => setFormData((prev) => ({ ...prev, preferredLanguage: event.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="goals">{a.goals}</Label>
-                <Textarea
-                  id="goals"
-                  rows={5}
-                  value={formData.goals}
-                  onChange={(event) => setFormData((prev) => ({ ...prev, goals: event.target.value }))}
-                />
-              </div>
-              {error ? <p className="text-sm font-medium text-destructive">{error}</p> : null}
-              <div className="flex justify-end gap-3">
-                <Button type="button" variant="outline" onClick={() => navigate("/")}>
-                  {a.back}
-                </Button>
-                <Button type="submit" className="gradient-cta text-white">
-                  {a.submit}
-                </Button>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {a.haveAccount}{" "}
-                <Link to="/login?role=user" className="text-accent underline-offset-4 hover:underline">
-                  {a.logIn}
-                </Link>
-              </p>
-            </form>
+              <form lang={htmlLang} onSubmit={(e) => void onSubmit(e)} className="grid grid-cols-1 gap-5">
+                <div className="space-y-2">
+                  <Label htmlFor="name">{a.fullName}</Label>
+                  <Input
+                    id="name"
+                    lang={htmlLang}
+                    spellCheck
+                    value={formData.name}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, name: event.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">{a.email}</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, email: event.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">{a.phone}</Label>
+                  <Input
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, phone: event.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">{a.password}</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    autoComplete="new-password"
+                    value={formData.password}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, password: event.target.value }))}
+                  />
+                  <PasswordStrengthMeter password={formData.password} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="city">{a.city}</Label>
+                  <Input
+                    id="city"
+                    lang={htmlLang}
+                    spellCheck
+                    placeholder={a.cityPlaceholder}
+                    value={formData.city}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, city: event.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="gender">{a.gender}</Label>
+                  <Input
+                    id="gender"
+                    lang={htmlLang}
+                    spellCheck
+                    placeholder={a.genderPlaceholder}
+                    value={formData.gender}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, gender: event.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="dob">{a.dob}</Label>
+                  <Input
+                    id="dob"
+                    type="date"
+                    lang={htmlLang}
+                    value={formData.dateOfBirth}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, dateOfBirth: event.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lang">{a.preferredLang}</Label>
+                  <select
+                    id="lang"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    value={formData.preferredLanguage}
+                    onChange={(event) =>
+                      setFormData((prev) => ({ ...prev, preferredLanguage: event.target.value }))
+                    }
+                  >
+                    {LANGUAGE_OPTIONS.map((code) => (
+                      <option key={code} value={code}>
+                        {languageLabels[code]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="goals">{a.goals}</Label>
+                  <Textarea
+                    id="goals"
+                    rows={5}
+                    lang={htmlLang}
+                    spellCheck
+                    placeholder={a.goalsPlaceholder}
+                    value={formData.goals}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, goals: event.target.value }))}
+                  />
+                </div>
+                {error ? <p className="text-sm font-medium text-destructive">{error}</p> : null}
+                <div className="flex justify-end gap-3">
+                  <Button type="button" variant="outline" onClick={() => navigate("/")}>
+                    {a.back}
+                  </Button>
+                  <Button type="submit" className="gradient-cta text-white">
+                    {a.submit}
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {a.haveAccount}{" "}
+                  <Link to="/login?role=user" className="text-accent underline-offset-4 hover:underline">
+                    {a.logIn}
+                  </Link>
+                </p>
+              </form>
             )}
           </CardContent>
         </Card>

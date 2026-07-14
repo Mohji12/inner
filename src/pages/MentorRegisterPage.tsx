@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AppPageHeader from "@/components/AppPageHeader";
+import { useAuth } from "@/auth/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { registerMentor, resendMentorVerifyEmail, verifyMentorEmail } from "@/api/auth";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,8 @@ type Phase = "form" | "verify";
 
 const MentorRegisterPage = () => {
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { loginMentorSession } = useAuth();
+  const { t, htmlLang } = useLanguage();
   const m = t.app.mentorRegister;
   const [error, setError] = useState("");
   const [phase, setPhase] = useState<Phase>("form");
@@ -102,6 +104,15 @@ const MentorRegisterPage = () => {
     navigate(`/mentor/register/thank-you${query ? `?${query}` : ""}`);
   };
 
+  const completeMentorOnboarding = async (email: string, password: string, message?: string, mentorId?: string) => {
+    try {
+      await loginMentorSession({ email, password });
+    } catch {
+      // Still land on thank-you; redirect falls back to login if no session.
+    }
+    finishRegistration(message, mentorId);
+  };
+
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!formData.name || !formData.email || !formData.phone || !formData.password) {
@@ -117,7 +128,7 @@ const MentorRegisterPage = () => {
       return;
     }
     if (!agreementAccepted) {
-      setError("You must accept the Coach Agreement to register.");
+      setError(m.errAgreementRequired);
       return;
     }
 
@@ -162,16 +173,21 @@ const MentorRegisterPage = () => {
             URL.revokeObjectURL(localAvatarPreview);
           }
           setLocalAvatarPreview(null);
-          toast.success("Profile photo uploaded to your coach profile.");
+          toast.success(m.toastPhotoOk);
         } catch (e) {
           const msg =
-            e instanceof Error ? e.message : "Photo upload failed. You can add a photo later under Coach profile.";
+            e instanceof Error ? e.message : m.toastPhotoFail;
           toast.error(msg);
         }
       }
       if (reg.dev_verification_code) {
         const verified = await verifyMentorEmail({ email, code: reg.dev_verification_code });
-        finishRegistration(verified.message, verified.mentor_id || reg.id);
+        await completeMentorOnboarding(
+          email,
+          formData.password,
+          verified.message,
+          verified.mentor_id || reg.id,
+        );
         return;
       }
       setVerifyCtx({ email, password: formData.password, mentorId: reg.id });
@@ -192,13 +208,18 @@ const MentorRegisterPage = () => {
       return;
     }
     if (!agreementAcceptedBeforeVerify) {
-      setError("Please confirm the coach agreement before completing registration.");
+      setError(m.errAgreementVerify);
       return;
     }
     setError("");
     try {
       const verified = await verifyMentorEmail({ email: verifyCtx.email, code: otp.replace(/\D/g, "") });
-      finishRegistration(verified.message, verified.mentor_id || verifyCtx.mentorId);
+      await completeMentorOnboarding(
+        verifyCtx.email,
+        verifyCtx.password,
+        verified.message,
+        verified.mentor_id || verifyCtx.mentorId,
+      );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : m.errVerify;
       setError(msg);
@@ -218,7 +239,7 @@ const MentorRegisterPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground" lang={htmlLang}>
       <AppPageHeader />
       <main className="container mx-auto px-6 py-10">
         <Card className="mx-auto max-w-4xl border-border/60">
@@ -300,7 +321,7 @@ const MentorRegisterPage = () => {
                 </div>
               </div>
             ) : (
-            <form onSubmit={(e) => void onSubmit(e)} className="space-y-6">
+            <form lang={htmlLang} onSubmit={(e) => void onSubmit(e)} className="space-y-6">
               <Tabs value={tab} onValueChange={(v) => setTab(v as TabId)} className="w-full">
                 <TabsList className="grid h-auto w-full grid-cols-2 gap-1 p-1 sm:grid-cols-3">
                   <TabsTrigger value="account" className="text-xs sm:text-sm">
@@ -321,6 +342,8 @@ const MentorRegisterPage = () => {
                       <Label htmlFor="name">{m.fullName}</Label>
                       <Input
                         id="name"
+                        lang={htmlLang}
+                        spellCheck
                         autoComplete="name"
                         value={formData.name}
                         onChange={(event) => setFormData((prev) => ({ ...prev, name: event.target.value }))}
@@ -376,7 +399,7 @@ const MentorRegisterPage = () => {
                           />
                         ) : (
                           <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-dashed border-muted-foreground/40 bg-muted/30 text-center text-[10px] text-muted-foreground">
-                            Preview
+                            {m.photoPreviewEmpty}
                           </div>
                         )}
                         <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -390,7 +413,7 @@ const MentorRegisterPage = () => {
                               event.target.value = "";
                               if (!file) return;
                               if (!formData.email.trim() || !formData.password) {
-                                toast.message("Fill email and password in the Account tab first, then upload a photo.");
+                                toast.message(m.toastFillAccountFirst);
                                 return;
                               }
                               pendingAvatarFileRef.current = file;
@@ -401,7 +424,7 @@ const MentorRegisterPage = () => {
                             }}
                           />
                           <Label htmlFor="pimg-url" className="text-xs text-muted-foreground">
-                            Or paste image URL
+                            {m.orPasteImageUrl}
                           </Label>
                           <Input
                             id="pimg-url"
@@ -424,6 +447,9 @@ const MentorRegisterPage = () => {
                       <Label htmlFor="headline">{m.headline}</Label>
                       <Input
                         id="headline"
+                        lang={htmlLang}
+                        spellCheck
+                        placeholder={m.headlinePlaceholder}
                         value={formData.headline}
                         onChange={(event) => setFormData((prev) => ({ ...prev, headline: event.target.value }))}
                       />
@@ -432,6 +458,8 @@ const MentorRegisterPage = () => {
                       <Label htmlFor="expertiseCsv">{m.expertiseCsv}</Label>
                       <Input
                         id="expertiseCsv"
+                        lang={htmlLang}
+                        spellCheck
                         placeholder={m.expertisePlaceholder}
                         value={formData.expertiseAreasCsv}
                         onChange={(event) => setFormData((prev) => ({ ...prev, expertiseAreasCsv: event.target.value }))}
@@ -442,6 +470,9 @@ const MentorRegisterPage = () => {
                       <Textarea
                         id="bio"
                         rows={4}
+                        lang={htmlLang}
+                        spellCheck
+                        placeholder={m.bioPlaceholder}
                         value={formData.bio}
                         onChange={(event) => setFormData((prev) => ({ ...prev, bio: event.target.value }))}
                       />

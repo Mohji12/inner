@@ -30,10 +30,10 @@ export function BecomeCoachIntroHero({
         <p className="mt-4 text-lg text-muted-foreground">{introP2}</p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Button asChild className="gradient-cta text-white">
-            <a href="#apply">
+            <Link to="/mentor/register">
               {ctaApply}
               <ArrowRight className="ml-2 h-4 w-4" />
-            </a>
+            </Link>
           </Button>
           <Button asChild variant="outline">
             <Link to="/coach-agreement">{ctaAgreement}</Link>
