@@ -11,7 +11,7 @@ class EmailOtpCode(Base):
 
     id: Mapped[str] = mapped_column(CHAR(36), primary_key=True)
     email: Mapped[str] = mapped_column(String(255), index=True)
-    role: Mapped[str] = mapped_column(String(16))  # "user" | "mentor"
+    role: Mapped[str] = mapped_column(String(32))  # "user" | "mentor"
     subject_id: Mapped[str] = mapped_column(CHAR(36))
     otp_hash: Mapped[str] = mapped_column(String(64))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
