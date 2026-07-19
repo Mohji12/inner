@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 
-SUPPORTED_LANGS = {"en", "nl", "fr", "ar", "zh", "ru", "es"}
+SUPPORTED_LANGS = {"en", "nl", "fr", "ar", "zh", "ru", "es", "it", "de"}
 DEFAULT_LANG = "en"
 
 

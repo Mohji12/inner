@@ -247,6 +247,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mentorTokenRef.current = null;
       setMentorAccessToken(null);
       if (roleRef.current === "mentor") setRole(null);
+      try {
+        sessionStorage.removeItem("coach_online_toast_shown");
+      } catch {
+        /* ignore */
+      }
     }
   }, []);
 

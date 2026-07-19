@@ -32,7 +32,7 @@ class MentorRegister(BaseModel):
     bio_i18n: dict[str, str] | None = None
     profile_image: str | None = Field(default=None, max_length=512)
     current_company: str | None = Field(default=None, max_length=255)
-    kvk_number: str | None = Field(default=None, max_length=32)
+    kvk_number: str = Field(min_length=1, max_length=32)
     languages_spoken: list[str] | None = None
     years_of_experience: int | None = None
     expertise_areas: list[str] | None = None

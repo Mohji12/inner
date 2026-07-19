@@ -40,6 +40,7 @@ import MentorEarningsPage from "./pages/mentor/MentorEarningsPage.tsx";
 import MentorMonthlyFeesPage from "./pages/mentor/MentorMonthlyFeesPage.tsx";
 import MentorDashboardHomePage from "./pages/mentor/MentorDashboardHomePage.tsx";
 import MentorPayoutsPage from "./pages/mentor/MentorPayoutsPage.tsx";
+import MentorSettlementsPage from "./pages/mentor/MentorSettlementsPage.tsx";
 import ChatSessionPage from "./pages/chat/ChatSessionPage.tsx";
 import ChatInboxPage from "./pages/chat/ChatInboxPage.tsx";
 import { AdminDashboardLayout } from "@/components/dashboard/AdminDashboardLayout";
@@ -47,6 +48,8 @@ import AdminOverviewPage from "./pages/admin/AdminOverviewPage.tsx";
 import AdminBookingsPage from "./pages/admin/AdminBookingsPage.tsx";
 import AdminUsersPage from "./pages/admin/AdminUsersPage.tsx";
 import AdminMentorsPage from "./pages/admin/AdminMentorsPage.tsx";
+import AdminMentorPresencePage from "./pages/admin/AdminMentorPresencePage.tsx";
+import AdminAnnouncementsPage from "./pages/admin/AdminAnnouncementsPage.tsx";
 import AdminPaymentsPage from "./pages/admin/AdminPaymentsPage.tsx";
 import AdminChatInvoicesPage from "./pages/admin/AdminChatInvoicesPage.tsx";
 import AdminSettlementsPage from "./pages/admin/AdminSettlementsPage.tsx";
@@ -138,6 +141,7 @@ const App = () => (
                   <Route path="appointments" element={<MentorAppointmentsPage />} />
                   <Route path="earnings" element={<MentorEarningsPage />} />
                   <Route path="payouts" element={<MentorPayoutsPage />} />
+                  <Route path="settlements" element={<MentorSettlementsPage />} />
                   <Route path="invoices" element={<MentorMonthlyFeesPage />} />
                   <Route path="messages" element={<ChatInboxPage />} />
                   <Route path="chat/:sessionId" element={<ChatSessionPage />} />
@@ -156,6 +160,8 @@ const App = () => (
                   <Route path="bookings" element={<AdminBookingsPage />} />
                   <Route path="users" element={<AdminUsersPage />} />
                   <Route path="mentors" element={<AdminMentorsPage />} />
+                  <Route path="mentor-presence" element={<AdminMentorPresencePage />} />
+                  <Route path="announcements" element={<AdminAnnouncementsPage />} />
                   <Route path="coach-applications" element={<AdminCoachApplicationsPage />} />
                   <Route path="payments" element={<AdminPaymentsPage />} />
                   <Route path="invoices" element={<AdminInvoicesPage />} />

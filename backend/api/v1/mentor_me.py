@@ -17,6 +17,7 @@ from models.mentor import Mentor
 from models.mentor_monthly_invoice import MentorMonthlyInvoice
 from models.mentor_payout_account import MentorPayoutAccount
 from models.mentor_onboarding_payment import MentorOnboardingPayment
+from models.mentor_settlement import MentorSettlement, MentorSettlementItem
 from models.payment import Payment
 from models.chat_purchase import ChatPurchase
 from models.chat_session import ChatSession
@@ -33,6 +34,7 @@ from services.fx_checkout import FxCheckoutError, FxUpstreamError
 from services.invoice_service import InvoiceError
 from services.mentor_monthly_fee_service import ensure_monthly_invoice_mollie_checkout
 from services.mentor_monthly_invoice_pdf import build_mentor_monthly_invoice_pdf
+from services.settlement_invoice_pdf import build_settlement_invoice_pdf, settlement_invoice_number
 from services.platform_invoice_service import load_mentor_monthly_statement, load_mentor_onboarding_invoice
 from services.payout_bank_service import mask_bic, mask_iban, normalize_bic, validate_and_normalize_iban
 from services.mollie_service import MollieServiceError, resolve_mollie_webhook_url
@@ -41,6 +43,7 @@ from services.onboarding_payment_service import create_onboarding_checkout, ment
 from services.i18n_service import resolve_i18n_text, to_i18n_map
 from core.coach_agreement import COACH_AGREEMENT_TEXT, COACH_AGREEMENT_VERSION
 from services.presence_service import presence_service
+from services.mentor_presence_tracking_service import accrue_mentor_presence
 from services.ledger_service import (
     ACCOUNT_COACH_PENDING,
     ACCOUNT_COACH_WITHDRAWABLE,
@@ -69,6 +72,21 @@ class MentorMonthlyInvoiceOut(BaseModel):
     paid_at: datetime | None
     reminder_sent_at: datetime | None
     created_at: datetime
+
+
+class MentorSettlementOut(BaseModel):
+    id: str
+    currency: str
+    cycle_start: str
+    cycle_end: str
+    gross_amount: str
+    fee_amount: str
+    net_amount: str
+    status: str
+    provider_batch_ref: str | None
+    paid_at: datetime | None
+    created_at: datetime
+    invoice_number: str
 
 
 class MentorOnboardingPaymentOut(BaseModel):
@@ -150,12 +168,18 @@ def mentor_profile(me: CurrentMentor, lang: RequestLang) -> MentorAccountOut:
 
 @router.post("/presence", status_code=status.HTTP_204_NO_CONTENT)
 def mentor_presence_heartbeat(db: DbSession, me: CurrentMentor) -> Response:
-    """Mark mentor online when dashboard/app is open."""
+    """Mark mentor online when dashboard/app is open and accrue weekly platform time."""
     presence_service.set_online(me.id, "mentor")
     now = datetime.now(timezone.utc)
     try:
-        db.execute(update(Mentor).where(Mentor.id == me.id).values(last_seen_at=now))
-        db.commit()
+        # Reload for accrual fields; CurrentMentor may be detached/stale across workers.
+        mentor = db.query(Mentor).filter(Mentor.id == me.id).first()
+        if mentor:
+            accrue_mentor_presence(db, mentor, now=now)
+            db.commit()
+        else:
+            db.execute(update(Mentor).where(Mentor.id == me.id).values(last_seen_at=now))
+            db.commit()
     except OperationalError as e:
         db.rollback()
         if not _is_mysql_lock_wait_timeout(e):
@@ -476,6 +500,59 @@ def mentor_monthly_invoices(db: DbSession, me: CurrentMentor) -> list[MentorMont
         )
         for r in rows
     ]
+
+
+def _mentor_settlement_out(s: MentorSettlement) -> MentorSettlementOut:
+    return MentorSettlementOut(
+        id=s.id,
+        currency=s.currency,
+        cycle_start=s.cycle_start.isoformat(),
+        cycle_end=s.cycle_end.isoformat(),
+        gross_amount=str(Decimal(str(s.gross_amount)).quantize(Decimal("0.01"))),
+        fee_amount=str(Decimal(str(s.fee_amount)).quantize(Decimal("0.01"))),
+        net_amount=str(Decimal(str(s.net_amount)).quantize(Decimal("0.01"))),
+        status=s.status,
+        provider_batch_ref=s.provider_batch_ref,
+        paid_at=s.paid_at,
+        created_at=s.created_at,
+        invoice_number=settlement_invoice_number(s),
+    )
+
+
+@router.get("/settlements", response_model=list[MentorSettlementOut])
+def mentor_list_settlements(db: DbSession, me: CurrentMentor) -> list[MentorSettlementOut]:
+    rows = (
+        db.query(MentorSettlement)
+        .filter(MentorSettlement.mentor_id == me.id)
+        .order_by(MentorSettlement.created_at.desc())
+        .all()
+    )
+    return [_mentor_settlement_out(r) for r in rows]
+
+
+@router.get("/settlements/{settlement_id}/pdf")
+def mentor_settlement_invoice_pdf(settlement_id: str, db: DbSession, me: CurrentMentor) -> Response:
+    s = (
+        db.query(MentorSettlement)
+        .filter(MentorSettlement.id == settlement_id, MentorSettlement.mentor_id == me.id)
+        .first()
+    )
+    if not s:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Settlement not found")
+    items = (
+        db.query(MentorSettlementItem)
+        .filter(MentorSettlementItem.settlement_id == settlement_id)
+        .order_by(MentorSettlementItem.created_at.asc())
+        .all()
+    )
+    pdf_bytes = build_settlement_invoice_pdf(settlement=s, mentor=me, items=items)
+    inv_no = settlement_invoice_number(s)
+    safe_name = f"settlement-invoice-{inv_no}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{safe_name}"'},
+    )
 
 
 @router.get("/monthly-invoices/{invoice_id}", response_model=MentorMonthlyFeeStatementOut)

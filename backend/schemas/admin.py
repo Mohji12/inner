@@ -51,10 +51,26 @@ class AdminMentorRow(BaseModel):
     session_modes: list | None = None
     previous_companies: list | None = None
     profile_image: str | None = None
+    banner_image: str | None = None
     country_code: str | None = None
     timezone: str | None = None
     average_rating: Decimal | None = None
     total_reviews: int = 0
+    total_sessions_completed: int = 0
+    price_10_min: Decimal | None = None
+    price_20_min: Decimal | None = None
+    price_30_min: Decimal | None = None
+    chat_price_per_minute: Decimal | None = None
+    chat_currency: str | None = None
+    chat_min_purchase_minutes: int = 1
+    agreement_accepted_at: datetime | None = None
+    agreement_version: str | None = None
+    last_seen_at: datetime | None = None
+    presence_accrued_at: datetime | None = None
+    deactivated_at: datetime | None = None
+    is_totp_enabled: bool = False
+    has_google_id: bool = False
+    public_card_visibility: dict | None = None
     status: str
     is_approved: bool
     email_verified: bool
@@ -402,6 +418,67 @@ class AdminTransactionRow(BaseModel):
 
 class AdminTransactionList(BaseModel):
     items: list[AdminTransactionRow]
+    total: int
+    skip: int
+    limit: int
+
+
+class AdminMentorPresenceRow(BaseModel):
+    mentor_id: str
+    full_name: str
+    email: str
+    status: str
+    week_start: date
+    seconds_online: int
+    hours_online: float
+    min_hours: float
+    meets_minimum: bool
+    warning_sent_at: datetime | None = None
+
+
+class AdminMentorPresenceList(BaseModel):
+    week_start: date
+    min_hours: float
+    items: list[AdminMentorPresenceRow]
+    total: int
+    skip: int
+    limit: int
+
+
+class AdminMentorPresenceHistoryRow(BaseModel):
+    week_start: date
+    seconds_online: int
+    hours_online: float
+    meets_minimum: bool
+    warning_sent_at: datetime | None = None
+
+
+class AdminMentorPresenceDetail(BaseModel):
+    mentor_id: str
+    full_name: str
+    email: str
+    status: str
+    min_hours: float
+    weeks: list[AdminMentorPresenceHistoryRow]
+
+
+class AdminAnnouncementCreate(BaseModel):
+    title: str
+    body: str
+    send_email: bool = True
+
+
+class AdminAnnouncementRow(BaseModel):
+    id: str
+    title: str
+    body: str
+    recipient_count: int
+    emails_sent: int
+    created_at: datetime
+
+
+class AdminAnnouncementList(BaseModel):
+    items: list[AdminAnnouncementRow]
     total: int
     skip: int
     limit: int

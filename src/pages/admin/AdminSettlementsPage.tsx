@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   approveAdminSettlement,
+  downloadAdminSettlementInvoicePdf,
   fetchAdminSettlementCandidates,
   fetchAdminSettlements,
   generateAdminSettlements,
@@ -66,6 +67,26 @@ export default function AdminSettlementsPage() {
     },
     onError: (e: Error) => toast.error(e.message || d.errorGeneric),
   });
+
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const onDownloadPdf = async (id: string) => {
+    setDownloadingId(id);
+    try {
+      const { blob, filename } = await downloadAdminSettlementInvoicePdf(id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename ?? `settlement-invoice-${id.slice(0, 8)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(d.invoiceDownloaded);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : d.errorGeneric);
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   const candidates = candidatesQ.data?.candidates ?? [];
   const settlements = settlementsQ.data?.items ?? [];
@@ -168,7 +189,15 @@ export default function AdminSettlementsPage() {
                     <Badge variant="outline">{s.status}</Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-2 flex-wrap">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={downloadingId === s.id}
+                        onClick={() => void onDownloadPdf(s.id)}
+                      >
+                        {downloadingId === s.id ? d.tableLoading : d.downloadPdf}
+                      </Button>
                       <Button
                         size="sm"
                         variant="outline"

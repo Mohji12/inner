@@ -42,6 +42,16 @@ const legalUiCopy: Record<Language, { back: string; title: string; fallback: str
     title: "Politica de privacidad",
     fallback: "Nota: este documento esta disponible actualmente en ingles para el idioma seleccionado.",
   },
+  it: {
+    back: "Indietro",
+    title: "Informativa sulla privacy",
+    fallback: "Nota: questo documento è attualmente disponibile in inglese per la lingua selezionata.",
+  },
+  de: {
+    back: "Zurück",
+    title: "Datenschutzerklärung",
+    fallback: "Hinweis: Dieses Dokument ist für die ausgewählte Sprache derzeit auf Englisch verfügbar.",
+  },
 };
 
 const PrivacyPolicyNL = () => (

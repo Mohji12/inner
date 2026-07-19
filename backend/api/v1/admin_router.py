@@ -24,6 +24,14 @@ from models.review import Review
 from models.user import User
 from models.wallet import Wallet, WalletTransaction
 from schemas.chat import ChatInvoiceConversationLineOut, ChatInvoiceDetailOut, ChatInvoiceLineOut, ChatInvoiceSummaryOut
+from core.config import settings
+from services.mentor_presence_tracking_service import (
+    hours_from_seconds,
+    list_presence_for_week,
+    mentor_presence_history,
+    min_weekly_seconds,
+    week_start_for,
+)
 from schemas.admin import (
     AdminBookingInvoiceList,
     AdminBookingInvoiceRow,
@@ -39,6 +47,13 @@ from schemas.admin import (
     AdminMentorBankDetailsPrivateOut,
     AdminMentorPayoutAccountOut,
     AdminMentorPayoutAccountUpsertRequest,
+    AdminMentorPresenceDetail,
+    AdminMentorPresenceHistoryRow,
+    AdminMentorPresenceList,
+    AdminMentorPresenceRow,
+    AdminAnnouncementCreate,
+    AdminAnnouncementList,
+    AdminAnnouncementRow,
     AdminPlatformPricingOut,
     AdminPlatformPricingUpdateRequest,
     AdminMentorRow,
@@ -76,6 +91,7 @@ from services.platform_invoice_service import (
 )
 from services.chat_invoice_service import aggregate_purchases
 from services.mentor_monthly_invoice_pdf import build_mentor_monthly_invoice_pdf
+from services.settlement_invoice_pdf import build_settlement_invoice_pdf, settlement_invoice_number
 from services.payout_gateway import payout_gateway
 from services.marketplace_service import MarketplaceError, connect_payout_gate_status, resolve_connect_access_token_for_payout
 from services.settlement_service import (
@@ -174,6 +190,55 @@ def _settlement_row(db: DbSession, s: MentorSettlement) -> AdminSettlementRow:
     )
 
 
+def _admin_mentor_row(m: Mentor, lang: str = "en") -> AdminMentorRow:
+    return AdminMentorRow(
+        id=m.id,
+        full_name=m.full_name,
+        email=m.email,
+        phone_number=m.phone_number,
+        headline=resolve_i18n_text(getattr(m, "headline_i18n", None), m.headline, lang),
+        bio=resolve_i18n_text(getattr(m, "bio_i18n", None), m.bio, lang),
+        current_company=m.current_company,
+        kvk_number=m.kvk_number,
+        languages_spoken=m.languages_spoken,
+        years_of_experience=m.years_of_experience or 0,
+        education=m.education,
+        certifications=m.certifications,
+        expertise_areas=m.expertise_areas,
+        skills=m.skills,
+        tools_technologies=m.tools_technologies,
+        session_modes=m.session_modes,
+        previous_companies=m.previous_companies,
+        profile_image=m.profile_image,
+        banner_image=getattr(m, "banner_image", None),
+        country_code=m.country_code,
+        timezone=m.timezone,
+        average_rating=m.average_rating,
+        total_reviews=m.total_reviews or 0,
+        total_sessions_completed=m.total_sessions_completed or 0,
+        price_10_min=m.price_10_min,
+        price_20_min=m.price_20_min,
+        price_30_min=m.price_30_min,
+        chat_price_per_minute=m.chat_price_per_minute,
+        chat_currency=m.chat_currency,
+        chat_min_purchase_minutes=m.chat_min_purchase_minutes or 1,
+        agreement_accepted_at=getattr(m, "agreement_accepted_at", None),
+        agreement_version=getattr(m, "agreement_version", None),
+        last_seen_at=m.last_seen_at,
+        presence_accrued_at=getattr(m, "presence_accrued_at", None),
+        deactivated_at=m.deactivated_at,
+        is_totp_enabled=bool(getattr(m, "is_totp_enabled", False)),
+        has_google_id=bool(getattr(m, "google_id", None)),
+        public_card_visibility=getattr(m, "public_card_visibility", None),
+        status=m.status,
+        is_approved=m.is_approved,
+        email_verified=m.email_verified,
+        is_verified=m.is_verified,
+        created_at=m.created_at,
+        updated_at=m.updated_at,
+    )
+
+
 @router.get("/users", response_model=AdminUserList)
 def admin_list_users(
     db: DbSession,
@@ -218,40 +283,21 @@ def admin_list_mentors(
         query = query.filter((Mentor.email.like(term)) | (Mentor.full_name.like(term)))
     total = query.count()
     rows = query.order_by(Mentor.created_at.desc()).offset(skip).limit(limit).all()
-    items = [
-        AdminMentorRow(
-            id=m.id,
-            full_name=m.full_name,
-            email=m.email,
-            phone_number=m.phone_number,
-            headline=resolve_i18n_text(getattr(m, "headline_i18n", None), m.headline, lang),
-            bio=resolve_i18n_text(getattr(m, "bio_i18n", None), m.bio, lang),
-            current_company=m.current_company,
-            kvk_number=m.kvk_number,
-            languages_spoken=m.languages_spoken,
-            years_of_experience=m.years_of_experience or 0,
-            education=m.education,
-            certifications=m.certifications,
-            expertise_areas=m.expertise_areas,
-            skills=m.skills,
-            tools_technologies=m.tools_technologies,
-            session_modes=m.session_modes,
-            previous_companies=m.previous_companies,
-            profile_image=m.profile_image,
-            country_code=m.country_code,
-            timezone=m.timezone,
-            average_rating=m.average_rating,
-            total_reviews=m.total_reviews or 0,
-            status=m.status,
-            is_approved=m.is_approved,
-            email_verified=m.email_verified,
-            is_verified=m.is_verified,
-            created_at=m.created_at,
-            updated_at=m.updated_at,
-        )
-        for m in rows
-    ]
+    items = [_admin_mentor_row(m, lang) for m in rows]
     return AdminMentorList(items=items, total=total, skip=skip, limit=limit)
+
+
+@router.get("/mentors/{mentor_id}", response_model=AdminMentorRow)
+def admin_get_mentor(
+    mentor_id: str,
+    db: DbSession,
+    _admin: CurrentAdmin,
+    lang: RequestLang,
+) -> AdminMentorRow:
+    mentor = db.query(Mentor).filter(Mentor.id == mentor_id).first()
+    if not mentor:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Coach not found")
+    return _admin_mentor_row(mentor, lang)
 
 
 @router.patch("/mentors/{mentor_id}/approval", response_model=AdminMentorRow)
@@ -274,36 +320,7 @@ def admin_update_mentor_approval(
 
     db.commit()
     db.refresh(mentor)
-    return AdminMentorRow(
-        id=mentor.id,
-        full_name=mentor.full_name,
-        email=mentor.email,
-        phone_number=mentor.phone_number,
-        headline=mentor.headline,
-        bio=mentor.bio,
-        current_company=mentor.current_company,
-        kvk_number=mentor.kvk_number,
-        languages_spoken=mentor.languages_spoken,
-        years_of_experience=mentor.years_of_experience or 0,
-        education=mentor.education,
-        certifications=mentor.certifications,
-        expertise_areas=mentor.expertise_areas,
-        skills=mentor.skills,
-        tools_technologies=mentor.tools_technologies,
-        session_modes=mentor.session_modes,
-        previous_companies=mentor.previous_companies,
-        profile_image=mentor.profile_image,
-        country_code=mentor.country_code,
-        timezone=mentor.timezone,
-        average_rating=mentor.average_rating,
-        total_reviews=mentor.total_reviews or 0,
-        status=mentor.status,
-        is_approved=mentor.is_approved,
-        email_verified=mentor.email_verified,
-        is_verified=mentor.is_verified,
-        created_at=mentor.created_at,
-        updated_at=mentor.updated_at,
-    )
+    return _admin_mentor_row(mentor)
 
 
 @router.get("/coach-applications", response_model=AdminCoachApplicationList)
@@ -894,6 +911,32 @@ def admin_get_settlement(
     )
 
 
+@router.get("/settlements/{settlement_id}/pdf")
+def admin_download_settlement_invoice_pdf(
+    settlement_id: str,
+    db: DbSession,
+    _admin: CurrentAdmin,
+) -> Response:
+    s = db.query(MentorSettlement).filter(MentorSettlement.id == settlement_id).first()
+    if not s:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Settlement not found")
+    mentor = db.query(Mentor).filter(Mentor.id == s.mentor_id).first()
+    items = (
+        db.query(MentorSettlementItem)
+        .filter(MentorSettlementItem.settlement_id == settlement_id)
+        .order_by(MentorSettlementItem.created_at.asc())
+        .all()
+    )
+    pdf_bytes = build_settlement_invoice_pdf(settlement=s, mentor=mentor, items=items)
+    inv_no = settlement_invoice_number(s)
+    safe_name = f"settlement-invoice-{inv_no}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{safe_name}"'},
+    )
+
+
 @router.post("/settlements/{settlement_id}/approve", response_model=AdminSettlementRow)
 def admin_approve_settlement(
     settlement_id: str,
@@ -1383,4 +1426,134 @@ def admin_analytics(
         reviews_by_day=_series_counts(db, Review, start, end),
         users_by_day=_series_counts(db, User, start, end),
         mentors_by_day=_series_counts(db, Mentor, start, end),
+    )
+
+
+@router.get("/mentor-presence", response_model=AdminMentorPresenceList)
+def admin_list_mentor_presence(
+    db: DbSession,
+    _admin: CurrentAdmin,
+    week_start: date | None = Query(None, description="Monday of the week (YYYY-MM-DD)"),
+    q: str | None = Query(None, description="Filter by coach name or email"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+) -> AdminMentorPresenceList:
+    ws = week_start or week_start_for()
+    # Normalize to Monday if a mid-week date is passed.
+    ws = ws - timedelta(days=ws.weekday())
+    min_hours = float(settings.mentor_weekly_min_hours or 20)
+    threshold = min_weekly_seconds()
+    pairs, total = list_presence_for_week(db, week_start=ws, q=q, skip=skip, limit=limit)
+    items: list[AdminMentorPresenceRow] = []
+    for mentor, row in pairs:
+        seconds = int(row.seconds_online or 0) if row else 0
+        items.append(
+            AdminMentorPresenceRow(
+                mentor_id=mentor.id,
+                full_name=mentor.full_name,
+                email=mentor.email,
+                status=mentor.status,
+                week_start=ws,
+                seconds_online=seconds,
+                hours_online=hours_from_seconds(seconds),
+                min_hours=min_hours,
+                meets_minimum=seconds >= threshold,
+                warning_sent_at=row.warning_sent_at if row else None,
+            )
+        )
+    return AdminMentorPresenceList(
+        week_start=ws,
+        min_hours=min_hours,
+        items=items,
+        total=total,
+        skip=skip,
+        limit=limit,
+    )
+
+
+@router.get("/mentor-presence/{mentor_id}", response_model=AdminMentorPresenceDetail)
+def admin_mentor_presence_detail(
+    mentor_id: str,
+    db: DbSession,
+    _admin: CurrentAdmin,
+    weeks: int = Query(8, ge=1, le=52),
+) -> AdminMentorPresenceDetail:
+    mentor = db.query(Mentor).filter(Mentor.id == mentor_id).first()
+    if not mentor:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Coach not found")
+    min_hours = float(settings.mentor_weekly_min_hours or 20)
+    threshold = min_weekly_seconds()
+    history = mentor_presence_history(db, mentor_id=mentor.id, weeks=weeks)
+    return AdminMentorPresenceDetail(
+        mentor_id=mentor.id,
+        full_name=mentor.full_name,
+        email=mentor.email,
+        status=mentor.status,
+        min_hours=min_hours,
+        weeks=[
+            AdminMentorPresenceHistoryRow(
+                week_start=r.week_start,
+                seconds_online=int(r.seconds_online or 0),
+                hours_online=hours_from_seconds(int(r.seconds_online or 0)),
+                meets_minimum=int(r.seconds_online or 0) >= threshold,
+                warning_sent_at=r.warning_sent_at,
+            )
+            for r in history
+        ],
+    )
+
+
+@router.post("/announcements", response_model=AdminAnnouncementRow, status_code=status.HTTP_201_CREATED)
+def admin_create_announcement(
+    payload: AdminAnnouncementCreate,
+    db: DbSession,
+    admin: CurrentAdmin,
+) -> AdminAnnouncementRow:
+    from services.admin_announcement_service import broadcast_admin_announcement
+
+    try:
+        row = broadcast_admin_announcement(
+            db,
+            admin_id=admin.id,
+            title=payload.title,
+            body=payload.body,
+            send_email=payload.send_email,
+        )
+    except ValueError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
+    return AdminAnnouncementRow(
+        id=row.id,
+        title=row.title,
+        body=row.body,
+        recipient_count=row.recipient_count,
+        emails_sent=row.emails_sent,
+        created_at=row.created_at,
+    )
+
+
+@router.get("/announcements", response_model=AdminAnnouncementList)
+def admin_list_announcements(
+    db: DbSession,
+    _admin: CurrentAdmin,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+) -> AdminAnnouncementList:
+    from services.admin_announcement_service import list_admin_announcements
+
+    rows, total = list_admin_announcements(db, skip=skip, limit=limit)
+    return AdminAnnouncementList(
+        items=[
+            AdminAnnouncementRow(
+                id=r.id,
+                title=r.title,
+                body=r.body,
+                recipient_count=r.recipient_count,
+                emails_sent=r.emails_sent,
+                created_at=r.created_at,
+            )
+            for r in rows
+        ],
+        total=total,
+        skip=skip,
+        limit=limit,
     )

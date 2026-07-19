@@ -2,6 +2,8 @@ import { NavLink, useNavigate } from "react-router-dom";
 import {
   BarChart3,
   CalendarDays,
+  Megaphone,
+  Clock,
   CreditCard,
   FileText,
   FileUser,
@@ -93,6 +95,22 @@ export function AdminDashboardLayout() {
                     <NavLink to="/admin/mentors" className={dashboardNavLinkClass}>
                       <Users />
                       <span>{d.mentors}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip={d.mentorPresence}>
+                    <NavLink to="/admin/mentor-presence" className={dashboardNavLinkClass}>
+                      <Clock />
+                      <span>{d.mentorPresence}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip={d.announcements}>
+                    <NavLink to="/admin/announcements" className={dashboardNavLinkClass}>
+                      <Megaphone />
+                      <span>{d.announcements}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

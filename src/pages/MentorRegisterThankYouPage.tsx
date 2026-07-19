@@ -19,6 +19,7 @@ const MentorRegisterThankYouPage = () => {
   const [searchParams] = useSearchParams();
   const message = searchParams.get("message")?.trim();
   const mentorId = searchParams.get("mentorId")?.trim() ?? "";
+  const pendingApproval = searchParams.get("pending") === "1";
   const trackedRef = useRef(false);
   const [secondsLeft, setSecondsLeft] = useState(REDIRECT_SECONDS);
   const sessionRef = useRef(mentorAccessToken);
@@ -49,6 +50,10 @@ const MentorRegisterThankYouPage = () => {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
+      if (pendingApproval) {
+        navigate("/", { replace: true });
+        return;
+      }
       if (sessionRef.current) {
         navigate("/mentor/dashboard", { replace: true });
       } else {
@@ -56,7 +61,15 @@ const MentorRegisterThankYouPage = () => {
       }
     }, REDIRECT_SECONDS * 1000);
     return () => window.clearTimeout(timer);
-  }, [navigate]);
+  }, [navigate, pendingApproval]);
+
+  const description =
+    message || (pendingApproval ? m.thankYouPendingDescription : m.thankYouDescription);
+  const readyLabel = pendingApproval ? m.thankYouPendingReady : m.thankYouReady;
+  const redirectLabel = (pendingApproval ? m.thankYouPendingRedirect : m.thankYouRedirect).replace(
+    "{seconds}",
+    String(secondsLeft),
+  );
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -64,21 +77,27 @@ const MentorRegisterThankYouPage = () => {
       <main className="container mx-auto px-6 py-10">
         <Card className="mx-auto max-w-2xl border-border/60">
           <CardHeader className="items-center text-center">
-            <SuccessBurst size="lg" label={m.thankYouComplete} description={m.thankYouReady} className="mb-2" />
+            <SuccessBurst size="lg" label={m.thankYouComplete} description={readyLabel} className="mb-2" />
             <p className="text-sm uppercase tracking-widest text-accent">{m.thankYouLabel}</p>
             <CardTitle className="font-serif text-3xl">{m.thankYouTitle}</CardTitle>
-            <CardDescription>{message || m.thankYouDescription}</CardDescription>
-            <p className="pt-2 text-sm text-muted-foreground">
-              {m.thankYouRedirect.replace("{seconds}", String(secondsLeft))}
-            </p>
+            <CardDescription>{description}</CardDescription>
+            <p className="pt-2 text-sm text-muted-foreground">{redirectLabel}</p>
           </CardHeader>
           <CardContent className="flex flex-wrap justify-center gap-3">
-            <Button asChild className="gradient-cta text-white">
-              <Link to="/mentor/dashboard">{m.thankYouGoDashboard}</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link to="/login?role=mentor">{m.thankYouLogin}</Link>
-            </Button>
+            {pendingApproval ? (
+              <Button asChild className="gradient-cta text-white">
+                <Link to="/">{m.thankYouGoHome}</Link>
+              </Button>
+            ) : (
+              <Button asChild className="gradient-cta text-white">
+                <Link to="/mentor/dashboard">{m.thankYouGoDashboard}</Link>
+              </Button>
+            )}
+            {!pendingApproval ? (
+              <Button asChild variant="outline">
+                <Link to="/login?role=mentor">{m.thankYouLogin}</Link>
+              </Button>
+            ) : null}
           </CardContent>
         </Card>
       </main>

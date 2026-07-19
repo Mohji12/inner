@@ -102,6 +102,30 @@ const sectionCopy: Record<Language, SectionCopy> = {
       { title: "60 minutos", description: "Compra 60 minutos para una sesion extendida con un medium.", price: packagePricesAsc[4] },
     ],
   },
+  it: {
+    heading: "Trova la pace con i nostri pacchetti di consulto",
+    subheading: "Le nostre sessioni sono pensate per offrire comfort, chiarezza e guida personale, proprio quando ne hai più bisogno.",
+    cta: "PRENOTA ORA",
+    packages: [
+      { title: "5 minuti", description: "Acquista 5 minuti per chattare con un medium esperto. Ideale per un insight molto rapido.", price: packagePricesAsc[0] },
+      { title: "10 minuti", description: "Acquista 10 minuti per chattare con un medium esperto. Perfetto per una domanda rapida o un breve consiglio.", price: packagePricesAsc[1] },
+      { title: "20 minuti", description: "Acquista 20 minuti per chattare con un medium esperto.\nPer pace, chiarezza e supporto personale.", price: packagePricesAsc[2] },
+      { title: "30 minuti", description: "Acquista 30 minuti per chattare con un medium.", price: packagePricesAsc[3] },
+      { title: "60 minuti", description: "Acquista 60 minuti per una sessione approfondita con un medium.", price: packagePricesAsc[4] },
+    ],
+  },
+  de: {
+    heading: "Finde Frieden mit unseren Beratungspaketen",
+    subheading: "Unsere Sitzungen sind darauf ausgelegt, Trost, Klarheit und persönliche Begleitung zu geben — genau dann, wenn du sie am meisten brauchst.",
+    cta: "JETZT BUCHEN",
+    packages: [
+      { title: "5 Minuten", description: "Kaufe 5 Minuten Chat mit einem erfahrenen Medium. Ideal für einen sehr schnellen Impuls.", price: packagePricesAsc[0] },
+      { title: "10 Minuten", description: "Kaufe 10 Minuten Chat mit einem erfahrenen Medium. Perfekt für eine kurze Frage oder kurzen Rat.", price: packagePricesAsc[1] },
+      { title: "20 Minuten", description: "Kaufe 20 Minuten Chat mit einem erfahrenen Medium.\nFür Frieden, Klarheit und persönliche Unterstützung.", price: packagePricesAsc[2] },
+      { title: "30 Minuten", description: "Kaufe 30 Minuten Chat mit einem Medium.", price: packagePricesAsc[3] },
+      { title: "60 Minuten", description: "Kaufe 60 Minuten für eine ausführliche, tiefgehende Sitzung mit einem Medium.", price: packagePricesAsc[4] },
+    ],
+  },
 };
 
 const ConsultationPackagesSection = () => {

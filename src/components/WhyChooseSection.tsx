@@ -229,6 +229,58 @@ const whyChooseCopy: Record<Language, [WhyChooseBlock, WhyChooseBlock, WhyChoose
       ],
     },
   ],
+  it: [
+    {
+      id: "01",
+      title: "Sviluppo personale",
+      cards: [
+        { title: "Profondità spirituale", desc: "Ogni consulto offre più delle risposte: ti aiuta a crescere in consapevolezza e forza interiore." },
+        { title: "Il tuo percorso di vita al centro", desc: "Niente risposte standard, ma una guida davvero allineata al tuo viaggio unico." },
+      ],
+    },
+    {
+      id: "02",
+      title: "Libertà di scelta",
+      cards: [
+        { title: "Connessione intuitiva", desc: "Ti colleghiamo a medium che ti si addicono davvero, così ogni sessione risulta personale." },
+        { title: "Flessibile e personale", desc: "Scegli il momento, il medium e il ritmo: con i crediti resti tu al comando." },
+      ],
+    },
+    {
+      id: "03",
+      title: "Sicurezza",
+      cards: [
+        { title: "Energia curativa", desc: "I nostri servizi sono pensati per equilibrio e guarigione — per corpo, mente e anima." },
+        { title: "Spazio sicuro", desc: "Le tue conversazioni sono completamente private e protette. Qui puoi essere te stesso, senza giudizi." },
+      ],
+    },
+  ],
+  de: [
+    {
+      id: "01",
+      title: "Persönliche Entwicklung",
+      cards: [
+        { title: "Spirituelle Tiefe", desc: "Jede Beratung gibt mehr als Antworten — sie hilft dir, in Bewusstsein und innerer Stärke zu wachsen." },
+        { title: "Dein Lebensweg im Mittelpunkt", desc: "Keine Standardantworten, sondern Begleitung, die wirklich zu deiner einzigartigen Reise passt." },
+      ],
+    },
+    {
+      id: "02",
+      title: "Entscheidungsfreiheit",
+      cards: [
+        { title: "Intuitive Verbindung", desc: "Wir verbinden dich mit Medien, die wirklich zu dir passen — so wird jede Sitzung persönlich." },
+        { title: "Flexibel und persönlich", desc: "Wähle Zeitpunkt, Medium und Tempo: mit Credits bleibst du selbst am Steuer." },
+      ],
+    },
+    {
+      id: "03",
+      title: "Sicherheit",
+      cards: [
+        { title: "Heilende Energie", desc: "Unsere Angebote sind auf Balance und Heilung ausgerichtet — für Körper, Geist und Seele." },
+        { title: "Sicherer Raum", desc: "Deine Gespräche sind vollständig privat und geschützt. Hier kannst du du selbst sein — ohne Urteil." },
+      ],
+    },
+  ],
 };
 
 const WhyChooseSection = () => {

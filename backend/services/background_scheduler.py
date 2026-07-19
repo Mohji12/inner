@@ -5,6 +5,8 @@ from apscheduler.triggers.interval import IntervalTrigger
 from services.reminder_service import check_and_send_reminders
 from services.no_show_service import check_no_shows
 from services.mentor_monthly_fee_service import generate_monthly_invoices_for_previous_month
+from database import SessionLocal
+from services.mentor_presence_tracking_service import send_weekly_presence_warnings
 
 try:
     from tasks.marketplace_tasks import process_outbox, reconcile_webhook_stuck, retry_failed_payouts
@@ -22,6 +24,20 @@ def _safe_celery_enqueue(task, label: str) -> None:
         task.delay()
     except Exception as exc:  # pragma: no cover - broker/result connection errors
         logger.warning("Celery task %s could not be enqueued: %s", label, exc)
+
+
+def _run_weekly_presence_warnings() -> None:
+    db = SessionLocal()
+    try:
+        sent = send_weekly_presence_warnings(db)
+        if sent:
+            logger.info("Weekly presence warnings sent: %s", sent)
+    except Exception:
+        logger.exception("Weekly presence warning job failed")
+        db.rollback()
+    finally:
+        db.close()
+
 
 def start_scheduler():
     logger.info("Starting background scheduler...")
@@ -51,6 +67,15 @@ def start_scheduler():
         id="generate_mentor_monthly_invoices_job",
         name="Generate mentor monthly invoices",
         replace_existing=True
+    )
+
+    # Coach weekly platform-time warnings (previous completed week; idempotent).
+    scheduler.add_job(
+        _run_weekly_presence_warnings,
+        trigger=IntervalTrigger(hours=24),
+        id="mentor_weekly_presence_warnings_job",
+        name="Coach weekly presence warnings",
+        replace_existing=True,
     )
 
     if process_outbox and reconcile_webhook_stuck and retry_failed_payouts:

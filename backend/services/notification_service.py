@@ -16,7 +16,8 @@ def create_notification(
     body: str,
     link: Optional[str] = None,
     user_id: Optional[str] = None,
-    mentor_id: Optional[str] = None
+    mentor_id: Optional[str] = None,
+    commit: bool = True,
 ) -> Notification:
     notification = Notification(
         id=new_uuid(),
@@ -32,8 +33,11 @@ def create_notification(
         created_at=datetime.now(timezone.utc)
     )
     db.add(notification)
-    db.commit()
-    db.refresh(notification)
+    if commit:
+        db.commit()
+        db.refresh(notification)
+    else:
+        db.flush()
     return notification
 
 def get_notifications(

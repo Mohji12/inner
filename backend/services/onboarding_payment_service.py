@@ -377,13 +377,9 @@ def activate_coach_after_email_verification(
     mentor: Mentor,
     redirect_url: str | None = None,
 ) -> MentorOnboardingPayment | None:
-    """Activate coach after email OTP — no payment step."""
+    """Record free onboarding waiver after email OTP. Admin approval still required to go live."""
     if mentor_onboarding_is_complete(db, mentor.id):
-        if not mentor.is_approved or mentor.status != "active":
-            mentor.is_approved = True
-            mentor.status = "active"
-            mentor.updated_at = _utcnow()
-            db.flush()
+        # Do not auto-approve — admin must approve from the dashboard.
         return None
     login_url = redirect_url or f"{settings.mollie_redirect_base_url.rstrip('/')}/login?role=mentor"
     return _create_onboarding_promo_waiver(
@@ -401,7 +397,7 @@ def ensure_free_onboarding_completed(
     mentor: Mentor,
     redirect_url: str | None = None,
 ) -> MentorOnboardingPayment | None:
-    """Back-compat alias — coach onboarding is free after email verification."""
+    """Back-compat alias — free onboarding after email verification (pending admin approval)."""
     return activate_coach_after_email_verification(db, mentor=mentor, redirect_url=redirect_url)
 
 
@@ -413,7 +409,7 @@ def _create_onboarding_promo_waiver(
     promo_code: str,
     original_amount_eur: Decimal,
 ) -> MentorOnboardingPayment:
-    """Record a zero-amount onboarding waiver and activate the coach when onboarding is complete."""
+    """Record a zero-amount onboarding waiver. Leaves coach pending until admin approval."""
     payment_id = f"promo_{new_uuid().replace('-', '')}"
     meta = {
         "payment_plan": "full",
@@ -446,8 +442,7 @@ def _create_onboarding_promo_waiver(
     db.flush()
     if promo_code:
         apply_promo_code(db, promo_code, commit=False)
-    mentor.is_approved = True
-    mentor.status = "active"
+    # Keep pending until an admin approves; do not set is_approved / active here.
     mentor.updated_at = now
     db.flush()
     return row
@@ -461,7 +456,6 @@ def apply_onboarding_payment_paid(db: Session, onboarding: MentorOnboardingPayme
     mentor = db.query(Mentor).filter(Mentor.id == onboarding.mentor_id).first()
     if not mentor:
         return
-    if mentor_onboarding_is_complete(db, mentor.id):
-        mentor.is_approved = True
-        mentor.status = "active"
-        mentor.updated_at = _utcnow()
+    # Paid onboarding fee does not bypass admin approval.
+    mentor.updated_at = _utcnow()
+    db.flush()

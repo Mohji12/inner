@@ -137,7 +137,7 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
         </div>
 
         <div className="relative z-[1] space-y-3">
-          {cardVis.years_experience || cardVis.rating ? (
+            {cardVis.years_experience || cardVis.rating ? (
           <div className="flex flex-wrap items-center gap-4 text-xs text-primary-foreground/85">
             {cardVis.years_experience ? (
             <span className="inline-flex items-center gap-1.5 font-medium">
@@ -149,9 +149,33 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
             <span className="inline-flex items-center gap-2">
               <RatingStars value={roundedStars} />
               <span className="tabular-nums font-semibold">{mentor.average_rating}</span>
+              <span className="text-primary-foreground/70">({mentor.total_reviews} reviews)</span>
             </span>
             ) : null}
+            <span className="tabular-nums font-medium text-primary-foreground/80">
+              {mentor.total_sessions_completed} sessions
+            </span>
           </div>
+          ) : (
+          <div className="flex flex-wrap items-center gap-4 text-xs text-primary-foreground/85">
+            <span className="tabular-nums font-medium text-primary-foreground/80">
+              {mentor.total_sessions_completed} sessions
+            </span>
+          </div>
+          )}
+
+          {mentor.badges && mentor.badges.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {mentor.badges.map((badge) => (
+                <Badge
+                  key={badge}
+                  variant="secondary"
+                  className="border-0 bg-amber-300/25 text-[10px] font-semibold uppercase tracking-wide text-primary-foreground"
+                >
+                  {badge}
+                </Badge>
+              ))}
+            </div>
           ) : null}
 
           {showPackages && pricing ? (

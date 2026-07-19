@@ -1,4 +1,4 @@
-export type Language = "en" | "fr" | "nl" | "ar" | "zh" | "ru" | "es";
+export type Language = "en" | "fr" | "nl" | "ar" | "zh" | "ru" | "es" | "it" | "de";
 
 export const languageLabels: Record<Language, string> = {
   en: "English",
@@ -8,6 +8,8 @@ export const languageLabels: Record<Language, string> = {
   zh: "中文",
   ru: "Русский",
   es: "Español",
+  it: "Italiano",
+  de: "Deutsch",
 };
 
 /** BCP-47 tags for `<html lang>` / inputs — improves browser spellcheck dictionaries. */
@@ -19,6 +21,8 @@ export const languageHtmlLang: Record<Language, string> = {
   zh: "zh-CN",
   ru: "ru-RU",
   es: "es-ES",
+  it: "it-IT",
+  de: "de-DE",
 };
 
 export const rtlLanguages: Language[] = ["ar"];
@@ -647,6 +651,182 @@ export const translations = {
       contactTitle: "Contacto",
       contactCountry: "Países Bajos",
       rights: "Todos los derechos reservados.",
+    },
+  },
+  it: {
+    nav: { home: "Home", about: "Chi siamo", services: "Servizi", pricing: "Prezzi", contact: "Contatti" },
+    hero: {
+      heading: "Il mio percorso di vita",
+      subtext: "Scopri. Cresci. Vivi il tuo percorso.",
+      cta1: "Inizia il tuo viaggio",
+      cta2: "Prenota una sessione",
+      cta3: "Prenota un coach",
+    },
+    music: {
+      play: "Riproduci musica di sottofondo",
+      pause: "Metti in pausa la musica di sottofondo",
+      label: "Musica di sottofondo",
+      enterTitle: "Mijn levenspad",
+      enterHint: "Tocca Invio per aprire il sito con una musica di sottofondo delicata.",
+      enterAction: "Entra",
+    },
+    coaches: {
+      label: "I nostri coach",
+      heading: "Incontra le tue guide spirituali",
+      sub: "Sfoglia i coach disponibili e prenota una sessione live adatta a te.",
+      viewAll: "Vedi tutti i coach",
+    },
+    about: {
+      label: "Chi siamo",
+      heading: "Il tuo percorso verso la pace interiore",
+      p1: "Su Mijn Levenspad ti guidiamo in un viaggio trasformativo di scoperta di sé. Attraverso il coaching spirituale e la guida energetica, ti aiutiamo a connetterti con la tua forza interiore e a trovare la pace che cerchi.",
+      p2: "Il nostro approccio unisce saggezza antica e intuizioni moderne, così puoi crescere verso la migliore versione di te stesso in modo sicuro e amorevole.",
+      link: "Scopri i nostri servizi →",
+    },
+    services: {
+      label: "Servizi",
+      heading: "Cosa offriamo",
+      items: [
+        { title: "Chat live con un medium", desc: "Connettiti con medium esperti per una guida spirituale in tempo reale." },
+        { title: "Coaching spirituale", desc: "Sessioni di coaching personali per guidarti verso consapevolezza e pace." },
+        { title: "Allenamenti energetici", desc: "Lavoro energetico di gruppo e individuale per ripristinare equilibrio e vitalità." },
+        { title: "Consulto personale", desc: "Sessioni individuali su misura per il tuo percorso e le tue esigenze spirituali." },
+      ],
+      explore: "Esplora →",
+    },
+    whyChoose: {
+      label: "Perché noi",
+      heading: "Perché sceglierci",
+      introTagline: "Guida personale, sicura e intuitiva sul tuo percorso di vita",
+      items: [
+        { title: "Sviluppo personale", desc: "Sblocca il tuo potenziale con pratiche spirituali guidate e crescita personale." },
+        { title: "Libertà di scelta", desc: "Il tuo viaggio, i tuoi ritmi. Onoriamo il tuo percorso unico con una guida flessibile." },
+        { title: "Spazio sicuro", desc: "Un ambiente senza giudizi dove puoi esplorare e guarire con fiducia." },
+      ],
+    },
+    pricing: {
+      label: "Prezzi",
+      heading: "Scegli la tua sessione",
+      popular: "Popolare",
+      bookNow: "Prenota",
+      plans: [
+        { features: ["Sessione di guida rapida", "Una domanda mirata", "Lettura energetica"] },
+        { features: ["Consulto approfondito", "Più domande", "Guarigione energetica", "Note di follow-up"] },
+        { features: ["Sessione completa", "Domande illimitate", "Lavoro energetico completo", "Piano d'azione personale"] },
+      ],
+    },
+    testimonials: {
+      label: "Esperienze",
+      heading: "Cosa dicono gli altri",
+      worldwideCaption: "Voci in più lingue: scorri per vedere di più.",
+      items: [
+        { name: "Marieke de Vries", text: "Le sessioni mi hanno aiutata a riconnettermi con me stessa. Un'esperienza meravigliosa." },
+        { name: "Thomas Bakker", text: "Mi sono sentito subito a mio agio. La guida è stata calda, onesta e proprio ciò di cui avevo bisogno." },
+        { name: "Lotte Jansen", text: "Dopo una sola sessione sentivo già più calma e chiarezza. Davvero consigliato." },
+        { name: "Erik Mulder", text: "Un posto sicuro dove puoi essere te stesso. Il coaching mi ha cambiato la vita." },
+        { name: "Sophie Klein", text: "Professionale e amorevole. Vengo sempre qui con il cuore sereno." },
+        { name: "Daan Visser", text: "Gli allenamenti energetici mi hanno dato nuove prospettive su me stesso." },
+      ],
+    },
+    cta: {
+      heading: "Inizia oggi il tuo viaggio spirituale",
+      subtext: "Fai il primo passo verso la pace interiore e la scoperta di sé. Siamo qui per guidarti in ogni fase.",
+      button: "Inizia",
+    },
+    footer: {
+      description: "Il tuo compagno nel viaggio verso la pace interiore, la scoperta di sé e la crescita spirituale.",
+      quickLinks: "Link rapidi",
+      contactTitle: "Contatti",
+      contactCountry: "Paesi Bassi",
+      rights: "Tutti i diritti riservati.",
+    },
+  },
+  de: {
+    nav: { home: "Start", about: "Über uns", services: "Leistungen", pricing: "Preise", contact: "Kontakt" },
+    hero: {
+      heading: "Mein Lebensweg",
+      subtext: "Entdecken. Wachsen. Deinen Weg leben.",
+      cta1: "Starte deine Reise",
+      cta2: "Sitzung buchen",
+      cta3: "Coach buchen",
+    },
+    music: {
+      play: "Hintergrundmusik abspielen",
+      pause: "Hintergrundmusik pausieren",
+      label: "Hintergrundmusik",
+      enterTitle: "Mijn levenspad",
+      enterHint: "Tippe auf Enter, um die Seite mit sanfter Hintergrundmusik zu öffnen.",
+      enterAction: "Enter",
+    },
+    coaches: {
+      label: "Unsere Coaches",
+      heading: "Triff deine spirituellen Begleiter",
+      sub: "Durchsuche verfügbare Coaches und buche eine Live-Sitzung, die zu dir passt.",
+      viewAll: "Alle Coaches ansehen",
+    },
+    about: {
+      label: "Über uns",
+      heading: "Dein Weg zu innerem Frieden",
+      p1: "Bei Mijn Levenspad begleiten wir dich auf einer transformierenden Reise der Selbstentdeckung. Mit spirituellem Coaching und energetischer Begleitung helfen wir dir, dich mit deiner inneren Kraft zu verbinden und den Frieden zu finden, den du suchst.",
+      p2: "Unser Ansatz verbindet altes Wissen mit modernen Impulsen, damit du auf sichere und liebevolle Weise zur besten Version deiner selbst wachsen kannst.",
+      link: "Entdecke unsere Leistungen →",
+    },
+    services: {
+      label: "Leistungen",
+      heading: "Was wir anbieten",
+      items: [
+        { title: "Live-Chat mit einem Medium", desc: "Verbinde dich mit erfahrenen Medien für spirituelle Begleitung in Echtzeit." },
+        { title: "Spirituelles Coaching", desc: "Persönliche Coaching-Sitzungen, die dich zu Bewusstsein und Frieden führen." },
+        { title: "Energetisches Training", desc: "Gruppen- und Einzelarbeit mit Energie, um Gleichgewicht und Vitalität wiederherzustellen." },
+        { title: "Persönliche Beratung", desc: "Individuelle Sitzungen, abgestimmt auf deinen Weg und deine spirituellen Bedürfnisse." },
+      ],
+      explore: "Entdecken →",
+    },
+    whyChoose: {
+      label: "Warum wir",
+      heading: "Warum uns wählen",
+      introTagline: "Persönliche, sichere und intuitive Begleitung auf deinem Lebensweg",
+      items: [
+        { title: "Persönliche Entwicklung", desc: "Entfalte dein Potenzial mit geführten spirituellen Übungen und persönlichem Wachstum." },
+        { title: "Entscheidungsfreiheit", desc: "Deine Reise, dein Tempo. Wir respektieren deinen einzigartigen Weg mit flexibler Begleitung." },
+        { title: "Sicherer Raum", desc: "Ein urteilsfreier Raum, in dem du mit Vertrauen erkunden und heilen kannst." },
+      ],
+    },
+    pricing: {
+      label: "Preise",
+      heading: "Wähle deine Sitzung",
+      popular: "Beliebt",
+      bookNow: "Jetzt buchen",
+      plans: [
+        { features: ["Kurze Beratung", "Eine gezielte Frage", "Energielesung"] },
+        { features: ["Ausführliche Beratung", "Mehrere Fragen", "Energieheilung", "Follow-up-Notizen"] },
+        { features: ["Umfassende Sitzung", "Unbegrenzte Fragen", "Vollständige Energiearbeit", "Persönlicher Aktionsplan"] },
+      ],
+    },
+    testimonials: {
+      label: "Erfahrungen",
+      heading: "Was andere sagen",
+      worldwideCaption: "Stimmen in mehreren Sprachen — scrollen für mehr.",
+      items: [
+        { name: "Marieke de Vries", text: "Die Sitzungen haben mir geholfen, wieder mit mir selbst in Kontakt zu kommen. Eine wunderbare Erfahrung." },
+        { name: "Thomas Bakker", text: "Ich habe mich sofort wohlgefühlt. Die Begleitung war warm, ehrlich und genau das, was ich brauchte." },
+        { name: "Lotte Jansen", text: "Nach nur einer Sitzung fühlte ich mich schon ruhiger und klarer. Absolut empfehlenswert." },
+        { name: "Erik Mulder", text: "Ein sicherer Ort, an dem du du selbst sein kannst. Das Coaching hat mein Leben verändert." },
+        { name: "Sophie Klein", text: "Professionell und liebevoll. Ich komme immer mit einem ruhigen Herzen hierher." },
+        { name: "Daan Visser", text: "Das energetische Training hat mir neue Perspektiven auf mich selbst gegeben." },
+      ],
+    },
+    cta: {
+      heading: "Starte heute deine spirituelle Reise",
+      subtext: "Mache den ersten Schritt zu innerem Frieden und Selbstentdeckung. Wir begleiten dich auf jedem Schritt.",
+      button: "Loslegen",
+    },
+    footer: {
+      description: "Dein Begleiter auf dem Weg zu innerem Frieden, Selbstentdeckung und spirituellem Wachstum.",
+      quickLinks: "Schnelllinks",
+      contactTitle: "Kontakt",
+      contactCountry: "Niederlande",
+      rights: "Alle Rechte vorbehalten.",
     },
   },
 } as const;

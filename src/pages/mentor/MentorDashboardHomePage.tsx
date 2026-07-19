@@ -24,8 +24,10 @@ import {
   listMentorMonthlyInvoices,
   type AnalyticsPeriod,
 } from "@/api/mentors";
+import { getNotifications, markNotificationAsRead } from "@/api/notifications";
 import { CoachConnectStatusCard } from "@/components/mentor/CoachConnectStatusCard";
 import { CoachWalletCard } from "@/components/mentor/CoachWalletCard";
+import { CoachPresenceBanner } from "@/components/CoachPresenceBanner";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { toast } from "sonner";
 
@@ -58,6 +60,28 @@ export default function MentorDashboardHomePage() {
   const onboardingStatusQ = useQuery({
     queryKey: ["mentor", "onboarding-status"],
     queryFn: getMentorOnboardingStatus,
+  });
+
+  const announcementsQ = useQuery({
+    queryKey: ["mentor", "admin-announcements"],
+    queryFn: () => getNotifications(20, 0),
+    refetchInterval: 30_000,
+  });
+
+  const adminMessages = useMemo(
+    () =>
+      (announcementsQ.data?.notifications ?? []).filter(
+        (n) => n.type === "admin_announcement" && !n.is_read,
+      ),
+    [announcementsQ.data],
+  );
+
+  const markReadMut = useMutation({
+    mutationFn: (id: string) => markNotificationAsRead(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["mentor", "admin-announcements"] });
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
   });
 
   const payInstallmentMut = useMutation({
@@ -105,6 +129,8 @@ export default function MentorDashboardHomePage() {
 
   return (
     <div className="space-y-6">
+      <CoachPresenceBanner />
+
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm uppercase tracking-widest text-accent">{d.label}</p>
@@ -112,6 +138,33 @@ export default function MentorDashboardHomePage() {
           <p className="mt-1 text-sm text-muted-foreground">{d.subheading}</p>
         </div>
       </div>
+
+      {adminMessages.length > 0 ? (
+        <Card className="border-accent/40 bg-accent/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">{d.adminMessagesTitle}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {adminMessages.map((msg) => (
+              <div key={msg.id} className="rounded-lg border border-border/60 bg-background/80 p-4">
+                <p className="font-medium">{msg.title}</p>
+                <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{msg.body}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={markReadMut.isPending}
+                    onClick={() => markReadMut.mutate(msg.id)}
+                  >
+                    {d.adminMessageMarkRead}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {showPayOnboarding ? (
         <Card className="border-amber-500/40 bg-amber-500/5">

@@ -1,5 +1,6 @@
 from db.session import Base
 from models.admin import Admin
+from models.admin_announcement import AdminAnnouncement
 from models.availability_slot import AvailabilitySlot
 from models.booking import Booking
 from models.chat_message import ChatMessage
@@ -12,6 +13,7 @@ from models.mentor import Mentor
 from models.mentor_monthly_invoice import MentorMonthlyInvoice
 from models.mentor_onboarding_payment import MentorOnboardingPayment
 from models.mentor_payout_account import MentorPayoutAccount
+from models.mentor_presence_week import MentorPresenceWeek
 from models.mentor_settlement import MentorSettlement, MentorSettlementItem
 from models.notification import Notification
 from models.password_reset import PasswordResetToken
@@ -43,11 +45,13 @@ from models.marketplace import (
 __all__ = [
     "Base",
     "Admin",
+    "AdminAnnouncement",
     "User",
     "Mentor",
     "MentorOnboardingPayment",
     "MentorMonthlyInvoice",
     "MentorPayoutAccount",
+    "MentorPresenceWeek",
     "MentorSettlement",
     "MentorSettlementItem",
     "RefreshToken",

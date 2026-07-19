@@ -355,6 +355,29 @@ export function downloadMentorMonthlyInvoicePdf(invoiceId: string) {
   return apiFetchBlob(`/mentors/me/monthly-invoices/${invoiceId}/pdf`);
 }
 
+export interface MentorSettlementRow {
+  id: string;
+  currency: string;
+  cycle_start: string;
+  cycle_end: string;
+  gross_amount: string;
+  fee_amount: string;
+  net_amount: string;
+  status: string;
+  provider_batch_ref: string | null;
+  paid_at: string | null;
+  created_at: string;
+  invoice_number: string;
+}
+
+export function listMentorSettlements(): Promise<MentorSettlementRow[]> {
+  return apiFetch<MentorSettlementRow[]>("/mentors/me/settlements");
+}
+
+export function downloadMentorSettlementInvoicePdf(settlementId: string) {
+  return apiFetchBlob(`/mentors/me/settlements/${settlementId}/pdf`);
+}
+
 export interface MentorOnboardingInvoice {
   kind: string;
   invoice_number: string;

@@ -35,6 +35,8 @@ from db.startup_schema import (
     ensure_mentors_banner_image_column,
     ensure_mentor_kvk_number_column,
     ensure_mentor_public_card_visibility_column,
+    ensure_mentor_presence_tracking,
+    ensure_admin_announcements_table,
     ensure_platform_pricing_table,
     ensure_platform_pricing_60_min_column,
 )
@@ -50,6 +52,8 @@ async def lifespan(app: FastAPI):
     ensure_mentors_banner_image_column()
     ensure_mentor_kvk_number_column()
     ensure_mentor_public_card_visibility_column()
+    ensure_mentor_presence_tracking()
+    ensure_admin_announcements_table()
     ensure_localization_i18n_columns()
     ensure_phase5_booking_columns()
     ensure_platform_pricing_table()

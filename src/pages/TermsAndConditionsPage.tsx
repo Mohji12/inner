@@ -42,6 +42,16 @@ const legalUiCopy: Record<Language, { back: string; title: string; fallback: str
     title: "Terminos y condiciones",
     fallback: "Nota: este documento esta disponible actualmente en ingles para el idioma seleccionado.",
   },
+  it: {
+    back: "Indietro",
+    title: "Termini e condizioni",
+    fallback: "Nota: questo documento è attualmente disponibile in inglese per la lingua selezionata.",
+  },
+  de: {
+    back: "Zurück",
+    title: "Allgemeine Geschäftsbedingungen",
+    fallback: "Hinweis: Dieses Dokument ist für die ausgewählte Sprache derzeit auf Englisch verfügbar.",
+  },
 };
 
 const TermsNL = () => (

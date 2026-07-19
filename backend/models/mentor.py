@@ -45,6 +45,7 @@ class Mentor(Base):
     status: Mapped[str] = mapped_column(String(32), default="pending")
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    presence_accrued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -71,3 +72,6 @@ class Mentor(Base):
     reviews = relationship("Review", back_populates="mentor")
     chat_sessions = relationship("ChatSession", back_populates="mentor")
     waitlist_entries = relationship("WaitlistEntry", back_populates="mentor")
+    presence_weeks = relationship(
+        "MentorPresenceWeek", back_populates="mentor", cascade="all, delete-orphan"
+    )

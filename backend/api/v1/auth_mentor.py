@@ -37,6 +37,7 @@ from services.onboarding_payment_service import (
     onboarding_amount_eur,
     onboarding_plans_public,
 )
+from services.coach_registration_notify import notify_admins_new_coach_registration
 from services.promo_service import PromoError, calculate_discount, validate_promo_code
 from services.mollie_service import resolve_mollie_webhook_url
 from services.token_service import revoke_refresh_token, rotate_refresh_token, store_refresh_token
@@ -139,6 +140,9 @@ def register_mentor(request: Request, db: DbSession, payload: MentorRegister) ->
 
     if not payload.agreement_accepted:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Coach agreement must be accepted")
+    kvk = (payload.kvk_number or "").strip()
+    if not kvk:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "KVK number is required")
     if payload.agreement_version and payload.agreement_version != COACH_AGREEMENT_VERSION:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Coach agreement version mismatch")
     if payload.agreement_text_snapshot and payload.agreement_text_snapshot.strip() != COACH_AGREEMENT_TEXT.strip():
@@ -163,7 +167,7 @@ def register_mentor(request: Request, db: DbSession, payload: MentorRegister) ->
         languages_spoken=payload.languages_spoken,
         years_of_experience=int(payload.years_of_experience or 0),
         current_company=(payload.current_company.strip()[:255] or None) if payload.current_company else None,
-        kvk_number=(payload.kvk_number.strip()[:32] or None) if payload.kvk_number else None,
+        kvk_number=kvk[:32],
         previous_companies=None,
         education=payload.education,
         certifications=payload.certifications,
@@ -226,6 +230,15 @@ def verify_mentor_email(db: DbSession, payload: VerifyEmailRequest) -> MentorVer
     activate_coach_after_email_verification(db, mentor=mentor)
     db.commit()
     db.refresh(mentor)
+    try:
+        notify_admins_new_coach_registration(mentor)
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).exception(
+            "Admin notification failed after coach email verify mentor_id=%s",
+            mentor.id,
+        )
     track_mentor_registration_verified(
         mentor_id=mentor.id,
         email=mentor.email,
@@ -237,7 +250,7 @@ def verify_mentor_email(db: DbSession, payload: VerifyEmailRequest) -> MentorVer
         message=(
             "Email verified. Your coach profile is live on the platform — you can sign in now."
             if active
-            else "Email verified. You can sign in now."
+            else "Email verified. Your coach account is pending admin approval. You can sign in after an admin approves your registration."
         ),
         account_active=active,
         mentor_id=mentor.id,
@@ -362,8 +375,11 @@ def login_mentor(request: Request, db: DbSession, payload: MentorLogin, response
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Please verify your email before signing in")
     if mentor.status == "rejected":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Your coach account was rejected. Please contact support.")
-
-    activate_coach_after_email_verification(db, mentor=mentor)
+    if not mentor.is_approved or mentor.status != "active":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Your coach account is pending admin approval. Please wait until an admin approves your registration.",
+        )
 
     if mentor.is_totp_enabled:
         temp_token = create_2fa_temp_token(mentor.id, "mentor")
@@ -466,6 +482,11 @@ def login_mentor_google(db: DbSession, payload: SocialLoginRequest, response: Re
     mentor.email_verified = True
     if mentor.status == "rejected":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Your coach account was rejected. Please contact support.")
+    if not mentor.is_approved or mentor.status != "active":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Your coach account is pending admin approval. Please wait until an admin approves your registration.",
+        )
     
     mentor.last_seen_at = datetime.now(timezone.utc)
     db.commit()

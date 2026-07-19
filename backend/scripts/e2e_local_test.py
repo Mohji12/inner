@@ -50,7 +50,7 @@ def auth_headers(token: str) -> dict[str, str]:
 
 
 def verify_accounts_in_dev(mentor_id: str, user_id: str) -> None:
-    """When SMTP is on, OTP is emailed — for local E2E we verify directly in DB."""
+    """When SMTP is on, OTP is emailed — for local E2E we verify + admin-approve in DB."""
     sys.path.insert(0, ".")
     from datetime import datetime, timezone
     from database import SessionLocal
@@ -68,13 +68,17 @@ def verify_accounts_in_dev(mentor_id: str, user_id: str) -> None:
         mentor.email_verified = True
         mentor.updated_at = now
         activate_coach_after_email_verification(db, mentor=mentor)
+        # Admin approval gate — required before coach login / public listing.
+        mentor.is_approved = True
+        mentor.status = "active"
+        mentor.updated_at = now
         user.email_verified = True
         user.updated_at = now
         db.commit()
         db.refresh(mentor)
         if not (mentor.is_approved and mentor.status == "active"):
-            raise StepError(f"mentor not active after dev verify: approved={mentor.is_approved} status={mentor.status}")
-        print("  OK  dev verify mentor + user in DB")
+            raise StepError(f"mentor not active after admin approve: approved={mentor.is_approved} status={mentor.status}")
+        print("  OK  dev verify + admin approve mentor + user in DB")
     finally:
         db.close()
 
@@ -91,6 +95,7 @@ def register_mentor() -> str:
             "bio": "Automated end-to-end test mentor account.",
             "years_of_experience": 3,
             "expertise_areas": ["Life coaching"],
+            "kvk_number": "12345678",
             "agreement_accepted": True,
             "agreement_version": "2026-05-25",
             "agreement_text_snapshot": AGREEMENT_TEXT,

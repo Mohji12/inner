@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { Menu, X, Globe, ChevronDown } from "lucide-react";
+import { Menu, X, Globe, ChevronDown, LayoutDashboard } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { languageLabels, type Language } from "@/i18n/translations";
 import LanguageFlag from "@/components/LanguageFlag";
 import { cn } from "@/lib/utils";
 import { homeSectionTo, scrollToHomeSection } from "@/lib/homeSectionLink";
+import { useAuthOptional } from "@/auth/AuthContext";
 
 const Navbar = () => {
   const location = useLocation();
@@ -14,6 +15,10 @@ const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const { language, setLanguage, t } = useLanguage();
+  const auth = useAuthOptional();
+  const isCoach = auth?.role === "mentor" && Boolean(auth.mentorAccessToken);
+  const isUser = auth?.role === "user" && Boolean(auth.userAccessToken);
+  const isAdmin = auth?.role === "admin" && Boolean(auth.adminAccessToken);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -113,15 +118,43 @@ const Navbar = () => {
             )}
           </div>
           <div className="flex items-center gap-3">
-            <Link
-              to="/login"
-              className="rounded-md border border-zinc-400 px-4 py-2 text-base font-semibold text-zinc-950 transition-colors hover:border-zinc-500 hover:bg-zinc-50"
-            >
-              {t.app.shell.login}
-            </Link>
-            <Link to="/register" className="gradient-cta rounded-md px-4 py-2 text-base font-semibold text-white transition-opacity hover:opacity-95">
-              {t.app.shell.register}
-            </Link>
+            {isCoach ? (
+              <Link
+                to="/mentor/dashboard"
+                className="inline-flex items-center gap-2 gradient-cta rounded-md px-4 py-2 text-base font-semibold text-white transition-opacity hover:opacity-95"
+              >
+                <LayoutDashboard className="h-4 w-4" />
+                {t.app.dashboardMentor.backToDashboard}
+              </Link>
+            ) : isUser ? (
+              <Link
+                to="/user/dashboard"
+                className="inline-flex items-center gap-2 gradient-cta rounded-md px-4 py-2 text-base font-semibold text-white transition-opacity hover:opacity-95"
+              >
+                <LayoutDashboard className="h-4 w-4" />
+                {t.app.header.userHub}
+              </Link>
+            ) : isAdmin ? (
+              <Link
+                to="/admin"
+                className="inline-flex items-center gap-2 gradient-cta rounded-md px-4 py-2 text-base font-semibold text-white transition-opacity hover:opacity-95"
+              >
+                <LayoutDashboard className="h-4 w-4" />
+                {t.app.header.adminLogin}
+              </Link>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="rounded-md border border-zinc-400 px-4 py-2 text-base font-semibold text-zinc-950 transition-colors hover:border-zinc-500 hover:bg-zinc-50"
+                >
+                  {t.app.shell.login}
+                </Link>
+                <Link to="/register" className="gradient-cta rounded-md px-4 py-2 text-base font-semibold text-white transition-opacity hover:opacity-95">
+                  {t.app.shell.register}
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
@@ -164,20 +197,51 @@ const Navbar = () => {
           </Link>
           <div className="mt-2 border-t border-zinc-200 pt-4">
             <div className="mb-4 flex flex-wrap gap-2">
-              <Link
-                to="/login"
-                onClick={() => setMenuOpen(false)}
-                className="rounded-md border border-zinc-400 px-4 py-2 text-base font-semibold text-zinc-950 hover:bg-zinc-50"
-              >
-                {t.app.shell.login}
-              </Link>
-              <Link
-                to="/register"
-                onClick={() => setMenuOpen(false)}
-                className="gradient-cta rounded-md px-4 py-2 text-base font-semibold text-white hover:opacity-95"
-              >
-                {t.app.shell.register}
-              </Link>
+              {isCoach ? (
+                <Link
+                  to="/mentor/dashboard"
+                  onClick={() => setMenuOpen(false)}
+                  className="inline-flex items-center gap-2 gradient-cta rounded-md px-4 py-2 text-base font-semibold text-white hover:opacity-95"
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  {t.app.dashboardMentor.backToDashboard}
+                </Link>
+              ) : isUser ? (
+                <Link
+                  to="/user/dashboard"
+                  onClick={() => setMenuOpen(false)}
+                  className="inline-flex items-center gap-2 gradient-cta rounded-md px-4 py-2 text-base font-semibold text-white hover:opacity-95"
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  {t.app.header.userHub}
+                </Link>
+              ) : isAdmin ? (
+                <Link
+                  to="/admin"
+                  onClick={() => setMenuOpen(false)}
+                  className="inline-flex items-center gap-2 gradient-cta rounded-md px-4 py-2 text-base font-semibold text-white hover:opacity-95"
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  {t.app.header.adminLogin}
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    onClick={() => setMenuOpen(false)}
+                    className="rounded-md border border-zinc-400 px-4 py-2 text-base font-semibold text-zinc-950 hover:bg-zinc-50"
+                  >
+                    {t.app.shell.login}
+                  </Link>
+                  <Link
+                    to="/register"
+                    onClick={() => setMenuOpen(false)}
+                    className="gradient-cta rounded-md px-4 py-2 text-base font-semibold text-white hover:opacity-95"
+                  >
+                    {t.app.shell.register}
+                  </Link>
+                </>
+              )}
             </div>
             <p className="mb-3 text-xs uppercase tracking-widest text-zinc-500">{t.app.shell.language}</p>
             <div className="flex flex-wrap gap-2">

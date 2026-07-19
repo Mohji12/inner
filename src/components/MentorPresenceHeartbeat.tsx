@@ -20,8 +20,9 @@ export default function MentorPresenceHeartbeat() {
         await heartbeatMentorPresence();
         if (!disposed) {
           void queryClient.invalidateQueries({ queryKey: ["mentors"] });
-          // Prefix match: ["mentor", id] public profile + similar lists
+          // Prefix match: ["mentor", id] public profile + similar lists + presence-status
           void queryClient.invalidateQueries({ queryKey: ["mentor"] });
+          void queryClient.invalidateQueries({ queryKey: ["mentor", "presence-status"] });
         }
       } catch {
         // Ignore transient network/auth errors; next heartbeat retries.

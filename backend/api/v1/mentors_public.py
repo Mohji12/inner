@@ -18,6 +18,7 @@ from services.chat_service import mentor_ids_with_live_chat, mentor_chat_busy
 from services.i18n_service import resolve_i18n_text
 from services.presence_service import presence_service
 from services.pricing_service import effective_chat_price_per_minute_eur, get_platform_pricing
+from services.mentor_ranking_service import availability_tier, rank_public_mentors
 
 
 router = APIRouter(prefix="/mentors", tags=["mentors-public"])
@@ -145,23 +146,51 @@ def list_mentors(
             query = query.filter(cast(Mentor.expertise_areas, String).ilike(f'%"{exp}"%'))
             
     if languages:
-        for lang in languages:
-            query = query.filter(cast(Mentor.languages_spoken, String).ilike(f'%"{lang}"%'))
+        for spoken in languages:
+            query = query.filter(cast(Mentor.languages_spoken, String).ilike(f'%"{spoken}"%'))
             
     if min_rating is not None:
         query = query.filter(Mentor.average_rating >= min_rating)
         
     if sort_by == "rating_desc":
-        query = query.order_by(Mentor.average_rating.desc())
+        query = query.order_by(Mentor.average_rating.desc(), Mentor.total_reviews.desc())
+    elif sort_by == "sessions_desc":
+        query = query.order_by(Mentor.total_sessions_completed.desc(), Mentor.average_rating.desc())
     else:
-        # Default relevance (for now just created_at desc)
-        query = query.order_by(Mentor.created_at.desc())
+        # Fetch newest-ish first; final order applied after presence/performance ranking.
+        query = query.order_by(Mentor.average_rating.desc(), Mentor.total_sessions_completed.desc())
         
     busy = mentor_ids_with_live_chat(db)
     rows = query.all()
     active_pricing = bool(pricing.is_active)
     public_rows = [_mentor_public_out(m, busy, session_pricing_active=active_pricing, lang=lang) for m in rows]
-    return _dedupe_public_rows(public_rows)
+    deduped = _dedupe_public_rows(public_rows)
+    if sort_by in (None, "relevance", ""):
+        return rank_public_mentors(deduped)
+    if sort_by == "rating_desc":
+        return sorted(
+            deduped,
+            key=lambda r: (float(r.average_rating or 0), int(r.total_reviews or 0), availability_tier(r)),
+            reverse=True,
+        )
+    if sort_by == "sessions_desc":
+        return sorted(
+            deduped,
+            key=lambda r: (int(r.total_sessions_completed or 0), float(r.average_rating or 0), availability_tier(r)),
+            reverse=True,
+        )
+    if sort_by == "price_asc":
+        return sorted(
+            deduped,
+            key=lambda r: (float(r.chat_price_per_minute or 0), -availability_tier(r), -float(r.average_rating or 0)),
+        )
+    if sort_by == "price_desc":
+        return sorted(
+            deduped,
+            key=lambda r: (float(r.chat_price_per_minute or 0), availability_tier(r), float(r.average_rating or 0)),
+            reverse=True,
+        )
+    return rank_public_mentors(deduped)
 
 
 @router.get("/pricing", response_model=PlatformPricingPublicOut)
@@ -281,4 +310,4 @@ def get_similar_mentors(mentor_id: str, db: DbSession, lang: RequestLang, limit:
         rows.extend(more_rows)
 
     public_rows = [_mentor_public_out(m, busy, session_pricing_active=active_pricing, lang=lang) for m in rows]
-    return _dedupe_public_rows(public_rows)
+    return rank_public_mentors(_dedupe_public_rows(public_rows))[: max(1, min(limit, 12))]

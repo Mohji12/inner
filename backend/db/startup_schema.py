@@ -677,3 +677,44 @@ def ensure_universal_promo_codes() -> None:
                 """
             )
         )
+
+
+def ensure_mentor_presence_tracking() -> None:
+    """Weekly coach time-on-platform buckets + last accrual stamp."""
+    _safe_add_column("ALTER TABLE mentors ADD COLUMN presence_accrued_at DATETIME(6) NULL")
+    ddl = """
+    CREATE TABLE IF NOT EXISTS mentor_presence_weeks (
+        id CHAR(36) NOT NULL PRIMARY KEY,
+        mentor_id CHAR(36) NOT NULL,
+        week_start DATE NOT NULL,
+        seconds_online INT NOT NULL DEFAULT 0,
+        warning_sent_at DATETIME(6) NULL,
+        created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+        updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+        UNIQUE KEY uq_mentor_presence_week (mentor_id, week_start),
+        KEY ix_mentor_presence_weeks_mentor_id (mentor_id),
+        KEY ix_mentor_presence_weeks_week_start (week_start),
+        CONSTRAINT fk_mentor_presence_weeks_mentor FOREIGN KEY (mentor_id) REFERENCES mentors(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    """
+    with engine.begin() as conn:
+        conn.execute(text(ddl))
+
+
+def ensure_admin_announcements_table() -> None:
+    """Admin → coach broadcast messages history."""
+    ddl = """
+    CREATE TABLE IF NOT EXISTS admin_announcements (
+        id CHAR(36) NOT NULL PRIMARY KEY,
+        admin_id CHAR(36) NULL,
+        title VARCHAR(255) NOT NULL,
+        body TEXT NOT NULL,
+        recipient_count INT NOT NULL DEFAULT 0,
+        emails_sent INT NOT NULL DEFAULT 0,
+        created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+        KEY ix_admin_announcements_admin_id (admin_id),
+        CONSTRAINT fk_admin_announcements_admin FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE SET NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    """
+    with engine.begin() as conn:
+        conn.execute(text(ddl))

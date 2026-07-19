@@ -55,6 +55,15 @@ class Settings(BaseSettings):
     smtp_from_name: str = "Mijn Levenspad"
     smtp_use_tls: bool = True
 
+    # Comma-separated admin emails notified when a coach verifies email (pending approval).
+    coach_registration_notify_emails: str = "Mohan@mijnlevenspad.com,info@mijnlevenspad.com"
+
+    # Coach weekly platform presence (hours from dashboard heartbeats).
+    mentor_weekly_min_hours: float = 20.0
+    mentor_presence_timezone: str = "Europe/Amsterdam"
+    # Max seconds credited between heartbeats (frontend pings ~30s).
+    mentor_presence_max_credit_seconds: int = 45
+
     otp_expire_minutes: int = 15
     otp_max_attempts: int = 5
     otp_pepper: str = ""

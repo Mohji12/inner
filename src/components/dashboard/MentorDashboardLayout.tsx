@@ -1,6 +1,6 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, Coins, LayoutDashboard, LogOut, MessageSquare, UserRound, FileText, Landmark } from "lucide-react";
+import { CalendarDays, Coins, LayoutDashboard, LogOut, MessageSquare, UserRound, FileText, Landmark, Home } from "lucide-react";
 import { getMentorActiveChatSession } from "@/api/chat";
 import { useAuth } from "@/auth/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
@@ -110,6 +110,14 @@ export function MentorDashboardLayout() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip={d.settlements}>
+                    <NavLink to="/mentor/settlements" className={dashboardNavLinkClass}>
+                      <FileText />
+                      <span>{d.settlements}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.monthlyFees}>
                     <NavLink to="/mentor/invoices" className={dashboardNavLinkClass}>
                       <FileText />
@@ -129,7 +137,13 @@ export function MentorDashboardLayout() {
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
-        <SidebarFooter className="border-t border-sidebar-border/60 p-2">
+        <SidebarFooter className="border-t border-sidebar-border/60 p-2 space-y-1">
+          <Button variant="ghost" className={dashboardLogoutButtonClass} asChild>
+            <Link to="/" title={d.viewWebsiteHint}>
+              <Home className="h-4 w-4" />
+              {d.viewWebsite}
+            </Link>
+          </Button>
           <Button variant="ghost" className={dashboardLogoutButtonClass} onClick={() => void onLogout()}>
             <LogOut className="h-4 w-4" />
             {d.logOut}
@@ -142,9 +156,17 @@ export function MentorDashboardLayout() {
         <header className="relative z-10 flex h-16 items-center gap-2 border-b border-border/60 bg-background/80 backdrop-blur transition-colors duration-200 px-6">
           <SidebarTrigger className="transition-transform duration-200 hover:scale-105 active:scale-95" />
           <Separator orientation="vertical" className="h-6" />
-          <span className="text-sm text-muted-foreground flex-1">{d.hub}</span>
-          <OnlineStatusBadge />
-          <NotificationBell />
+          <span className="text-sm text-muted-foreground hidden sm:inline flex-1">{d.hub}</span>
+          <div className="ml-auto flex items-center gap-2 sm:ml-0">
+            <Button variant="outline" size="sm" className="hidden sm:inline-flex gap-1.5" asChild>
+              <Link to="/" title={d.viewWebsiteHint}>
+                <Home className="h-3.5 w-3.5" />
+                {d.viewWebsite}
+              </Link>
+            </Button>
+            <OnlineStatusBadge />
+            <NotificationBell />
+          </div>
         </header>
         <div className="relative z-10 flex-1 overflow-auto p-6">
           <DashboardContentArea />

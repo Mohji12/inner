@@ -73,10 +73,11 @@ export function MentorSearchFilters({ filters, onChange, onClear }: MentorSearch
             <SelectValue placeholder="Sort by..." />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="relevance">Relevance</SelectItem>
+            <SelectItem value="relevance">Best match (online + performance)</SelectItem>
             <SelectItem value="price_asc">Price: Low to High</SelectItem>
             <SelectItem value="price_desc">Price: High to Low</SelectItem>
             <SelectItem value="rating_desc">Highest Rated</SelectItem>
+            <SelectItem value="sessions_desc">Most Sessions</SelectItem>
           </SelectContent>
         </Select>
       </div>

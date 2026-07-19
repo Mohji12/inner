@@ -39,10 +39,26 @@ export interface AdminMentorRow {
   session_modes?: unknown[] | null;
   previous_companies?: unknown[] | null;
   profile_image?: string | null;
+  banner_image?: string | null;
   country_code?: string | null;
   timezone?: string | null;
   average_rating?: string | number | null;
   total_reviews?: number;
+  total_sessions_completed?: number;
+  price_10_min?: string | number | null;
+  price_20_min?: string | number | null;
+  price_30_min?: string | number | null;
+  chat_price_per_minute?: string | number | null;
+  chat_currency?: string | null;
+  chat_min_purchase_minutes?: number;
+  agreement_accepted_at?: string | null;
+  agreement_version?: string | null;
+  last_seen_at?: string | null;
+  presence_accrued_at?: string | null;
+  deactivated_at?: string | null;
+  is_totp_enabled?: boolean;
+  has_google_id?: boolean;
+  public_card_visibility?: Record<string, unknown> | null;
   status: string;
   is_approved: boolean;
   email_verified: boolean;
@@ -322,6 +338,10 @@ export function fetchAdminMentors(skip = 0, limit = 50, q?: string) {
   return apiFetch<Paginated<AdminMentorRow>>(`/admin/mentors${qs({ skip, limit, q })}`);
 }
 
+export function fetchAdminMentor(mentorId: string) {
+  return apiFetch<AdminMentorRow>(`/admin/mentors/${mentorId}`);
+}
+
 export type CoachApplicationStatus = "new" | "reviewed" | "contacted" | "rejected";
 
 export interface AdminCoachApplicationRow {
@@ -428,6 +448,10 @@ export function payAdminSettlement(id: string, idempotencyKey?: string) {
 
 export function markAdminSettlementPaid(id: string) {
   return apiFetch<AdminSettlementRow>(`/admin/settlements/${id}/mark-paid`, { method: "POST" });
+}
+
+export function downloadAdminSettlementInvoicePdf(id: string) {
+  return apiFetchBlob(`/admin/settlements/${id}/pdf`);
 }
 
 export function adminCreditUserWallet(userId: string, payload: AdminWalletAdjustPayload) {
@@ -620,4 +644,98 @@ export function fetchAdminOnboardingInvoices(skip = 0, limit = 50) {
 
 export function fetchAdminTransactions(skip = 0, limit = 100) {
   return apiFetch<AdminTransactionList>(`/admin/transactions?skip=${skip}&limit=${limit}`);
+}
+
+export interface AdminMentorPresenceRow {
+  mentor_id: string;
+  full_name: string;
+  email: string;
+  status: string;
+  week_start: string;
+  seconds_online: number;
+  hours_online: number;
+  min_hours: number;
+  meets_minimum: boolean;
+  warning_sent_at: string | null;
+}
+
+export interface AdminMentorPresenceList {
+  week_start: string;
+  min_hours: number;
+  items: AdminMentorPresenceRow[];
+  total: number;
+  skip: number;
+  limit: number;
+}
+
+export interface AdminMentorPresenceHistoryRow {
+  week_start: string;
+  seconds_online: number;
+  hours_online: number;
+  meets_minimum: boolean;
+  warning_sent_at: string | null;
+}
+
+export interface AdminMentorPresenceDetail {
+  mentor_id: string;
+  full_name: string;
+  email: string;
+  status: string;
+  min_hours: number;
+  weeks: AdminMentorPresenceHistoryRow[];
+}
+
+export function fetchAdminMentorPresence(opts?: {
+  week_start?: string;
+  q?: string;
+  skip?: number;
+  limit?: number;
+}) {
+  const params = new URLSearchParams();
+  params.set("skip", String(opts?.skip ?? 0));
+  params.set("limit", String(opts?.limit ?? 50));
+  if (opts?.week_start) params.set("week_start", opts.week_start);
+  if (opts?.q?.trim()) params.set("q", opts.q.trim());
+  return apiFetch<AdminMentorPresenceList>(`/admin/mentor-presence?${params.toString()}`);
+}
+
+export function fetchAdminMentorPresenceDetail(mentorId: string, weeks = 8) {
+  return apiFetch<AdminMentorPresenceDetail>(
+    `/admin/mentor-presence/${encodeURIComponent(mentorId)}?weeks=${weeks}`,
+  );
+}
+
+export interface AdminAnnouncementRow {
+  id: string;
+  title: string;
+  body: string;
+  recipient_count: number;
+  emails_sent: number;
+  created_at: string;
+}
+
+export interface AdminAnnouncementList {
+  items: AdminAnnouncementRow[];
+  total: number;
+  skip: number;
+  limit: number;
+}
+
+export function fetchAdminAnnouncements(skip = 0, limit = 50) {
+  return apiFetch<AdminAnnouncementList>(`/admin/announcements?skip=${skip}&limit=${limit}`);
+}
+
+export function createAdminAnnouncement(body: {
+  title: string;
+  body: string;
+  send_email?: boolean;
+}) {
+  return apiFetch<AdminAnnouncementRow>(`/admin/announcements`, {
+    method: "POST",
+    body: JSON.stringify({
+      title: body.title,
+      body: body.body,
+      send_email: body.send_email ?? true,
+    }),
+  });
 }

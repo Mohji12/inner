@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getMentorAvailabilityStatus } from "@/api/types";
 import { getPlatformPricing, listMentors } from "@/api/mentors";
 import { MentorBrowseCard } from "@/components/MentorBrowseCard";
 import { Button } from "@/components/ui/button";
@@ -9,12 +8,6 @@ import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { useLanguage } from "@/i18n/LanguageContext";
 
 const HOME_COACH_LIMIT = 4;
-
-function availabilitySortKey(status: ReturnType<typeof getMentorAvailabilityStatus>) {
-  if (status === "available") return 0;
-  if (status === "busy") return 1;
-  return 2;
-}
 
 const CoachesSection = () => {
   const ref = useScrollReveal();
@@ -33,17 +26,8 @@ const CoachesSection = () => {
     queryFn: getPlatformPricing,
   });
 
-  const featured = useMemo(
-    () =>
-      [...mentors]
-        .sort(
-          (a, b) =>
-            availabilitySortKey(getMentorAvailabilityStatus(a)) -
-            availabilitySortKey(getMentorAvailabilityStatus(b)),
-        )
-        .slice(0, HOME_COACH_LIMIT),
-    [mentors],
-  );
+  // API already ranks: available → busy → offline, then performance score.
+  const featured = useMemo(() => mentors.slice(0, HOME_COACH_LIMIT), [mentors]);
 
   return (
     <section id="coaches" className="bg-background/95 py-24 backdrop-blur-sm md:py-32">

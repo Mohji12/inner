@@ -153,12 +153,15 @@ const MentorRegisterPage = () => {
 
   const stepLabel = m.stepOf.replace("{current}", String(tabIndex + 1)).replace("{total}", String(TAB_ORDER.length));
 
-  const finishRegistration = (message?: string, mentorId?: string) => {
+  const finishRegistration = (message?: string, mentorId?: string, pendingApproval = false) => {
     const params = new URLSearchParams();
     if (mentorId) {
       params.set("mentorId", mentorId);
     }
-    const finalMessage = (message ?? m.successFreeRedirect).trim();
+    if (pendingApproval) {
+      params.set("pending", "1");
+    }
+    const finalMessage = (message ?? (pendingApproval ? m.successPendingApproval : m.successFreeRedirect)).trim();
     if (finalMessage) {
       params.set("message", finalMessage);
     }
@@ -167,19 +170,32 @@ const MentorRegisterPage = () => {
     navigate(`/mentor/register/thank-you${query ? `?${query}` : ""}`);
   };
 
-  const completeMentorOnboarding = async (email: string, password: string, message?: string, mentorId?: string) => {
-    try {
-      await loginMentorSession({ email, password });
-    } catch {
-      // Still land on thank-you; redirect falls back to login if no session.
+  const completeMentorOnboarding = async (
+    email: string,
+    password: string,
+    message?: string,
+    mentorId?: string,
+    accountActive = false,
+  ) => {
+    if (accountActive) {
+      try {
+        await loginMentorSession({ email, password });
+      } catch {
+        // Still land on thank-you; redirect falls back to login if no session.
+      }
     }
-    finishRegistration(message, mentorId);
+    finishRegistration(message, mentorId, !accountActive);
   };
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!formData.name || !formData.email || !formData.phone || !formData.password) {
       setError(m.errAccount);
+      return;
+    }
+    if (!formData.kvkNumber.trim()) {
+      setError(m.errKvkRequired);
+      onTabChange("background");
       return;
     }
     if (formData.password.length < 8) {
@@ -214,7 +230,7 @@ const MentorRegisterPage = () => {
         bio: formData.bio.trim() || null,
         profile_image: pendingFile ? null : urlOnly ? urlOnly : null,
         current_company: formData.companyName.trim() || null,
-        kvk_number: formData.kvkNumber.trim() || null,
+        kvk_number: formData.kvkNumber.trim(),
         languages_spoken: formData.spokenLanguages.length ? formData.spokenLanguages : null,
         years_of_experience: Number(formData.yearsExperience) || 0,
         expertise_areas: commaSeparatedToStringList(formData.expertiseAreasCsv) || null,
@@ -256,6 +272,7 @@ const MentorRegisterPage = () => {
           formData.password,
           verified.message,
           verified.mentor_id || reg.id,
+          Boolean(verified.account_active),
         );
         return;
       }
@@ -288,6 +305,7 @@ const MentorRegisterPage = () => {
         verifyCtx.password,
         verified.message,
         verified.mentor_id || verifyCtx.mentorId,
+        Boolean(verified.account_active),
       );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : m.errVerify;
@@ -623,6 +641,7 @@ const MentorRegisterPage = () => {
                       <Input
                         id="kvk"
                         inputMode="numeric"
+                        required
                         placeholder={m.phKvkNumber}
                         value={formData.kvkNumber}
                         onChange={(event) => setFormData((prev) => ({ ...prev, kvkNumber: event.target.value }))}
