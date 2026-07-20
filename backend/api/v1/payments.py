@@ -13,6 +13,7 @@ from models.mentor_onboarding_payment import MentorOnboardingPayment
 from models.mentor_monthly_invoice import MentorMonthlyInvoice
 from models.booking import Booking
 from models.payment import Payment
+from core.booking_states import PAYMENT_PAID, PAYMENT_RECORD_PENDING, PAYMENT_RECORD_SUCCEEDED
 from core.security import new_uuid
 from services.mollie_service import (
     MollieServiceError,
@@ -211,12 +212,44 @@ def create_intent(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    booking = db.query(Booking).filter(Booking.id == req.booking_id).first()
+    booking = db.query(Booking).filter(Booking.id == req.booking_id).with_for_update().first()
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
         
     if booking.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden")
+
+    if booking.payment_status == PAYMENT_PAID:
+        return CreateIntentResponse(
+            checkout_url=f"/booking/thank-you?bookingId={booking.id}",
+            payment_id=booking.payment_id or "",
+            amount=0.0,
+            currency="EUR",
+        )
+
+    existing_pending = (
+        db.query(Payment)
+        .filter(
+            Payment.booking_id == booking.id,
+            Payment.status == PAYMENT_RECORD_PENDING,
+        )
+        .order_by(Payment.created_at.desc())
+        .first()
+    )
+    if existing_pending and existing_pending.transaction_id:
+        try:
+            mollie_data = get_mollie_payment(existing_pending.transaction_id)
+            if mollie_data.get("status") == "open":
+                checkout_href = (mollie_data.get("_links") or {}).get("checkout", {}).get("href")
+                if checkout_href:
+                    return CreateIntentResponse(
+                        checkout_url=checkout_href,
+                        payment_id=existing_pending.transaction_id,
+                        amount=float(existing_pending.amount),
+                        currency=existing_pending.currency,
+                    )
+        except MollieServiceError:
+            pass
 
     mentor = booking.mentor
     try:
@@ -261,7 +294,7 @@ def create_intent(
         db.commit()
 
         return CreateIntentResponse(
-            checkout_url=f"/booking/success?bookingId={booking.id}",
+            checkout_url=f"/booking/thank-you?bookingId={booking.id}",
             payment_id=fake_payment_id,
             amount=0.0,
             currency="EUR",
@@ -276,7 +309,7 @@ def create_intent(
         raise HTTPException(status_code=502, detail=str(e)) from e
 
     try:
-        redirect_url = f"{settings.mollie_redirect_base_url.rstrip('/')}/booking/success?bookingId={booking.id}"
+        redirect_url = f"{settings.mollie_redirect_base_url.rstrip('/')}/booking/thank-you?bookingId={booking.id}"
         webhook_url = resolve_mollie_webhook_url(request)
         mollie_payment_id, checkout_url = create_mollie_payment(
             amount=charged,
@@ -314,7 +347,11 @@ def create_intent(
             currency=checkout_ccy
         )
     except MollieServiceError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logging.getLogger(__name__).warning("Mollie create payment failed: %s", e)
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to start checkout. Please try again.",
+        ) from e
 
 @router.post("/webhook")
 async def mollie_webhook(request: Request, db: Session = Depends(get_db)):

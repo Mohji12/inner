@@ -41,6 +41,7 @@ from services.mollie_service import MollieServiceError, resolve_mollie_webhook_u
 from services.mentor_card_visibility import normalize_card_visibility
 from services.onboarding_payment_service import create_onboarding_checkout, mentor_onboarding_status
 from services.i18n_service import resolve_i18n_text, to_i18n_map
+from services.booking_slot_service import SLOT_BLOCKING_STATUSES
 from core.coach_agreement import COACH_AGREEMENT_TEXT, COACH_AGREEMENT_VERSION
 from services.presence_service import presence_service
 from services.mentor_presence_tracking_service import accrue_mentor_presence
@@ -275,7 +276,12 @@ def list_my_slots(db: DbSession, me: CurrentMentor) -> list[AvailabilitySlot]:
         db.query(AvailabilitySlot)
         .filter(
             AvailabilitySlot.mentor_id == me.id,
-            ~db.query(Booking.id).filter(Booking.slot_id == AvailabilitySlot.id).exists(),
+            ~db.query(Booking.id)
+            .filter(
+                Booking.slot_id == AvailabilitySlot.id,
+                Booking.status.in_(SLOT_BLOCKING_STATUSES),
+            )
+            .exists(),
         )
         .order_by(AvailabilitySlot.start_at_utc)
         .all()

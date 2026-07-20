@@ -19,6 +19,7 @@ from services.i18n_service import resolve_i18n_text
 from services.presence_service import presence_service
 from services.pricing_service import effective_chat_price_per_minute_eur, get_platform_pricing
 from services.mentor_ranking_service import availability_tier, rank_public_mentors
+from services.booking_slot_service import SLOT_BLOCKING_STATUSES
 
 
 router = APIRouter(prefix="/mentors", tags=["mentors-public"])
@@ -261,7 +262,12 @@ def list_mentor_slots(
     q = db.query(AvailabilitySlot).filter(
         AvailabilitySlot.mentor_id == mentor_id,
         AvailabilitySlot.is_booked.is_(False),
-        ~db.query(Booking.id).filter(Booking.slot_id == AvailabilitySlot.id).exists(),
+        ~db.query(Booking.id)
+        .filter(
+            Booking.slot_id == AvailabilitySlot.id,
+            Booking.status.in_(SLOT_BLOCKING_STATUSES),
+        )
+        .exists(),
     )
     if date_from:
         q = q.filter(AvailabilitySlot.start_at_utc >= datetime.combine(date_from, time.min).replace(tzinfo=timezone.utc))

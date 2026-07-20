@@ -2,17 +2,19 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Bell, CalendarDays, Check, MessageSquare, Receipt, Trash2, Info } from "lucide-react";
-import AppPageHeader from "@/components/AppPageHeader";
 import { Button } from "@/components/ui/button";
 import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification } from "@/api/notifications";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 const UserNotificationsPage = () => {
+  const { t } = useLanguage();
+  const n = t.app.userNotifications;
   const [filter, setFilter] = useState("all");
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ["notifications", "all"],
     queryFn: () => getNotifications(50, 0),
   });
@@ -56,11 +58,10 @@ const UserNotificationsPage = () => {
 
   return (
     <div className="space-y-6">
-      <AppPageHeader />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-serif font-bold">Notifications</h1>
-          <p className="text-muted-foreground mt-1">Stay updated on your sessions, messages, and account activity.</p>
+          <h1 className="text-3xl font-serif font-bold">{n.title}</h1>
+          <p className="text-muted-foreground mt-1">{n.description}</p>
         </div>
         <div className="flex gap-2">
           <Button 
@@ -69,16 +70,16 @@ const UserNotificationsPage = () => {
             disabled={markAllAsRead.isPending || !data?.unread_count}
           >
             <Check className="mr-2 h-4 w-4" />
-            Mark all as read
+            {n.markAllRead}
           </Button>
         </div>
       </div>
 
       <div className="flex gap-2 pb-2 overflow-x-auto">
-        <Button variant={filter === "all" ? "default" : "outline"} size="sm" onClick={() => setFilter("all")}>All</Button>
-        <Button variant={filter === "booking" ? "default" : "outline"} size="sm" onClick={() => setFilter("booking")}>Bookings</Button>
-        <Button variant={filter === "chat" ? "default" : "outline"} size="sm" onClick={() => setFilter("chat")}>Messages</Button>
-        <Button variant={filter === "payment" ? "default" : "outline"} size="sm" onClick={() => setFilter("payment")}>Payments</Button>
+        <Button variant={filter === "all" ? "default" : "outline"} size="sm" onClick={() => setFilter("all")}>{n.filterAll}</Button>
+        <Button variant={filter === "booking" ? "default" : "outline"} size="sm" onClick={() => setFilter("booking")}>{n.filterBookings}</Button>
+        <Button variant={filter === "chat" ? "default" : "outline"} size="sm" onClick={() => setFilter("chat")}>{n.filterMessages}</Button>
+        <Button variant={filter === "payment" ? "default" : "outline"} size="sm" onClick={() => setFilter("payment")}>{n.filterPayments}</Button>
       </div>
 
       <div className="bg-card rounded-xl border border-border/60 shadow-sm overflow-hidden">
@@ -87,6 +88,13 @@ const UserNotificationsPage = () => {
             <Skeleton className="h-20 w-full" />
             <Skeleton className="h-20 w-full" />
             <Skeleton className="h-20 w-full" />
+          </div>
+        ) : isError ? (
+          <div className="py-16 text-center px-4 space-y-3">
+            <p className="text-muted-foreground">{n.loadError}</p>
+            <Button variant="outline" onClick={() => void refetch()} disabled={isFetching}>
+              {n.retry}
+            </Button>
           </div>
         ) : filteredNotifications.length > 0 ? (
           <div className="divide-y divide-border/50">
@@ -154,11 +162,11 @@ const UserNotificationsPage = () => {
             <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
               <Bell className="h-8 w-8 text-muted-foreground/40" />
             </div>
-            <h3 className="text-lg font-medium text-foreground">No notifications</h3>
+            <h3 className="text-lg font-medium text-foreground">{n.emptyTitle}</h3>
             <p className="text-muted-foreground mt-1 max-w-sm mx-auto">
               {filter === "all" 
-                ? "You're all caught up! When you have new activity, it will show up here."
-                : `You don't have any ${filter} notifications.`}
+                ? n.emptyAll
+                : n.emptyFiltered.replace("{type}", filter)}
             </p>
           </div>
         )}

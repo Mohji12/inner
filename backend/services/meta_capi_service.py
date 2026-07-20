@@ -147,7 +147,7 @@ def track_user_registration_verified(
         user_email=email,
         user_phone=phone_number,
         request=request,
-        event_source_url=f"{settings.mollie_redirect_base_url.rstrip('/')}/register",
+        event_source_url=f"{settings.mollie_redirect_base_url.rstrip('/')}/user/register/thank-you",
     )
 
 
@@ -186,5 +186,5 @@ def track_booking_purchase(
         user_phone=phone_number,
         value=amount,
         currency=currency,
-        event_source_url=f"{settings.mollie_redirect_base_url.rstrip('/')}/booking/success",
+        event_source_url=f"{settings.mollie_redirect_base_url.rstrip('/')}/booking/thank-you",
     )

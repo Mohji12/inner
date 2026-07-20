@@ -477,7 +477,20 @@ def login_mentor_google(db: DbSession, payload: SocialLoginRequest, response: Re
     if not mentor:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Coach account not found. Please register as a coach first.")
     
+    if mentor.google_id and mentor.google_id != google_id:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "This email is linked to a different Google account.",
+        )
+
     if not mentor.google_id:
+        has_password_account = bool(mentor.password_hash and mentor.password_hash != "social_login")
+        if has_password_account:
+            if not payload.link_password or not verify_password(payload.link_password, mentor.password_hash):
+                raise HTTPException(
+                    status.HTTP_409_CONFLICT,
+                    "This coach account uses a password. Sign in with your password first, or provide your password to link Google.",
+                )
         mentor.google_id = google_id
     mentor.email_verified = True
     if mentor.status == "rejected":

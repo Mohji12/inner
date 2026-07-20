@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import AppPageHeader from "@/components/AppPageHeader";
 import { useAuth } from "@/auth/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { GoogleSignIn } from "@/components/auth/GoogleSignIn";
 import { loginUser2FA, loginMentor2FA } from "@/api/auth";
 import { ShieldAlert, ArrowLeft } from "lucide-react";
+import { resolvePostLoginPath } from "@/lib/postLoginRedirect";
+import { humanizeApiError } from "@/lib/humanizeApiError";
 
 type Role = "user" | "mentor" | "admin";
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
@@ -19,7 +21,9 @@ const AUTH_SUCCESS_DELAY_MS = 1200;
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
+  const returnTo = (location.state as { from?: string } | null)?.from;
   const { loginUserSession, loginMentorSession, loginAdminSession, setUserSession, setMentorSession } = useAuth();
   const { t } = useLanguage();
   const a = t.app.login;
@@ -66,7 +70,7 @@ const LoginPage = () => {
           setTempToken(res.temp_token!);
           return;
         }
-        finishLogin("/user/appointments", "Welcome back!");
+        finishLogin(resolvePostLoginPath("user", returnTo), a.welcomeBack);
         return;
       }
       if (role === "mentor") {
@@ -76,13 +80,13 @@ const LoginPage = () => {
           setTempToken(res.temp_token!);
           return;
         }
-        finishLogin("/mentor/appointments", "Welcome back, Coach!");
+        finishLogin(resolvePostLoginPath("mentor", returnTo), a.welcomeBackMentor);
         return;
       }
       await loginAdminSession({ email: email.trim(), password });
-      finishLogin("/admin", "Welcome back!");
+      finishLogin(resolvePostLoginPath("admin", returnTo), a.welcomeBack);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : a.errFailed;
+      const msg = humanizeApiError(e, a.errFailed);
       setError(msg);
       toast.error(msg);
     }
@@ -91,7 +95,7 @@ const LoginPage = () => {
   const on2FASubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (twoFactorCode.length !== 6) {
-      toast.error("Please enter a 6-digit code");
+      toast.error(a.twoFactorCodeRequired);
       return;
     }
 
@@ -109,12 +113,11 @@ const LoginPage = () => {
       else setMentorSession(res.access_token);
 
       finishLogin(
-        role === 'user' ? "/user/appointments" : "/mentor/appointments",
-        role === 'user' ? "Welcome back!" : "Welcome back, Coach!",
+        resolvePostLoginPath(role, returnTo),
+        role === "user" ? a.welcomeBack : a.welcomeBackMentor,
       );
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "2FA verification failed";
-      toast.error(msg);
+      toast.error(humanizeApiError(e, a.twoFactorFailed));
     }
   };
 
@@ -122,14 +125,12 @@ const LoginPage = () => {
     <div className="space-y-6">
       <div className="flex flex-col items-center gap-2 text-center">
         <ShieldAlert className="w-12 h-12 text-primary animate-pulse" />
-        <h3 className="text-xl font-semibold">Two-Factor Authentication</h3>
-        <p className="text-sm text-muted-foreground">
-          Enter the 6-digit code from your authenticator app to complete sign-in.
-        </p>
+        <h3 className="text-xl font-semibold">{a.twoFactorTitle}</h3>
+        <p className="text-sm text-muted-foreground">{a.twoFactorDescription}</p>
       </div>
       <form onSubmit={(e) => void on2FASubmit(e)} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="2fa-code">Authentication Code</Label>
+          <Label htmlFor="2fa-code">{a.twoFactorCodeLabel}</Label>
           <Input
             id="2fa-code"
             type="text"
@@ -142,7 +143,7 @@ const LoginPage = () => {
           />
         </div>
         <Button type="submit" className="w-full gradient-cta text-white h-12 text-lg">
-          Verify & Sign In
+          {a.twoFactorSubmit}
         </Button>
       </form>
       <button 
@@ -150,20 +151,20 @@ const LoginPage = () => {
         className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mx-auto"
       >
         <ArrowLeft className="w-4 h-4" />
-        Back to password login
+        {a.twoFactorBack}
       </button>
     </div>
   );
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {authSuccess ? <AuthSuccessOverlay message={authSuccess.message} description="Taking you to your dashboard…" /> : null}
+      {authSuccess ? <AuthSuccessOverlay message={authSuccess.message} description={a.redirecting} /> : null}
       <AppPageHeader />
       <main className="container mx-auto px-6 py-10">
         <Card className="mx-auto max-w-xl border-border/60 shadow-xl overflow-hidden">
           <CardHeader className="bg-muted/30 pb-8">
-            <CardTitle className="font-serif text-3xl">{is2FARequired ? "Security Verification" : a.title}</CardTitle>
-            <CardDescription>{is2FARequired ? "Additional security required" : a.description}</CardDescription>
+            <CardTitle className="font-serif text-3xl">{is2FARequired ? a.securityVerification : a.title}</CardTitle>
+            <CardDescription>{is2FARequired ? a.securityVerificationHint : a.description}</CardDescription>
           </CardHeader>
           <CardContent className="pt-8">
             {is2FARequired ? render2FAForm() : (
@@ -213,7 +214,7 @@ const LoginPage = () => {
                       <Link to="/forgot-password"
                         className="text-xs text-primary hover:underline"
                       >
-                        Forgot password?
+                        {a.forgotPassword}
                       </Link>
                     </div>
                     <Input
@@ -245,7 +246,7 @@ const LoginPage = () => {
                         <span className="w-full border-t border-border" />
                       </div>
                       <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+                        <span className="bg-background px-2 text-muted-foreground">{a.orContinueWith}</span>
                       </div>
                     </div>
 
@@ -257,8 +258,8 @@ const LoginPage = () => {
                       }}
                       onAuthenticated={(authRole) => {
                         finishLogin(
-                          authRole === "user" ? "/user/appointments" : "/mentor/appointments",
-                          authRole === "user" ? "Welcome back!" : "Welcome back, Coach!",
+                          resolvePostLoginPath(authRole, returnTo),
+                          authRole === "user" ? a.welcomeBack : a.welcomeBackMentor,
                         );
                       }}
                     />

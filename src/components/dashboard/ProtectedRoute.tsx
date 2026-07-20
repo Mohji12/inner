@@ -23,7 +23,8 @@ export function ProtectedRoute({ role, children }: Props) {
   if (!ok) {
     const to =
       role === "user" ? "/login?role=user" : role === "mentor" ? "/login?role=mentor" : "/login?role=admin";
-    return <Navigate to={to} state={{ from: location.pathname }} replace />;
+    const returnTo = `${location.pathname}${location.search}`;
+    return <Navigate to={to} state={{ from: returnTo }} replace />;
   }
 
   return <>{children}</>;

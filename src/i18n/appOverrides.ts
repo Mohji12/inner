@@ -3,6 +3,7 @@ import type { Language } from "./translations";
 import type { DeepPartial } from "./mergeDeep";
 import { coachDashboardOverrides } from "./coachDashboardOverrides";
 import { adminDashboardOverrides } from "./adminDashboardOverrides";
+import { phase3Overrides } from "./phase3Overrides";
 import { mergeDeep } from "./mergeDeep";
 
 const baseOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
@@ -2924,6 +2925,8 @@ function withLocaleExtras(
   if (coach) merged = mergeDeep(merged as AppCopy, coach) as DeepPartial<AppCopy>;
   const admin = adminDashboardOverrides[locale];
   if (admin) merged = mergeDeep(merged as AppCopy, admin) as DeepPartial<AppCopy>;
+  const phase3 = phase3Overrides[locale];
+  if (phase3) merged = mergeDeep(merged as AppCopy, phase3) as DeepPartial<AppCopy>;
   return merged;
 }
 

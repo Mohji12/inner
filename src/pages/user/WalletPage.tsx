@@ -2,32 +2,51 @@ import { useQuery } from "@tanstack/react-query";
 import { getMyWallet } from "@/api/wallets";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 const WalletPage = () => {
-  const { data: wallet, isLoading } = useQuery({
+  const { t } = useLanguage();
+  const w = t.app.userWallet;
+  const { data: wallet, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ["wallet", "me"],
     queryFn: () => getMyWallet(),
   });
 
   if (isLoading) {
-    return <p className="text-muted-foreground">Loading wallet...</p>;
+    return <p className="text-muted-foreground">{w.loading}</p>;
   }
 
-  if (!wallet) {
-    return <p className="text-destructive">Failed to load wallet data.</p>;
+  if (isError || !wallet) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <p className="text-sm uppercase tracking-widest text-accent">{w.label}</p>
+          <h1 className="font-serif text-3xl">{w.title}</h1>
+        </div>
+        <Card className="border-destructive/30">
+          <CardContent className="py-10 text-center space-y-3">
+            <p className="text-destructive">{w.loadError}</p>
+            <Button variant="outline" onClick={() => void refetch()} disabled={isFetching}>
+              {w.retry}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-sm uppercase tracking-widest text-accent">Wallet</p>
-        <h1 className="font-serif text-3xl">My Balance</h1>
+        <p className="text-sm uppercase tracking-widest text-accent">{w.label}</p>
+        <h1 className="font-serif text-3xl">{w.title}</h1>
       </div>
 
       <Card className="border-border/60">
         <CardContent className="flex flex-col items-center justify-center p-12">
-          <p className="text-sm text-muted-foreground mb-2">Available Balance</p>
+          <p className="text-sm text-muted-foreground mb-2">{w.balanceLabel}</p>
           <h2 className="text-5xl font-bold font-serif text-primary">
             {wallet.currency} {wallet.balance.toFixed(2)}
           </h2>
@@ -36,20 +55,20 @@ const WalletPage = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Transaction History</CardTitle>
-          <CardDescription>Recent activity in your wallet.</CardDescription>
+          <CardTitle>{w.historyTitle}</CardTitle>
+          <CardDescription>{w.historyDescription}</CardDescription>
         </CardHeader>
         <CardContent>
           {wallet.transactions.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No transactions found.</p>
+            <p className="text-sm text-muted-foreground text-center py-4">{w.emptyTransactions}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>{w.colDate}</TableHead>
+                  <TableHead>{w.colDescription}</TableHead>
+                  <TableHead>{w.colType}</TableHead>
+                  <TableHead className="text-right">{w.colAmount}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

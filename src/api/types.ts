@@ -30,6 +30,7 @@ export interface TwoFactorLoginRequest {
 
 export interface SocialLoginRequest {
   id_token: string;
+  link_password?: string;
 }
 
 export interface UserOut {

@@ -281,10 +281,22 @@ def login_user_google(db: DbSession, payload: SocialLoginRequest, response: Resp
         db.add(user)
         db.flush()
     else:
-        # Link Google ID if not already linked
-        if not user.google_id:
+        if user.google_id and user.google_id != google_id:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "This email is linked to a different Google account.",
+            )
+        has_password_account = bool(user.password_hash and user.password_hash != "social_login")
+        if has_password_account and not user.google_id:
+            if not payload.link_password or not verify_password(payload.link_password, user.password_hash):
+                raise HTTPException(
+                    status.HTTP_409_CONFLICT,
+                    "An account with this email already exists. Sign in with your password first, or provide your password to link Google.",
+                )
             user.google_id = google_id
-        user.email_verified = True # Google verifies emails
+        elif not user.google_id:
+            user.google_id = google_id
+        user.email_verified = True
     
     user.last_login = now
     db.commit()

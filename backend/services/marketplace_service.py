@@ -426,7 +426,7 @@ def record_webhook_event(
 
 def verify_generic_hmac_signature(*, secret: str, payload: bytes, signature: str | None) -> bool:
     if not secret:
-        return True
+        return str(settings.environment).strip().lower() != "production"
     if not signature:
         return False
     expected = hmac.new(secret.encode("utf-8"), payload, hashlib.sha256).hexdigest()

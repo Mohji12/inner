@@ -35,6 +35,7 @@ import { guessCheckoutCurrencyFromLocale } from "@/lib/checkoutCurrencyGuess";
 import { formatDateLocal, formatTimeLocal } from "@/lib/timeZone";
 import { chatSessionCardCaption } from "@/lib/chatSessionCardCaption";
 import { useEffectiveTimeZone } from "@/hooks/useEffectiveTimeZone";
+import { useLanguage } from "@/i18n/LanguageContext";
 import { SessionBookingDetails } from "@/components/SessionBookingDetails";
 import {
   clearPendingMolliePaymentId,
@@ -53,6 +54,10 @@ import {
 import { toast } from "sonner";
 
 const UserAppointmentsPage = () => {
+  const { t } = useLanguage();
+  const ap = t.app.appointments;
+  const statusLabel = (key: string) =>
+    ap.statusLabels[key as keyof typeof ap.statusLabels] ?? key.replaceAll("_", " ");
   const { role, userAccessToken } = useAuth();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
@@ -420,8 +425,8 @@ const UserAppointmentsPage = () => {
         {bookings.length === 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle className="font-serif text-2xl">No bookings yet</CardTitle>
-              <CardDescription>Browse coaches and pick a time slot to get started.</CardDescription>
+              <CardTitle className="font-serif text-2xl">{ap.emptyTitle}</CardTitle>
+              <CardDescription>{ap.emptyDescription}</CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild className="gradient-cta text-white">
@@ -481,8 +486,10 @@ const UserAppointmentsPage = () => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <Badge variant="secondary">{b.status}</Badge>
-                    <p className="mt-1 text-sm text-muted-foreground">Payment: {b.payment_status}</p>
+                    <Badge variant="secondary">{statusLabel(b.status)}</Badge>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {ap.paymentLabel}: {statusLabel(b.payment_status)}
+                    </p>
                     {amount != null ? <p className="text-sm font-medium">EUR {amount.toFixed(2)}</p> : null}
                   </div>
                 </div>

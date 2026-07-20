@@ -71,6 +71,11 @@ const UserRegisterPage = () => {
       setError(a.errFields);
       return;
     }
+    const emailTrimmed = formData.email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed)) {
+      setError(a.errEmailInvalid);
+      return;
+    }
     const phoneE164 = composeE164Phone(dialCodeForIso(formData.phoneDialIso), formData.phone);
     if (!phoneE164 || phoneE164.replace(/\D/g, "").length < 8) {
       setError(a.errFields);

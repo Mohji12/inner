@@ -9,6 +9,8 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 import { toast } from "sonner";
 import { forgotPassword, resetPassword } from "@/api/auth";
 import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
+import { useLanguage } from "@/i18n/LanguageContext";
+import { humanizeApiError } from "@/lib/humanizeApiError";
 
 type ResetLocationState = {
   email?: string;
@@ -19,6 +21,8 @@ const ResetPasswordPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const { t } = useLanguage();
+  const r = t.app.resetPassword;
   const state = (location.state as ResetLocationState | null) ?? {};
 
   const email = state.email ?? searchParams.get("email") ?? "";
@@ -42,10 +46,9 @@ const ResetPasswordPage = () => {
     setIsResending(true);
     try {
       await forgotPassword({ email, role });
-      toast.success("A new reset code was sent if an account exists.");
+      toast.success(r.toastResent);
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Could not resend code. Please try again.";
-      toast.error(msg);
+      toast.error(humanizeApiError(error));
     } finally {
       setIsResending(false);
     }
@@ -55,11 +58,15 @@ const ResetPasswordPage = () => {
     e.preventDefault();
     const code = otp.replace(/\D/g, "");
     if (code.length !== 6) {
-      toast.error("Please enter the 6-digit code from your email.");
+      toast.error(r.errCode);
+      return;
+    }
+    if (password.length < 8) {
+      toast.error(r.errPasswordMin);
       return;
     }
     if (password !== confirmPassword) {
-      toast.error("Passwords do not match");
+      toast.error(r.errMatch);
       return;
     }
 
@@ -72,12 +79,10 @@ const ResetPasswordPage = () => {
         new_password: password,
       });
       setIsSuccess(true);
-      toast.success("Password reset successfully!");
+      toast.success(r.toastOk);
       setTimeout(() => navigate("/login"), 3000);
     } catch (error: unknown) {
-      const msg =
-        error instanceof Error ? error.message : "Invalid or expired code. Please try again.";
-      toast.error(msg);
+      toast.error(humanizeApiError(error, r.toastFailed));
     } finally {
       setIsLoading(false);
     }
@@ -93,16 +98,14 @@ const ResetPasswordPage = () => {
       <main className="container mx-auto px-6 py-10">
         <Card className="mx-auto max-w-xl border-border/60 shadow-lg">
           <CardHeader>
-            <CardTitle className="font-serif text-3xl">Reset Password</CardTitle>
-            <CardDescription>
-              Enter the 6-digit code sent to <strong>{email}</strong> and choose a new password.
-            </CardDescription>
+            <CardTitle className="font-serif text-3xl">{r.title}</CardTitle>
+            <CardDescription>{r.description.replace("{email}", email)}</CardDescription>
           </CardHeader>
           <CardContent>
             {!isSuccess ? (
               <form onSubmit={onSubmit} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="otp">Reset Code</Label>
+                  <Label htmlFor="otp">{r.codeLabel}</Label>
                   <InputOTP
                     id="otp"
                     maxLength={6}
@@ -121,35 +124,37 @@ const ResetPasswordPage = () => {
                   </InputOTP>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password">New Password</Label>
+                  <Label htmlFor="password">{r.newPassword}</Label>
                   <Input
                     id="password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    minLength={8}
                   />
                   <PasswordStrengthMeter password={password} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <Label htmlFor="confirmPassword">{r.confirmPassword}</Label>
                   <Input
                     id="confirmPassword"
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
+                    minLength={8}
                   />
                 </div>
                 <Button type="submit" className="w-full gradient-cta text-white" disabled={isLoading}>
-                  {isLoading ? "Resetting..." : "Reset Password"}
+                  {isLoading ? r.submitting : r.submit}
                 </Button>
                 <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                   <Link to="/forgot-password" className="text-accent hover:underline">
-                    Use a different email
+                    {r.differentEmail}
                   </Link>
                   <Button type="button" variant="ghost" size="sm" disabled={isResending} onClick={() => void onResendCode()}>
-                    {isResending ? "Sending..." : "Resend code"}
+                    {isResending ? r.resending : r.resend}
                   </Button>
                 </div>
               </form>
@@ -160,12 +165,10 @@ const ResetPasswordPage = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                   </svg>
                 </div>
-                <p className="text-lg font-medium">Password Updated</p>
-                <p className="text-muted-foreground">
-                  Your password has been changed successfully. Redirecting you to login...
-                </p>
+                <p className="text-lg font-medium">{r.successTitle}</p>
+                <p className="text-muted-foreground">{r.successDescription}</p>
                 <Link to="/login">
-                  <Button className="mt-4">Go to Login Now</Button>
+                  <Button className="mt-4">{r.goToLogin}</Button>
                 </Link>
               </div>
             )}

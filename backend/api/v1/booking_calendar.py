@@ -1,20 +1,20 @@
 from fastapi import APIRouter, HTTPException, status, Response
-from icalendar import Calendar, Event, vCalAddress, vText
-import uuid
+from icalendar import Calendar, Event
 from datetime import datetime, timezone
 
-from api.deps import CurrentUser, DbSession
+from api.deps import AnyActorDep, DbSession
 from models.booking import Booking
+from services.booking_access import actor_can_access_booking
 
 router = APIRouter(prefix="/bookings", tags=["bookings-calendar"])
 
 @router.get("/{booking_id}/ical")
-def download_ical(booking_id: str, current_user: CurrentUser, db: DbSession):
+def download_ical(booking_id: str, actor: AnyActorDep, db: DbSession):
     booking = db.query(Booking).filter(Booking.id == booking_id).first()
     if not booking:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Booking not found")
 
-    if booking.user_id != current_user.id and booking.mentor_id != current_user.id:
+    if not actor_can_access_booking(booking, actor):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized to access this booking")
 
     if booking.status != "confirmed":
@@ -26,7 +26,6 @@ def download_ical(booking_id: str, current_user: CurrentUser, db: DbSession):
 
     event = Event()
     
-    # Calculate datetime
     start_dt = booking.start_at_utc
     end_dt = booking.end_at_utc
     if start_dt.tzinfo is None:
@@ -34,7 +33,12 @@ def download_ical(booking_id: str, current_user: CurrentUser, db: DbSession):
     if end_dt.tzinfo is None:
         end_dt = end_dt.replace(tzinfo=timezone.utc)
 
-    event.add('summary', f"Coaching Session with {booking.mentor.full_name if current_user.id == booking.user_id else booking.user.full_name}")
+    if actor.role == "user":
+        counterparty = booking.mentor.full_name if booking.mentor else "Coach"
+    else:
+        counterparty = booking.user.full_name if booking.user else "Client"
+
+    event.add('summary', f"Coaching Session with {counterparty}")
     event.add('dtstart', start_dt)
     event.add('dtend', end_dt)
     event.add('dtstamp', datetime.now(timezone.utc))

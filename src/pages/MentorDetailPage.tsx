@@ -18,6 +18,8 @@ import { Phone, Video } from "lucide-react";
 import { formatDateLocal, formatTimeLocal, isSameCalendarDayLocal } from "@/lib/timeZone";
 import { useEffectiveTimeZone } from "@/hooks/useEffectiveTimeZone";
 import { LiveSessionWindowPreview } from "@/components/LiveSessionWindowPreview";
+import { humanizeApiError } from "@/lib/humanizeApiError";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 const SESSION_PACKAGES = [5, 10, 20, 30, 60] as const;
 type LiveCommunicationMode = "video" | "call";
@@ -31,6 +33,8 @@ const MentorDetailPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { role, userAccessToken } = useAuth();
+  const { t } = useLanguage();
+  const md = t.app.mentorDetail;
   const [selectedDuration, setSelectedDuration] = useState<(typeof SESSION_PACKAGES)[number]>(5);
   const effectiveTimeZone = useEffectiveTimeZone();
 
@@ -81,7 +85,7 @@ const MentorDetailPage = () => {
       toast.error("This coach is currently in another session. Please try again shortly.");
       return;
     }
-    toast.error(e.message);
+    toast.error(humanizeApiError(e));
   };
 
   const liveBookMut = useMutation({
@@ -98,7 +102,7 @@ const MentorDetailPage = () => {
         communication_mode: communicationMode,
       }),
     onSuccess: (booking) => {
-      toast.success("Redirecting to payment…");
+      toast.success(md.redirectingPayment);
       navigate(`/payment/${mentorId}?bookingId=${booking.id}`);
     },
     onError: handleBookingError,
@@ -144,8 +148,8 @@ const MentorDetailPage = () => {
 
   const handleDurationSelect = (minutes: (typeof SESSION_PACKAGES)[number]) => {
     if (role !== "user" || !userAccessToken) {
-      toast.message("Please log in as a user to book.");
-      navigate("/login?role=user");
+      toast.message(md.loginToBook);
+      navigate("/login?role=user", { state: { from: `/mentors/${mentorId}` } });
       return;
     }
     setSelectedDuration(minutes);
@@ -153,8 +157,8 @@ const MentorDetailPage = () => {
 
   const handleLiveBook = (communicationMode: LiveCommunicationMode) => {
     if (role !== "user" || !userAccessToken) {
-      toast.message("Please log in as a user to book.");
-      navigate("/login?role=user");
+      toast.message(md.loginToBook);
+      navigate("/login?role=user", { state: { from: `/mentors/${mentorId}` } });
       return;
     }
     if (mentorOffline) {
@@ -179,7 +183,7 @@ const MentorDetailPage = () => {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm uppercase tracking-widest text-accent">Coach profile</p>
+                <p className="text-sm uppercase tracking-widest text-accent">{md.profileLabel}</p>
                 <div className="flex items-center gap-4">
                   <CardTitle className="font-serif text-4xl">{mentor.full_name}</CardTitle>
                   <FavoriteButton mentorId={mentor.id} className="mt-1" />
@@ -190,21 +194,22 @@ const MentorDetailPage = () => {
                   <div className="flex flex-col items-end gap-1">
                     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50">
                       <PresenceIndicator status="online" />
-                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Online — book now</span>
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">{md.onlineBookNow}</span>
                     </div>
-                    <p className="text-[10px] text-muted-foreground">Coach is on the platform and available</p>
+                    <p className="text-[10px] text-muted-foreground">{md.onlineHint}</p>
                   </div>
                 ) : availability === "busy" ? (
                   <div className="flex flex-col items-end gap-1">
                     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/50">
                       <PresenceIndicator status="busy" />
-                      <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">In session</span>
+                      <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">{md.inSession}</span>
                     </div>
-                    <p className="text-[10px] text-muted-foreground">Coach is in another live session</p>
+                    <p className="text-[10px] text-muted-foreground">{md.inSessionHint}</p>
                   </div>
                 ) : mentor.last_seen_at ? (
                   <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold bg-muted/50 px-2 py-0.5 rounded border border-border/50">
-                    Last seen {isSameCalendarDayLocal(mentor.last_seen_at, new Date(), effectiveTimeZone)
+                    {md.lastSeen}{" "}
+                    {isSameCalendarDayLocal(mentor.last_seen_at, new Date(), effectiveTimeZone)
                       ? formatTimeLocal(mentor.last_seen_at, undefined, effectiveTimeZone)
                       : formatDateLocal(mentor.last_seen_at, { month: "short", day: "numeric" }, effectiveTimeZone)}
                   </div>
@@ -212,9 +217,9 @@ const MentorDetailPage = () => {
                   <div className="flex flex-col items-end gap-1">
                     <div className="flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1">
                       <PresenceIndicator status="offline" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Offline</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{md.offline}</span>
                     </div>
-                    <p className="text-[10px] text-muted-foreground">Coach is not on the platform right now</p>
+                    <p className="text-[10px] text-muted-foreground">{md.offlineHint}</p>
                   </div>
                 ) : null}
               </div>
@@ -307,7 +312,7 @@ const MentorDetailPage = () => {
             )}
 
             <div className="rounded-xl border border-border/70 bg-muted/30 p-4">
-              <p className="mb-3 text-sm uppercase tracking-widest text-accent">Live session pricing (EUR)</p>
+              <p className="mb-3 text-sm uppercase tracking-widest text-accent">{md.livePricing}</p>
               {pricing ? (
                 <>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -339,7 +344,7 @@ const MentorDetailPage = () => {
                           }
                           onClick={() => handleDurationSelect(mins)}
                         >
-                          <span className="text-sm font-semibold tracking-wide">{mins} mins</span>
+                          <span className="text-sm font-semibold tracking-wide">{mins} {md.mins}</span>
                           <span
                             className={
                               pricingLocked ? "text-base font-semibold" : "text-base font-bold text-white"
@@ -352,9 +357,7 @@ const MentorDetailPage = () => {
                     })}
                   </div>
                   {!pricing.is_active ? (
-                    <p className="mt-3 text-xs text-muted-foreground">
-                      Packages appear when platform session pricing is active.
-                    </p>
+                    <p className="mt-3 text-xs text-muted-foreground">{md.pricingInactive}</p>
                   ) : (
                     <p className="mt-3 text-xs text-muted-foreground">
                       Choose a duration, then start an in-app <strong className="text-foreground">video meeting</strong> (mic

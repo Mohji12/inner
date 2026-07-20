@@ -8,6 +8,7 @@ from models.booking import Booking
 from models.mentor import Mentor
 from schemas.booking import BookingCreate, BookingOut, BookingUpdate
 from services.booking_service import BookingError, create_booking_request
+from services.booking_slot_service import release_booking_slot
 from services.i18n_service import resolve_i18n_text, to_i18n_map
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
@@ -105,6 +106,7 @@ def update_booking_as_user(
         booking.notes_by_user_i18n = payload.notes_by_user_i18n or to_i18n_map(payload.notes_by_user, lang)
     if payload.status == STATUS_CANCELLED:
         booking.status = STATUS_CANCELLED
+        release_booking_slot(db, booking)
     db.commit()
     db.refresh(booking)
     return _localized_booking_out(booking, lang)
@@ -135,6 +137,7 @@ def update_booking_as_mentor(
         )
     if payload.status == STATUS_CANCELLED:
         booking.status = STATUS_CANCELLED
+        release_booking_slot(db, booking)
     db.commit()
     db.refresh(booking)
     return _localized_booking_out(booking, lang)

@@ -7,6 +7,7 @@ from services.no_show_service import check_no_shows
 from services.mentor_monthly_fee_service import generate_monthly_invoices_for_previous_month
 from database import SessionLocal
 from services.mentor_presence_tracking_service import send_weekly_presence_warnings
+from services.booking_slot_service import expire_stale_pending_bookings
 
 try:
     from tasks.marketplace_tasks import process_outbox, reconcile_webhook_stuck, retry_failed_payouts
@@ -34,6 +35,19 @@ def _run_weekly_presence_warnings() -> None:
             logger.info("Weekly presence warnings sent: %s", sent)
     except Exception:
         logger.exception("Weekly presence warning job failed")
+        db.rollback()
+    finally:
+        db.close()
+
+
+def _run_expire_stale_pending_bookings() -> None:
+    db = SessionLocal()
+    try:
+        count = expire_stale_pending_bookings(db)
+        if count:
+            logger.info("Expired stale pending_payment bookings: %s", count)
+    except Exception:
+        logger.exception("Stale pending booking cleanup failed")
         db.rollback()
     finally:
         db.close()
@@ -75,6 +89,15 @@ def start_scheduler():
         trigger=IntervalTrigger(hours=24),
         id="mentor_weekly_presence_warnings_job",
         name="Coach weekly presence warnings",
+        replace_existing=True,
+    )
+
+    # Cancel unpaid bookings that were abandoned at checkout (frees slots).
+    scheduler.add_job(
+        _run_expire_stale_pending_bookings,
+        trigger=IntervalTrigger(minutes=15),
+        id="expire_stale_pending_bookings_job",
+        name="Expire stale pending_payment bookings",
         replace_existing=True,
     )
 

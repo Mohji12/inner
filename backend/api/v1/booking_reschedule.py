@@ -2,9 +2,11 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 from datetime import datetime, timezone
 
-from api.deps import CurrentUser, DbSession
+from api.deps import AnyActorDep, DbSession
 from models.booking import Booking
 from models.availability_slot import AvailabilitySlot
+from services.booking_access import actor_can_access_booking
+from services.booking_slot_service import active_booking_exists_on_slot
 
 router = APIRouter(prefix="/bookings", tags=["bookings-reschedule"])
 
@@ -12,12 +14,12 @@ class RescheduleIn(BaseModel):
     new_slot_id: str
 
 @router.post("/{booking_id}/reschedule")
-def reschedule_booking(booking_id: str, payload: RescheduleIn, current_user: CurrentUser, db: DbSession):
-    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+def reschedule_booking(booking_id: str, payload: RescheduleIn, actor: AnyActorDep, db: DbSession):
+    booking = db.query(Booking).filter(Booking.id == booking_id).with_for_update().first()
     if not booking:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Booking not found")
 
-    if booking.user_id != current_user.id and booking.mentor_id != current_user.id:
+    if not actor_can_access_booking(booking, actor):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized to reschedule this booking")
 
     if booking.status not in ("confirmed", "unattended"):
@@ -38,22 +40,26 @@ def reschedule_booking(booking_id: str, payload: RescheduleIn, current_user: Cur
     if booking.reschedule_count >= 2:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Booking has reached the maximum number of reschedules (2)")
 
-    # Find new slot
-    new_slot = db.query(AvailabilitySlot).filter(
-        AvailabilitySlot.id == payload.new_slot_id,
-        AvailabilitySlot.mentor_id == booking.mentor_id,
-        AvailabilitySlot.is_booked == False
-    ).first()
+    new_slot = (
+        db.query(AvailabilitySlot)
+        .filter(
+            AvailabilitySlot.id == payload.new_slot_id,
+            AvailabilitySlot.mentor_id == booking.mentor_id,
+        )
+        .with_for_update()
+        .first()
+    )
 
-    if not new_slot:
+    if not new_slot or new_slot.is_booked:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "The selected slot is no longer available")
 
-    # Free old slot
-    old_slot = db.query(AvailabilitySlot).filter(AvailabilitySlot.id == booking.slot_id).first()
+    if active_booking_exists_on_slot(db, new_slot.id, exclude_booking_id=booking.id):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "The selected slot is no longer available")
+
+    old_slot = db.query(AvailabilitySlot).filter(AvailabilitySlot.id == booking.slot_id).with_for_update().first()
     if old_slot:
         old_slot.is_booked = False
 
-    # Assign new slot
     new_slot.is_booked = True
     booking.slot_id = new_slot.id
     booking.booking_date = new_slot.slot_date

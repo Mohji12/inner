@@ -78,3 +78,22 @@ export function trackCompleteRegistration(options?: {
   }
   window.fbq("track", "CompleteRegistration", params);
 }
+
+/** Browser Pixel — pair `eventId` with server CAPI for deduplication. */
+export function trackPurchase(options: {
+  eventId: string;
+  value: number;
+  currency?: string;
+  contentName?: string;
+}): void {
+  if (!isMetaPixelEnabled() || !initialized || typeof window === "undefined" || !window.fbq) {
+    return;
+  }
+  const params: Record<string, unknown> = {
+    value: options.value,
+    currency: (options.currency ?? "EUR").toUpperCase(),
+    content_name: options.contentName ?? "session_booking",
+    eventID: options.eventId,
+  };
+  window.fbq("track", "Purchase", params);
+}

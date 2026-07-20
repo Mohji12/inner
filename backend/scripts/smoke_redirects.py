@@ -53,6 +53,7 @@ def check_frontend_spa_routes() -> None:
         "/login?role=user",
         "/login?role=admin",
         "/register",
+        "/booking/thank-you",
         "/mentors",
         "/become-a-coach",
         "/mentor/dashboard",  # protected — SPA still serves index
@@ -77,9 +78,10 @@ def check_source_redirect_wiring() -> None:
     src = repo / "src"
 
     login = (src / "pages" / "LoginPage.tsx").read_text(encoding="utf-8")
+    report("resolvePostLoginPath" in login, "Login uses post-login return URL helper")
     report(
         'finishLogin("/mentor/appointments"' in login or "finishLogin(\"/mentor/appointments\"" in login,
-        "Coach login redirects to /mentor/appointments",
+        "Coach login has default appointments fallback",
     )
     report(
         'finishLogin("/user/appointments"' in login,
@@ -97,6 +99,7 @@ def check_source_redirect_wiring() -> None:
     report('/login?role=mentor' in protect, "Protected mentor -> /login?role=mentor")
     report('/login?role=user' in protect, "Protected user -> /login?role=user")
     report('/login?role=admin' in protect, "Protected admin -> /login?role=admin")
+    report("location.search" in protect and "from:" in protect, "Protected route saves full return URL")
 
     mentor_layout = (src / "components" / "dashboard" / "MentorDashboardLayout.tsx").read_text(encoding="utf-8")
     report('to="/"' in mentor_layout and "viewWebsite" in mentor_layout, "Coach dashboard has View website -> /")
@@ -109,6 +112,8 @@ def check_source_redirect_wiring() -> None:
     app = (src / "App.tsx").read_text(encoding="utf-8")
     report('path="settlements"' in app and "MentorSettlementsPage" in app, "Coach settlements route registered")
     report('path="/mentor"' in app or 'path="/mentor"' in app.replace("'", '"'), "Mentor layout route present")
+    report('path="/booking/thank-you"' in app, "Booking thank-you route registered")
+    report("ProtectedRoute role=\"user\"" in app and "PaymentPage" in app, "Payment page requires user auth")
 
 
 def check_api_health_and_mollie_redirect() -> None:
@@ -130,7 +135,7 @@ def check_api_health_and_mollie_redirect() -> None:
                 base,
             )
             # Typical booking success path used by payment flow
-            sample = f"{base}/booking/success?bookingId=test-id"
+            sample = f"{base}/booking/thank-you?bookingId=test-id"
             report(sample.startswith("http"), "Sample booking success URL", sample)
     except Exception as e:
         report(False, "Load settings", str(e))

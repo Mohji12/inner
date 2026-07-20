@@ -327,7 +327,7 @@ def get_mollie_payment(payment_id: str) -> dict[str, Any]:
 def verify_mollie_webhook_signature(raw_body: bytes, signature_header: str | None) -> bool:
     secret = (settings.mollie_webhook_secret or "").strip()
     if not secret:
-        return True  # optional in dev
+        return str(settings.environment).strip().lower() != "production"
     if not signature_header:
         return False
     expected = hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
@@ -362,6 +362,9 @@ def _live_session_window_on_payment(booking: Booking, *, now: datetime) -> tuple
 
 def _mark_booking_paid(db: Session, payment: Payment) -> None:
     from services.notification_service import create_notification
+
+    if payment.status == PAYMENT_RECORD_SUCCEEDED:
+        return
 
     payment.status = PAYMENT_RECORD_SUCCEEDED
     booking = db.query(Booking).filter(Booking.id == payment.booking_id).first()
@@ -503,11 +506,12 @@ def process_mollie_webhook_by_payment_id(db: Session, mollie_payment_id: str) ->
     if booking_payment:
         _sync_amount_currency_from_mollie(booking_payment, payment_data, status_str=status_str)
         if status_str == "paid":
-            _mark_booking_paid(db, booking_payment)
-            metadata = payment_data.get("metadata") or {}
-            promo_code = str(metadata.get("promo_code") or "").strip()
-            if promo_code:
-                apply_promo_code(db, promo_code)
+            if booking_payment.status != PAYMENT_RECORD_SUCCEEDED:
+                _mark_booking_paid(db, booking_payment)
+                metadata = payment_data.get("metadata") or {}
+                promo_code = str(metadata.get("promo_code") or "").strip()
+                if promo_code:
+                    apply_promo_code(db, promo_code)
         elif status_str in ("failed", "canceled", "expired"):
             booking_payment.status = "failed"
         db.commit()

@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     admin_refresh_cookie: str = "ipd_refresh_admin"
 
     app_name: str = "Mijn Levenspad"
+    environment: str = "development"
 
     # SMTP (ZeptoMail / etc.) — set in .env; leave host empty to log OTP only (dev)
     smtp_host: str = ""
