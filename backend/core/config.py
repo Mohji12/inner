@@ -26,8 +26,8 @@ class Settings(BaseSettings):
     jwt_secret_key: str = "change-me-access-secret"
     jwt_refresh_secret_key: str = "change-me-refresh-secret"
     jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 60
-    refresh_token_expire_days: int = 7
+    access_token_expire_minutes: int = 480  # 8 hours — survives typical laptop sleep
+    refresh_token_expire_days: int = 30  # stay signed in across days / lid close
 
     cors_origins: str = (
         "http://localhost:5173,http://127.0.0.1:5173,"

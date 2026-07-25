@@ -12,7 +12,12 @@ let setAccessTokenForRole: TokenSetter = () => {};
 let refreshInFlight: Promise<string | null> | null = null;
 
 function getSelectedLanguage(): string {
-  const raw = typeof window !== "undefined" ? localStorage.getItem("lang") : null;
+  let raw: string | null = null;
+  try {
+    raw = typeof window !== "undefined" ? localStorage.getItem("lang") : null;
+  } catch {
+    raw = null;
+  }
   const lang = (raw || "en").toLowerCase();
   return lang.split("-")[0];
 }
@@ -55,28 +60,91 @@ function buildUrl(path: string): string {
   return `${base}${API_V1_PREFIX}${p}`;
 }
 
-async function refreshAccessToken(): Promise<string | null> {
+/** JWT `exp` (seconds). Returns null if unreadable. */
+export function getAccessTokenExpirySeconds(token: string | null | undefined): number | null {
+  if (!token) return null;
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    const json = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
+    const payload = JSON.parse(json) as { exp?: unknown };
+    return typeof payload.exp === "number" ? payload.exp : null;
+  } catch {
+    return null;
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Refresh access token via HttpOnly cookie.
+ * Retries on network errors (common after laptop wake).
+ * Only clears the access token after a definitive auth failure (401/403).
+ */
+async function refreshAccessToken(options?: { clearOnFailure?: boolean }): Promise<string | null> {
+  const clearOnFailure = options?.clearOnFailure !== false;
   const role = getAuthRole();
   if (!role) return null;
   if (refreshInFlight) return refreshInFlight;
 
   refreshInFlight = (async () => {
-    const res = await fetch(buildUrl(`/auth/${role}/refresh`), {
-      method: "POST",
-      credentials: "include",
-    });
-    if (!res.ok) {
-      setAccessTokenForRole(null);
-      return null;
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const res = await fetch(buildUrl(`/auth/${role}/refresh`), {
+          method: "POST",
+          credentials: "include",
+        });
+        if (res.ok) {
+          const body = (await res.json()) as AccessTokenResponse;
+          setAccessTokenForRole(body.access_token);
+          return body.access_token;
+        }
+        // Definitive auth failure — cookie missing/expired/revoked.
+        if (res.status === 401 || res.status === 403) {
+          if (clearOnFailure) setAccessTokenForRole(null);
+          return null;
+        }
+        // Transient server error — retry
+        if (attempt < maxAttempts) {
+          await sleep(400 * attempt);
+          continue;
+        }
+        return getAccessToken();
+      } catch {
+        // Network not ready after sleep — keep existing token, retry.
+        if (attempt < maxAttempts) {
+          await sleep(500 * attempt);
+          continue;
+        }
+        return getAccessToken();
+      }
     }
-    const body = (await res.json()) as AccessTokenResponse;
-    setAccessTokenForRole(body.access_token);
-    return body.access_token;
+    return getAccessToken();
   })().finally(() => {
     refreshInFlight = null;
   });
 
   return refreshInFlight;
+}
+
+/**
+ * Ensure the access token is still valid. Call on laptop wake / tab focus.
+ * Refreshes when missing or within 5 minutes of expiry.
+ */
+export async function ensureFreshAccessToken(): Promise<string | null> {
+  const role = getAuthRole();
+  if (!role) return null;
+
+  const token = getAccessToken();
+  const exp = getAccessTokenExpirySeconds(token);
+  const now = Math.floor(Date.now() / 1000);
+  const needsRefresh = !token || exp == null || exp <= now + 5 * 60;
+
+  if (!needsRefresh) return token;
+  return refreshAccessToken({ clearOnFailure: true });
 }
 
 export type ApiFetchOptions = RequestInit & {
@@ -110,12 +178,10 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   let response = await exec();
 
   if (response.status === 401 && !skipAuth) {
-    const newToken = await refreshAccessToken();
+    const newToken = await refreshAccessToken({ clearOnFailure: true });
     if (newToken) {
       headers.set("Authorization", `Bearer ${newToken}`);
       response = await exec();
-    } else {
-      setAccessTokenForRole(null);
     }
   }
 
@@ -154,12 +220,10 @@ export async function apiFetchBlob(path: string, options: ApiFetchOptions = {}):
   let response = await exec();
 
   if (response.status === 401 && !skipAuth) {
-    const newToken = await refreshAccessToken();
+    const newToken = await refreshAccessToken({ clearOnFailure: true });
     if (newToken) {
       headers.set("Authorization", `Bearer ${newToken}`);
       response = await exec();
-    } else {
-      setAccessTokenForRole(null);
     }
   }
 

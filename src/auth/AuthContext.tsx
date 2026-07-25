@@ -92,14 +92,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             ? Boolean(adminAccessToken)
             : false;
 
-    if (!role || !hasToken) {
+    // Keep last persisted session while a temporary token gap is repaired by refresh
+    // (e.g. laptop wake). Only clear storage when the role itself is cleared (logout).
+    if (!role) {
       writePersistedSessionAuth(null);
+      return;
+    }
+    if (!hasToken) {
       return;
     }
     const token =
       role === "user" ? userAccessToken : role === "mentor" ? mentorAccessToken : adminAccessToken;
     if (!token) {
-      writePersistedSessionAuth(null);
       return;
     }
     writePersistedSessionAuth({ v: 1, role, accessToken: token });
@@ -137,12 +141,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (r === "user") {
           userTokenRef.current = token;
           setUserAccessToken(token);
+          if (!token && roleRef.current === "user") setRole(null);
         } else if (r === "mentor") {
           mentorTokenRef.current = token;
           setMentorAccessToken(token);
+          if (!token && roleRef.current === "mentor") setRole(null);
         } else if (r === "admin") {
           adminTokenRef.current = token;
           setAdminAccessToken(token);
+          if (!token && roleRef.current === "admin") setRole(null);
         }
       },
     });

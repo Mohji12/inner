@@ -3,6 +3,7 @@ import { type Language, type Translations, translations, rtlLanguages, languageH
 import { appEn, type AppCopy } from "./appBase";
 import { appOverrides } from "./appOverrides";
 import { mergeDeep } from "./mergeDeep";
+import { safeLocalStorage } from "@/lib/safeStorage";
 
 export type FullTranslations = Translations & { app: AppCopy };
 
@@ -18,14 +19,14 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   const [language, setLanguage] = useState<Language>(() => {
-    const saved = localStorage.getItem("lang") as Language | null;
+    const saved = safeLocalStorage.getItem("lang") as Language | null;
     return saved && saved in translations ? saved : "en";
   });
 
   const htmlLang = languageHtmlLang[language] ?? language;
 
   useEffect(() => {
-    localStorage.setItem("lang", language);
+    safeLocalStorage.setItem("lang", language);
     document.documentElement.dir = rtlLanguages.includes(language) ? "rtl" : "ltr";
     document.documentElement.lang = htmlLang;
   }, [language, htmlLang]);

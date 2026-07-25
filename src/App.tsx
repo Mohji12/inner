@@ -67,6 +67,7 @@ import AccessibilityWidget from "@/components/accessibility/AccessibilityWidget"
 import MentorPresenceHeartbeat from "@/components/MentorPresenceHeartbeat";
 import UserPresenceHeartbeat from "@/components/UserPresenceHeartbeat";
 import MetaPixel from "@/components/MetaPixel";
+import SessionKeepAlive from "@/components/SessionKeepAlive";
 
 const queryClient = new QueryClient();
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
@@ -78,6 +79,7 @@ const App = () => (
         <LanguageProvider>
           <AccessibilityProvider>
             <TooltipProvider>
+              <SessionKeepAlive />
               <MentorPresenceHeartbeat />
               <UserPresenceHeartbeat />
               <Toaster />

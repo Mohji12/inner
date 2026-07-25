@@ -2,11 +2,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Music, Pause } from "lucide-react";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { cn } from "@/lib/utils";
+import { safeSessionStorage } from "@/lib/safeStorage";
 import musicSrc from "@/assets/audio/morning-currencies.mp3?url";
 
 const MUSIC_SRC = (import.meta.env.VITE_HOME_MUSIC_URL as string | undefined)?.trim() || musicSrc;
 const ENTERED_KEY = "ipd_site_entered";
 
+/**
+ * Soft background music for the homepage.
+ * Never blocks the UI — Mac Safari often blocks unmuted autoplay; we start muted
+ * (or wait for a gesture) and unmute on the first click/tap/key without a full-screen gate.
+ */
 const HomeBackgroundMusic = () => {
   const { t } = useLanguage();
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -14,7 +20,6 @@ const HomeBackgroundMusic = () => {
   const unmutePendingRef = useRef(false);
   const [playing, setPlaying] = useState(false);
   const [loadError, setLoadError] = useState(false);
-  const [needsEnter, setNeedsEnter] = useState(false);
 
   const unmuteAndPlay = useCallback(async (): Promise<boolean> => {
     const audio = audioRef.current;
@@ -28,8 +33,7 @@ const HomeBackgroundMusic = () => {
         await audio.play();
       }
       unmutePendingRef.current = false;
-      setNeedsEnter(false);
-      sessionStorage.setItem(ENTERED_KEY, "1");
+      safeSessionStorage.setItem(ENTERED_KEY, "1");
       return true;
     } catch {
       return false;
@@ -46,32 +50,22 @@ const HomeBackgroundMusic = () => {
       audio.muted = false;
       await audio.play();
       unmutePendingRef.current = false;
-      setNeedsEnter(false);
-      sessionStorage.setItem(ENTERED_KEY, "1");
+      safeSessionStorage.setItem(ENTERED_KEY, "1");
       return true;
     } catch {
       try {
+        // Safari desktop often allows muted autoplay only.
         audio.muted = true;
         await audio.play();
         unmutePendingRef.current = true;
         return true;
       } catch {
         audio.muted = false;
+        unmutePendingRef.current = true;
         return false;
       }
     }
   }, []);
-
-  const enterSite = useCallback(async () => {
-    userStoppedRef.current = false;
-    const ok = await unmuteAndPlay();
-    if (!ok) {
-      await startPlayback();
-      if (unmutePendingRef.current) {
-        await unmuteAndPlay();
-      }
-    }
-  }, [startPlayback, unmuteAndPlay]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -105,18 +99,7 @@ const HomeBackgroundMusic = () => {
 
     const tryAutoplay = async () => {
       if (cancelled || userStoppedRef.current) return;
-
-      const ok = await startPlayback();
-      if (cancelled) return;
-
-      if (!ok) {
-        setNeedsEnter(true);
-        return;
-      }
-
-      if (unmutePendingRef.current) {
-        setNeedsEnter(sessionStorage.getItem(ENTERED_KEY) !== "1");
-      }
+      await startPlayback();
     };
 
     const onReady = () => {
@@ -161,27 +144,6 @@ const HomeBackgroundMusic = () => {
   return (
     <>
       <audio ref={audioRef} autoPlay muted loop playsInline preload="auto" src={MUSIC_SRC} />
-
-      {needsEnter && !loadError ? (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/35 px-6 backdrop-blur-[2px]"
-          role="dialog"
-          aria-modal="true"
-          aria-label={t.music.enterTitle}
-        >
-          <button
-            type="button"
-            onClick={() => void enterSite()}
-            className="max-w-md rounded-2xl border border-white/50 bg-white/95 px-10 py-8 text-center shadow-2xl transition-transform hover:scale-[1.02] active:scale-[0.98]"
-          >
-            <p className="font-serif text-3xl font-semibold text-heading">{t.music.enterTitle}</p>
-            <p className="mt-2 text-sm text-muted-foreground">{t.music.enterHint}</p>
-            <span className="mt-6 inline-flex rounded-xl gradient-cta px-8 py-3 text-sm font-medium text-white">
-              {t.music.enterAction}
-            </span>
-          </button>
-        </div>
-      ) : null}
 
       <button
         type="button"

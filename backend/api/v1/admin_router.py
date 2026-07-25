@@ -24,7 +24,7 @@ from models.review import Review
 from models.user import User
 from models.wallet import Wallet, WalletTransaction
 from schemas.chat import ChatInvoiceConversationLineOut, ChatInvoiceDetailOut, ChatInvoiceLineOut, ChatInvoiceSummaryOut
-from core.config import settings
+from services.onboarding_payment_service import activate_coach_after_email_verification
 from services.mentor_presence_tracking_service import (
     hours_from_seconds,
     list_presence_for_week,
@@ -312,12 +312,36 @@ def admin_update_mentor_approval(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Coach not found")
 
     if payload.action == "approve":
+        # Approving implies ops trust — complete email verify + free onboarding if needed.
+        if not mentor.email_verified:
+            mentor.email_verified = True
+            activate_coach_after_email_verification(db, mentor=mentor)
         mentor.is_approved = True
         mentor.status = "active"
+        mentor.updated_at = datetime.now(timezone.utc)
     else:
         mentor.is_approved = False
         mentor.status = "rejected"
+        mentor.updated_at = datetime.now(timezone.utc)
 
+    db.commit()
+    db.refresh(mentor)
+    return _admin_mentor_row(mentor)
+
+
+@router.post("/mentors/{mentor_id}/verify-email", response_model=AdminMentorRow)
+def admin_verify_mentor_email(
+    mentor_id: str,
+    db: DbSession,
+    _admin: CurrentAdmin,
+) -> AdminMentorRow:
+    """Ops helper when OTP email was not received — marks email verified and records free onboarding."""
+    mentor = db.query(Mentor).filter(Mentor.id == mentor_id).first()
+    if not mentor:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Coach not found")
+    mentor.email_verified = True
+    mentor.updated_at = datetime.now(timezone.utc)
+    activate_coach_after_email_verification(db, mentor=mentor)
     db.commit()
     db.refresh(mentor)
     return _admin_mentor_row(mentor)

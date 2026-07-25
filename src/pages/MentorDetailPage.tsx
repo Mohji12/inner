@@ -7,6 +7,7 @@ import { getMentor, getPlatformPricing, getSimilarMentors, joinWaitlist, leaveWa
 import type { MentorDetail, MentorPublic } from "@/api/types";
 import { getMentorAvailabilityStatus, sessionPackageEur } from "@/api/types";
 import { unknownListToStrings } from "@/lib/dbJsonFields";
+import { mediaUrlFromApi } from "@/lib/mediaUrl";
 import AppPageHeader from "@/components/AppPageHeader";
 import { FavoriteButton } from "@/components/FavoriteButton";
 import { PresenceIndicator } from "@/components/PresenceIndicator";
@@ -181,10 +182,17 @@ const MentorDetailPage = () => {
       <main className="container mx-auto px-6 py-10">
         <Card className="mx-auto max-w-4xl border-border/60">
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm uppercase tracking-widest text-accent">{md.profileLabel}</p>
                 <div className="flex items-center gap-4">
+                  {mediaUrlFromApi(mentor.profile_image) || mediaUrlFromApi(mentor.banner_image) ? (
+                    <img
+                      src={mediaUrlFromApi(mentor.profile_image) ?? mediaUrlFromApi(mentor.banner_image)}
+                      alt=""
+                      className="h-16 w-16 shrink-0 rounded-full border border-border object-cover"
+                    />
+                  ) : null}
                   <CardTitle className="font-serif text-4xl">{mentor.full_name}</CardTitle>
                   <FavoriteButton mentorId={mentor.id} className="mt-1" />
                 </div>

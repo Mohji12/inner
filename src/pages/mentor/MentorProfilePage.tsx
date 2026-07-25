@@ -7,6 +7,7 @@ import { normalizeSpokenLanguagesFromApi } from "@/lib/spokenLanguageOptions";
 import CoachCardVisibilityPicker from "@/components/CoachCardVisibilityPicker";
 import SpokenLanguageCheckboxGroup from "@/components/SpokenLanguageCheckboxGroup";
 import { DEFAULT_COACH_CARD_VISIBILITY, normalizeCoachCardVisibility, type CoachCardVisibility } from "@/lib/coachCardVisibility";
+import { mediaUrlFromApi } from "@/lib/mediaUrl";
 import { resolveBrowserTimeZone } from "@/lib/timeZone";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { Button } from "@/components/ui/button";
@@ -26,12 +27,15 @@ async function postMentorImage(kind: "avatar" | "banner", file: File): Promise<s
 }
 
 function validateImageFile(file: File): string | null {
-  if (!file.type || !file.type.startsWith("image/")) {
+  const name = file.name.toLowerCase();
+  const typedOk = Boolean(file.type && file.type.startsWith("image/"));
+  const extOk = /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(name);
+  if (!typedOk && !extOk) {
     return "File must be an image";
   }
-  const maxBytes = 2 * 1024 * 1024;
+  const maxBytes = 8 * 1024 * 1024;
   if (file.size > maxBytes) {
-    return "Image must be at most 2 MB";
+    return "Image must be at most 8 MB";
   }
   return null;
 }
@@ -196,11 +200,7 @@ const MentorProfilePage = () => {
               <div className="flex items-center gap-4">
                 {profileImage ? (
                   <img
-                    src={
-                      profileImage.startsWith("/")
-                        ? `${String(import.meta.env.VITE_API_URL).replace(/\/api\/v1\/?$/, "")}${profileImage}`
-                        : profileImage
-                    }
+                    src={mediaUrlFromApi(profileImage) ?? profileImage}
                     alt="Profile"
                     className="h-16 w-16 rounded-full border object-cover"
                   />
@@ -251,11 +251,7 @@ const MentorProfilePage = () => {
               {bannerImage ? (
                 <div className="overflow-hidden rounded-lg border">
                   <img
-                    src={
-                      bannerImage.startsWith("/")
-                        ? `${String(import.meta.env.VITE_API_URL).replace(/\/api\/v1\/?$/, "")}${bannerImage}`
-                        : bannerImage
-                    }
+                    src={mediaUrlFromApi(bannerImage) ?? bannerImage}
                     alt=""
                     className="h-32 w-full object-cover md:h-40"
                   />

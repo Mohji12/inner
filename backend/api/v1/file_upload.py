@@ -13,13 +13,31 @@ from services.cloudinary_service import upload_image_bytes
 router = APIRouter(prefix="/upload", tags=["upload"])
 
 UPLOAD_DIR = "uploads"
-MAX_IMAGE_BYTES = 2 * 1024 * 1024  # 2 MB
+MAX_IMAGE_BYTES = 8 * 1024 * 1024  # 8 MB (phone photos often exceed 2 MB)
 
 
 def _ensure_upload_dir() -> None:
     import os
 
     os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+def _looks_like_image(contents: bytes, content_type: str | None, filename: str | None) -> bool:
+    """Accept common image MIME types, or sniff magic bytes when browsers omit type (Safari/HEIC quirks)."""
+    if content_type and content_type.startswith("image/"):
+        return True
+    name = (filename or "").lower()
+    if name.endswith((".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".heic", ".heif")):
+        return True
+    if len(contents) >= 3 and contents[:3] == b"\xff\xd8\xff":
+        return True  # JPEG
+    if len(contents) >= 8 and contents[:8] == b"\x89PNG\r\n\x1a\n":
+        return True
+    if len(contents) >= 6 and contents[:6] in (b"GIF87a", b"GIF89a"):
+        return True
+    if len(contents) >= 12 and contents[:4] == b"RIFF" and contents[8:12] == b"WEBP":
+        return True
+    return False
 
 
 def _save_upload_local(contents: bytes, original_name: str, *, subdir: str | None = None) -> str:
@@ -65,16 +83,16 @@ def store_chat_image(contents: bytes, *, session_id: str, original_name: str) ->
 
 
 async def _read_image_upload(file: UploadFile) -> bytes:
-    if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "File must be an image")
     contents = await file.read()
+    if len(contents) == 0:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Empty file")
     if len(contents) > MAX_IMAGE_BYTES:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            "Image is more than 2 MB.",
+            "Image is more than 8 MB. Please choose a smaller photo.",
         )
-    if len(contents) == 0:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Empty file")
+    if not _looks_like_image(contents, file.content_type, file.filename):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "File must be an image (JPG, PNG, WebP, or GIF)")
     return contents
 
 
@@ -99,6 +117,12 @@ async def upload_mentor_register_avatar(
     contents = await _read_image_upload(file)
     file_url = _store_image(contents, kind="avatar", original_name=file.filename or "avatar.png")
     mentor.profile_image = file_url
+    from services.mentor_card_visibility import normalize_card_visibility
+
+    vis = normalize_card_visibility(getattr(mentor, "public_card_visibility", None))
+    if not vis.get("profile_photo", True):
+        vis["profile_photo"] = True
+        mentor.public_card_visibility = vis
     db.commit()
     return {"url": file_url}
 
@@ -114,6 +138,13 @@ def _persist_avatar(actor: AnyActor, db: DbSession, *, file_url: str) -> dict[st
         mentor = db.query(Mentor).filter(Mentor.id == actor.subject_id).first()
         if mentor:
             mentor.profile_image = file_url
+            # Ensure uploaded photos are not hidden by card-visibility toggles.
+            from services.mentor_card_visibility import normalize_card_visibility
+
+            vis = normalize_card_visibility(getattr(mentor, "public_card_visibility", None))
+            if not vis.get("profile_photo", True):
+                vis["profile_photo"] = True
+                mentor.public_card_visibility = vis
         db.commit()
         return {"url": file_url}
     if actor.role == "admin":
@@ -128,6 +159,12 @@ def _persist_banner(actor: AnyActor, db: DbSession, *, file_url: str) -> dict[st
     if not mentor:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Mentor not found")
     mentor.banner_image = file_url
+    from services.mentor_card_visibility import normalize_card_visibility
+
+    vis = normalize_card_visibility(getattr(mentor, "public_card_visibility", None))
+    if not vis.get("banner_photo", True):
+        vis["banner_photo"] = True
+        mentor.public_card_visibility = vis
     db.commit()
     return {"url": file_url}
 

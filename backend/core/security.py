@@ -29,11 +29,17 @@ def hash_password(plain: str) -> str:
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    h = hashed.encode("utf-8")
-    p = plain.encode("utf-8")
-    if len(p) <= _BCRYPT_MAX_PASSWORD_BYTES:
-        return bcrypt.checkpw(p, h)
-    return bcrypt.checkpw(hashlib.sha256(p).digest(), h)
+    """Return False for missing/invalid hashes (e.g. Google-only `social_login`)."""
+    if not plain or not hashed or hashed == "social_login":
+        return False
+    try:
+        h = hashed.encode("utf-8")
+        p = plain.encode("utf-8")
+        if len(p) <= _BCRYPT_MAX_PASSWORD_BYTES:
+            return bcrypt.checkpw(p, h)
+        return bcrypt.checkpw(hashlib.sha256(p).digest(), h)
+    except (ValueError, TypeError):
+        return False
 
 
 def validate_password_strength(password: str) -> str | None:

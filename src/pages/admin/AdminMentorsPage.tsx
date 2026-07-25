@@ -248,9 +248,6 @@ export default function AdminMentorsPage() {
                 <DetailField label={d.platformVerified} value={profile.is_verified ? d.yes : d.no} />
                 <DetailField label={d.twoFactor} value={profile.is_totp_enabled ? d.yes : d.no} />
                 <DetailField label={d.googleLinked} value={profile.has_google_id ? d.yes : d.no} />
-                <DetailField label={d.price10} value={formatMoney(profile.price_10_min)} />
-                <DetailField label={d.price20} value={formatMoney(profile.price_20_min)} />
-                <DetailField label={d.price30} value={formatMoney(profile.price_30_min)} />
                 <DetailField
                   label={d.chatPrice}
                   value={formatMoney(profile.chat_price_per_minute, profile.chat_currency ?? "EUR")}
