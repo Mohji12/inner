@@ -13,7 +13,8 @@ from services.cloudinary_service import upload_image_bytes
 router = APIRouter(prefix="/upload", tags=["upload"])
 
 UPLOAD_DIR = "uploads"
-MAX_IMAGE_BYTES = 8 * 1024 * 1024  # 8 MB (phone photos often exceed 2 MB)
+MAX_IMAGE_BYTES = 2 * 1024 * 1024  # 2 MB
+
 
 
 def _ensure_upload_dir() -> None:
@@ -89,7 +90,7 @@ async def _read_image_upload(file: UploadFile) -> bytes:
     if len(contents) > MAX_IMAGE_BYTES:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            "Image is more than 8 MB. Please choose a smaller photo.",
+            "Image size should be less than 2 MB.",
         )
     if not _looks_like_image(contents, file.content_type, file.filename):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "File must be an image (JPG, PNG, WebP, or GIF)")

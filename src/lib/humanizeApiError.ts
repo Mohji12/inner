@@ -12,7 +12,7 @@ const PATTERNS: Array<[RegExp, string]> = [
   [/mentor is currently in a chat|mentor_in_chat/i, "This coach is in another session. Try again shortly."],
   [/an account with this email already exists/i, "This email is already registered. Sign in with your password first."],
   [/this coach account uses a password/i, "Sign in with your password first to link Google to your coach account."],
-  [/image is more than/i, "That photo is too large. Please use an image under 8 MB."],
+  [/image size should be less than|image is more than|must be at most/i, "Image size should be less than 2 MB."],
   [/file must be an image/i, "Please choose a JPG, PNG, WebP, or GIF image."],
   [/invalid or expired/i, "That code has expired or is incorrect. Request a new one and try again."],
 ];

@@ -33,9 +33,9 @@ function validateImageFile(file: File): string | null {
   if (!typedOk && !extOk) {
     return "File must be an image";
   }
-  const maxBytes = 8 * 1024 * 1024;
+  const maxBytes = 2 * 1024 * 1024;
   if (file.size > maxBytes) {
-    return "Image must be at most 8 MB";
+    return "Image size should be less than 2 MB.";
   }
   return null;
 }
@@ -197,6 +197,7 @@ const MentorProfilePage = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="pimg">{mr.profileImage}</Label>
+              <p className="text-xs text-muted-foreground">{mpf.imageSizeLimit}</p>
               <div className="flex items-center gap-4">
                 {profileImage ? (
                   <img
@@ -246,7 +247,7 @@ const MentorProfilePage = () => {
             <div className="space-y-2">
               <Label htmlFor="banner">Banner / card image</Label>
               <p className="text-xs text-muted-foreground">
-                Wide photo shown on the coach directory cards. Separate from profile picture.
+                Wide photo shown on the coach directory cards. Separate from profile picture. {mpf.imageSizeLimit}
               </p>
               {bannerImage ? (
                 <div className="overflow-hidden rounded-lg border">

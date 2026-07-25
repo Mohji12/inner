@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { apiFetch } from "@/api/client";
 import { getUserMe, patchUserMe } from "@/api/users";
 import type { UserOut } from "@/api/types";
 import {
@@ -6,6 +7,7 @@ import {
   stringListToCommaSeparated,
   unknownListToStrings,
 } from "@/lib/dbJsonFields";
+import { mediaUrlFromApi } from "@/lib/mediaUrl";
 import { resolveBrowserTimeZone } from "@/lib/timeZone";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { Button } from "@/components/ui/button";
@@ -18,6 +20,26 @@ import { toast } from "sonner";
 function dateInputValue(iso: string | null): string {
   if (!iso) return "";
   return iso.slice(0, 10);
+}
+
+function validateImageFile(file: File, sizeLimitMessage: string): string | null {
+  const name = file.name.toLowerCase();
+  const typedOk = Boolean(file.type && file.type.startsWith("image/"));
+  const extOk = /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(name);
+  if (!typedOk && !extOk) {
+    return "File must be an image";
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    return sizeLimitMessage;
+  }
+  return null;
+}
+
+async function postUserAvatar(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const data = await apiFetch<{ url: string }>("/upload/avatar", { method: "POST", body: formData });
+  return data.url;
 }
 
 const UserProfilePage = () => {
@@ -119,13 +141,53 @@ const UserProfilePage = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="avatar">{up.profileImageUrl}</Label>
-              <Input
-                id="avatar"
-                type="url"
-                placeholder="https://…"
-                value={profileImage}
-                onChange={(ev) => setProfileImage(ev.target.value)}
-              />
+              <p className="text-xs text-muted-foreground">{up.imageSizeLimit}</p>
+              <div className="flex items-center gap-4">
+                {profileImage ? (
+                  <img
+                    src={mediaUrlFromApi(profileImage) ?? profileImage}
+                    alt=""
+                    className="h-16 w-16 rounded-full border object-cover"
+                  />
+                ) : (
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full border bg-muted text-xs text-muted-foreground">
+                    No image
+                  </div>
+                )}
+                <div className="flex flex-1 flex-col space-y-2">
+                  <Input
+                    id="avatar"
+                    type="url"
+                    placeholder="https://…"
+                    value={profileImage}
+                    onChange={(ev) => setProfileImage(ev.target.value)}
+                  />
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    aria-label={up.uploadPhoto}
+                    onChange={(e) => {
+                      void (async () => {
+                        const file = e.target.files?.[0];
+                        e.target.value = "";
+                        if (!file) return;
+                        const validation = validateImageFile(file, up.imageSizeLimit);
+                        if (validation) {
+                          toast.error(validation);
+                          return;
+                        }
+                        try {
+                          const url = await postUserAvatar(file);
+                          setProfileImage(url);
+                          toast.success(up.toastPhotoOk);
+                        } catch (err) {
+                          toast.error(err instanceof Error ? err.message : up.toastPhotoFail);
+                        }
+                      })();
+                    }}
+                  />
+                </div>
+              </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">

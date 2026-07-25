@@ -507,6 +507,15 @@ const MentorRegisterPage = () => {
                                 toast.message(m.toastFillAccountFirst);
                                 return;
                               }
+                              const maxBytes = 2 * 1024 * 1024;
+                              if (file.size > maxBytes) {
+                                toast.error(m.imageSizeLimit);
+                                return;
+                              }
+                              if (file.type && !file.type.startsWith("image/")) {
+                                toast.error("File must be an image");
+                                return;
+                              }
                               pendingAvatarFileRef.current = file;
                               if (localAvatarPreview?.startsWith("blob:")) {
                                 URL.revokeObjectURL(localAvatarPreview);
