@@ -24,6 +24,7 @@ from schemas.auth import (
     TwoFactorLoginRequest,
     TwoFactorSetupResponse,
     TwoFactorVerifyRequest,
+    TwoFactorDisableRequest,
     VerifyEmailRequest
 )
 from schemas.mentor import MentorAccountOut, MentorLogin, MentorRegister, MentorRegisterResponse
@@ -411,7 +412,9 @@ def setup_mentor_2fa(db: DbSession, mentor: CurrentMentor) -> TwoFactorSetupResp
         mentor.totp_secret = two_factor_service.generate_secret()
         db.commit()
     
-    uri = two_factor_service.get_provisioning_uri(mentor.email, mentor.totp_secret)
+    uri = two_factor_service.get_provisioning_uri(
+        mentor.email, mentor.totp_secret, issuer_name=settings.two_factor_issuer
+    )
     qr_b64 = two_factor_service.generate_qr_code_base64(uri)
     
     return TwoFactorSetupResponse(
@@ -456,10 +459,29 @@ def login_mentor_2fa(db: DbSession, payload: TwoFactorLoginRequest, response: Re
         return LoginResponse(
             access_token=access,
             expires_in=settings.access_token_expire_minutes * 60,
-            two_factor_required=True
+            two_factor_required=False
         )
     else:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid 2FA code")
+
+
+@router.post("/2fa/disable", response_model=MessageResponse)
+def disable_mentor_2fa(db: DbSession, mentor: CurrentMentor, payload: TwoFactorDisableRequest) -> MessageResponse:
+    if not mentor.is_totp_enabled or not mentor.totp_secret:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "2FA is not enabled")
+    if not mentor.password_hash or mentor.password_hash == "social_login":
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Set a password on your account before disabling 2FA, or contact support.",
+        )
+    if not verify_password(payload.password, mentor.password_hash):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid password")
+    if not two_factor_service.verify_otp(mentor.totp_secret, payload.code):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid code")
+    mentor.is_totp_enabled = False
+    mentor.totp_secret = None
+    db.commit()
+    return MessageResponse(message="Two-factor authentication disabled.")
 
 
 @router.post("/google", response_model=LoginResponse)

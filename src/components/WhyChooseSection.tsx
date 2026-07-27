@@ -32,11 +32,11 @@ const whyChooseCopy: Record<Language, [WhyChooseBlock, WhyChooseBlock, WhyChoose
       cards: [
         {
           title: "Intuitive Connection",
-          desc: "We connect you with mediums who truly suit you, so that every session feels personal.",
+          desc: "We connect you with coaches who truly suit you, so that every session feels personal.",
         },
         {
           title: "Flexible and Personal",
-          desc: "Choose your moment, your medium, your pace — with credits, you stay in control.",
+          desc: "Choose your moment, your coach, your pace — with credits, you stay in control.",
         },
       ],
     },
@@ -76,11 +76,11 @@ const whyChooseCopy: Record<Language, [WhyChooseBlock, WhyChooseBlock, WhyChoose
       cards: [
         {
           title: "Intuïtieve Verbinding",
-          desc: "Wij verbinden je met mediums die echt bij je passen, zodat elke sessie persoonlijk aanvoelt.",
+          desc: "Wij verbinden je met coaches die echt bij je passen, zodat elke sessie persoonlijk aanvoelt.",
         },
         {
           title: "Flexibel en Persoonlijk",
-          desc: "Kies je moment, je medium, je tempo — met credits houd jij de regie.",
+          desc: "Kies je moment, je coach, je tempo — met credits houd jij de regie.",
         },
       ],
     },
@@ -112,8 +112,8 @@ const whyChooseCopy: Record<Language, [WhyChooseBlock, WhyChooseBlock, WhyChoose
       id: "02",
       title: "Liberte de choix",
       cards: [
-        { title: "Connexion intuitive", desc: "Nous vous mettons en relation avec des mediums qui vous correspondent vraiment, pour que chaque seance soit personnelle." },
-        { title: "Flexible et personnel", desc: "Choisissez votre moment, votre medium, votre rythme — avec les credits, vous gardez le controle." },
+        { title: "Connexion intuitive", desc: "Nous vous mettons en relation avec des coachs qui vous correspondent vraiment, pour que chaque seance soit personnelle." },
+        { title: "Flexible et personnel", desc: "Choisissez votre moment, votre coach, votre rythme — avec les credits, vous gardez le controle." },
       ],
     },
     {
@@ -138,8 +138,8 @@ const whyChooseCopy: Record<Language, [WhyChooseBlock, WhyChooseBlock, WhyChoose
       id: "02",
       title: "حرية الاختيار",
       cards: [
-        { title: "اتصال حدسي", desc: "نوصلك بمرشدين يناسبونك فعلا، حتى تشعر ان كل جلسة شخصية." },
-        { title: "مرن وشخصي", desc: "اختر وقتك ومرشدك وايقاعك - ومع الرصيد تبقى انت المتحكم." },
+        { title: "اتصال حدسي", desc: "نوصلك بمدربين يناسبونك فعلا، حتى تشعر ان كل جلسة شخصية." },
+        { title: "مرن وشخصي", desc: "اختر وقتك ومدربك وايقاعك - ومع الرصيد تبقى انت المتحكم." },
       ],
     },
     {
@@ -164,8 +164,8 @@ const whyChooseCopy: Record<Language, [WhyChooseBlock, WhyChooseBlock, WhyChoose
       id: "02",
       title: "自由选择",
       cards: [
-        { title: "直觉连接", desc: "我们为你匹配真正适合你的灵媒，让每次会话都更有个人感。" },
-        { title: "灵活且个性化", desc: "选择你的时间、灵媒与节奏 - 使用积分，你始终掌握主动权。" },
+        { title: "直觉连接", desc: "我们为你匹配真正适合你的教练，让每次会话都更有个人感。" },
+        { title: "灵活且个性化", desc: "选择你的时间、教练与节奏 - 使用积分，你始终掌握主动权。" },
       ],
     },
     {
@@ -190,8 +190,8 @@ const whyChooseCopy: Record<Language, [WhyChooseBlock, WhyChooseBlock, WhyChoose
       id: "02",
       title: "Свобода выбора",
       cards: [
-        { title: "Интуитивная связь", desc: "Мы соединяем вас с медиумами, которые действительно вам подходят, чтобы каждая сессия ощущалась личной." },
-        { title: "Гибко и персонально", desc: "Выбирайте время, медиума и темп — с кредитами контроль остается у вас." },
+        { title: "Интуитивная связь", desc: "Мы соединяем вас с коучами, которые действительно вам подходят, чтобы каждая сессия ощущалась личной." },
+        { title: "Гибко и персонально", desc: "Выбирайте время, коуча и темп — с кредитами контроль остается у вас." },
       ],
     },
     {
@@ -216,8 +216,8 @@ const whyChooseCopy: Record<Language, [WhyChooseBlock, WhyChooseBlock, WhyChoose
       id: "02",
       title: "Libertad de eleccion",
       cards: [
-        { title: "Conexion intuitiva", desc: "Te conectamos con mediums que realmente encajan contigo, para que cada sesion se sienta personal." },
-        { title: "Flexible y personal", desc: "Elige tu momento, tu medium y tu ritmo; con creditos, tu mantienes el control." },
+        { title: "Conexion intuitiva", desc: "Te conectamos con coaches que realmente encajan contigo, para que cada sesion se sienta personal." },
+        { title: "Flexible y personal", desc: "Elige tu momento, tu coach y tu ritmo; con creditos, tu mantienes el control." },
       ],
     },
     {
@@ -242,8 +242,8 @@ const whyChooseCopy: Record<Language, [WhyChooseBlock, WhyChooseBlock, WhyChoose
       id: "02",
       title: "Libertà di scelta",
       cards: [
-        { title: "Connessione intuitiva", desc: "Ti colleghiamo a medium che ti si addicono davvero, così ogni sessione risulta personale." },
-        { title: "Flessibile e personale", desc: "Scegli il momento, il medium e il ritmo: con i crediti resti tu al comando." },
+        { title: "Connessione intuitiva", desc: "Ti colleghiamo a coach che ti si addicono davvero, così ogni sessione risulta personale." },
+        { title: "Flessibile e personale", desc: "Scegli il momento, il coach e il ritmo: con i crediti resti tu al comando." },
       ],
     },
     {
@@ -268,8 +268,8 @@ const whyChooseCopy: Record<Language, [WhyChooseBlock, WhyChooseBlock, WhyChoose
       id: "02",
       title: "Entscheidungsfreiheit",
       cards: [
-        { title: "Intuitive Verbindung", desc: "Wir verbinden dich mit Medien, die wirklich zu dir passen — so wird jede Sitzung persönlich." },
-        { title: "Flexibel und persönlich", desc: "Wähle Zeitpunkt, Medium und Tempo: mit Credits bleibst du selbst am Steuer." },
+        { title: "Intuitive Verbindung", desc: "Wir verbinden dich mit Coaches, die wirklich zu dir passen — so wird jede Sitzung persönlich." },
+        { title: "Flexibel und persönlich", desc: "Wähle Zeitpunkt, Coach und Tempo: mit Credits bleibst du selbst am Steuer." },
       ],
     },
     {

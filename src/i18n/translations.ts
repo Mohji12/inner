@@ -70,7 +70,7 @@ export const translations = {
       label: "Services",
       heading: "What We Offer",
       items: [
-        { title: "Live Chat with a Medium", desc: "Ask all your questions in a direct, secure chat with one of our spiritual mediums. About love, loss, the future, or personal growth - you choose the topic, the medium, and how long you want to talk. You pay per minute with your credits." },
+        { title: "Live Chat, Audio & Video with a Coach", desc: "Connect with experienced coaches for real-time spiritual guidance via chat, audio call, or video call. About love, loss, the future, or personal growth — you choose the topic, the coach, and how long you want to talk. You pay per minute with your credits." },
         { title: "Spiritual Coaching", desc: "Together with a spiritual coach, you work on self-development, emotional recovery, or conscious living. Coaching takes place via chat, email, or video call. You book sessions using credits and receive tailored guidance." },
         { title: "Energy Training", desc: "Would you like to learn how to work with energy, intuition, or spiritual protection yourself? Our training courses are available online and can be purchased with credits or paid for directly via the webshop." },
         { title: "Personal Consultation by Appointment", desc: "Would you prefer one-on-one guidance with calm and depth?\nThen book a private consultation at a time that suits you — via chat, phone, or video.\nThese sessions can be booked with credits or by individual payment." },
@@ -158,7 +158,7 @@ export const translations = {
       label: "Services",
       heading: "Ce Que Nous Offrons",
       items: [
-        { title: "Chat en Direct avec Médium", desc: "Connectez-vous avec des médiums expérimentés pour des conseils spirituels en temps réel." },
+        { title: "Chat, audio et vidéo en direct avec un coach", desc: "Connectez-vous avec des coachs expérimentés pour des conseils spirituels en temps réel via chat, appel audio ou appel vidéo." },
         { title: "Coaching Spirituel", desc: "Des séances de coaching personnel pour vous guider vers la conscience de soi et la paix." },
         { title: "Formations Énergétiques", desc: "Travail énergétique en groupe et individuel pour restaurer l'équilibre et la vitalité." },
         { title: "Consultation Personnelle", desc: "Des séances individuelles adaptées à votre chemin unique et vos besoins spirituels." },
@@ -247,7 +247,7 @@ export const translations = {
       label: "Diensten",
       heading: "Wat Wij Bieden",
       items: [
-        { title: "Live Chat met Medium", desc: "Verbind met ervaren mediums voor real-time spirituele begeleiding en helderheid." },
+        { title: "Live chat, audio & video met coach", desc: "Verbind met ervaren coaches voor real-time spirituele begeleiding via chat, audio bellen of video bellen." },
         { title: "Spirituele Coaching", desc: "Persoonlijke coachingsessies om je reis naar zelfbewustzijn en rust te begeleiden." },
         { title: "Energetische Trainingen", desc: "Groeps- en individueel energiewerk om balans en vitaliteit te herstellen." },
         { title: "Persoonlijk Consult", desc: "Eén-op-één sessies afgestemd op jouw unieke pad en spirituele behoeften." },
@@ -335,7 +335,7 @@ export const translations = {
       label: "الخدمات",
       heading: "ما نقدمه",
       items: [
-        { title: "دردشة مباشرة مع وسيط", desc: "تواصل مع وسطاء ذوي خبرة للحصول على إرشادات روحية فورية." },
+        { title: "دردشة ومكالمة صوتية وفيديو مع مدرب", desc: "تواصل مع مدربين ذوي خبرة للحصول على إرشادات روحية فورية عبر الدردشة أو المكالمة الصوتية أو مكالمة الفيديو." },
         { title: "التدريب الروحي", desc: "جلسات تدريب شخصية لتوجيه رحلتك نحو الوعي الذاتي والسلام." },
         { title: "تدريبات طاقية", desc: "عمل طاقي جماعي وفردي لاستعادة التوازن والحيوية في حياتك." },
         { title: "استشارة شخصية", desc: "جلسات فردية مصممة لمسارك الفريد واحتياجاتك الروحية." },
@@ -423,7 +423,7 @@ export const translations = {
       label: "服务",
       heading: "我们的服务",
       items: [
-        { title: "与灵媒在线交流", desc: "与经验丰富的灵媒实时连接，获取精神指导和清晰的方向。" },
+        { title: "与教练在线聊天、语音与视频", desc: "与经验丰富的教练通过聊天、语音通话或视频通话实时连接，获取精神指导和清晰的方向。" },
         { title: "灵性辅导", desc: "个人辅导课程，引导您走向自我意识和内心平静。" },
         { title: "能量训练", desc: "团体和个人能量疗愈，恢复生活中的平衡与活力。" },
         { title: "个人咨询", desc: "为您的独特道路和精神需求量身定制的一对一课程。" },
@@ -511,7 +511,7 @@ export const translations = {
       label: "Услуги",
       heading: "Что Мы Предлагаем",
       items: [
-        { title: "Чат с Медиумом", desc: "Свяжитесь с опытными медиумами для духовного руководства в реальном времени." },
+        { title: "Чат, аудио и видео с коучем", desc: "Свяжитесь с опытными коучами для духовного руководства в реальном времени через чат, аудиозвонок или видеозвонок." },
         { title: "Духовный Коучинг", desc: "Персональные коуч-сессии для вашего пути к самосознанию и покою." },
         { title: "Энергетические Тренинги", desc: "Групповая и индивидуальная энергетическая работа для восстановления баланса." },
         { title: "Личная Консультация", desc: "Индивидуальные сессии, адаптированные к вашему уникальному пути и потребностям." },
@@ -599,7 +599,7 @@ export const translations = {
       label: "Servicios",
       heading: "Lo Que Ofrecemos",
       items: [
-        { title: "Chat en Vivo con Médium", desc: "Conéctate con médiums experimentados para orientación espiritual en tiempo real." },
+        { title: "Chat, audio y video en vivo con coach", desc: "Conéctate con coaches experimentados para orientación espiritual en tiempo real por chat, llamada de audio o videollamada." },
         { title: "Coaching Espiritual", desc: "Sesiones de coaching personal para guiar tu camino hacia la autoconciencia y la paz." },
         { title: "Entrenamientos Energéticos", desc: "Trabajo energético grupal e individual para restaurar el equilibrio y la vitalidad." },
         { title: "Consulta Personal", desc: "Sesiones individuales adaptadas a tu camino único y necesidades espirituales." },
@@ -687,7 +687,7 @@ export const translations = {
       label: "Servizi",
       heading: "Cosa offriamo",
       items: [
-        { title: "Chat live con un medium", desc: "Connettiti con medium esperti per una guida spirituale in tempo reale." },
+        { title: "Chat, audio e video live con un coach", desc: "Connettiti con coach esperti per una guida spirituale in tempo reale via chat, chiamata audio o videochiamata." },
         { title: "Coaching spirituale", desc: "Sessioni di coaching personali per guidarti verso consapevolezza e pace." },
         { title: "Allenamenti energetici", desc: "Lavoro energetico di gruppo e individuale per ripristinare equilibrio e vitalità." },
         { title: "Consulto personale", desc: "Sessioni individuali su misura per il tuo percorso e le tue esigenze spirituali." },
@@ -775,7 +775,7 @@ export const translations = {
       label: "Leistungen",
       heading: "Was wir anbieten",
       items: [
-        { title: "Live-Chat mit einem Medium", desc: "Verbinde dich mit erfahrenen Medien für spirituelle Begleitung in Echtzeit." },
+        { title: "Live-Chat, Audio & Video mit einem Coach", desc: "Verbinde dich mit erfahrenen Coaches für spirituelle Begleitung in Echtzeit per Chat, Audioanruf oder Videoanruf." },
         { title: "Spirituelles Coaching", desc: "Persönliche Coaching-Sitzungen, die dich zu Bewusstsein und Frieden führen." },
         { title: "Energetisches Training", desc: "Gruppen- und Einzelarbeit mit Energie, um Gleichgewicht und Vitalität wiederherzustellen." },
         { title: "Persönliche Beratung", desc: "Individuelle Sitzungen, abgestimmt auf deinen Weg und deine spirituellen Bedürfnisse." },

@@ -115,6 +115,7 @@ class MentorAccountOut(MentorDetailOut):
     agreement_accepted_at: datetime | None = None
     agreement_version: str | None = None
     updated_at: datetime
+    is_totp_enabled: bool = False
 
 
 class CoachAgreementAcceptIn(BaseModel):

@@ -46,11 +46,6 @@ const ServicesSection = () => {
                 <p className="mt-3 flex-1 whitespace-pre-line text-pretty text-sm leading-relaxed text-card-foreground md:text-[0.9375rem]">
                   {s.desc}
                 </p>
-                <div className="mt-5 flex items-center border-t border-border/60 pt-4">
-                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-card-foreground transition-opacity duration-300 group-hover:opacity-80">
-                    {t.services.explore}
-                  </span>
-                </div>
               </div>
             </article>
           ))}

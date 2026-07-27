@@ -1,6 +1,6 @@
 import { NavLink, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, Coins, LayoutDashboard, LogOut, MessageSquare, UserRound, FileText, Landmark, Home } from "lucide-react";
+import { CalendarDays, Coins, LayoutDashboard, LogOut, MessageSquare, UserRound, FileText, Landmark, Home, Shield } from "lucide-react";
 import { getMentorActiveChatSession } from "@/api/chat";
 import { useAuth } from "@/auth/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
@@ -72,6 +72,14 @@ export function MentorDashboardLayout() {
                     <NavLink to="/mentor/profile" className={dashboardNavLinkClass}>
                       <UserRound />
                       <span>{d.profile}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip={d.security}>
+                    <NavLink to="/mentor/security" className={dashboardNavLinkClass}>
+                      <Shield />
+                      <span>{d.security}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

@@ -7,6 +7,7 @@ import type {
   TwoFactorLoginRequest,
   TwoFactorSetupResponse,
   TwoFactorVerifyRequest,
+  TwoFactorDisableRequest,
   UserRegisterResult 
 } from "./types";
 
@@ -98,6 +99,13 @@ export function setupUser2FA(): Promise<TwoFactorSetupResponse> {
 
 export function verifyUser2FASetup(body: TwoFactorVerifyRequest): Promise<{ message: string }> {
   return apiFetch<{ message: string }>("/auth/user/2fa/verify", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function disableUser2FA(body: TwoFactorDisableRequest): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>("/auth/user/2fa/disable", {
     method: "POST",
     body: JSON.stringify(body),
   });
@@ -248,6 +256,13 @@ export function setupMentor2FA(): Promise<TwoFactorSetupResponse> {
 
 export function verifyMentor2FASetup(body: TwoFactorVerifyRequest): Promise<{ message: string }> {
   return apiFetch<{ message: string }>("/auth/mentor/2fa/verify", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function disableMentor2FA(body: TwoFactorDisableRequest): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>("/auth/mentor/2fa/disable", {
     method: "POST",
     body: JSON.stringify(body),
   });

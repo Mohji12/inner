@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  deleteAdminMentor,
   fetchAdminMentor,
   fetchAdminMentors,
   getAdminMentorPayoutBankDetails,
@@ -87,6 +88,16 @@ export default function AdminMentorsPage() {
     onError: (e: Error) => toast.error(e.message || d.mentorApprovalFailed),
   });
 
+  const deleteMut = useMutation({
+    mutationFn: (mentorId: string) => deleteAdminMentor(mentorId),
+    onSuccess: () => {
+      toast.success("Coach permanently deleted.");
+      setProfileMentorId(null);
+      queryClient.invalidateQueries({ queryKey: ["admin", "mentors"] });
+    },
+    onError: (e: Error) => toast.error(e.message || "Failed to delete coach."),
+  });
+
   const onApprove = (mentorId: string) => {
     approvalMut.mutate({ mentorId, action: "approve" });
   };
@@ -94,6 +105,12 @@ export default function AdminMentorsPage() {
   const onReject = (mentorId: string) => {
     const reason = window.prompt(d.mentorRejectPrompt) || undefined;
     approvalMut.mutate({ mentorId, action: "reject", reason });
+  };
+
+  const onDelete = (mentorId: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete coach "${name}"?\n\nThis will remove ALL their data (bookings, chats, payments, etc.) and CANNOT be undone.`)) return;
+    if (!window.confirm(`FINAL WARNING: Delete "${name}" and all related records forever?`)) return;
+    deleteMut.mutate(mentorId);
   };
 
   const openBankDetails = async (mentorId: string) => {
@@ -188,6 +205,14 @@ export default function AdminMentorsPage() {
                       onClick={() => onReject(m.id)}
                     >
                       {d.reject}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={deleteMut.isPending}
+                      onClick={() => onDelete(m.id, m.full_name)}
+                    >
+                      🗑 Delete
                     </Button>
                   </div>
                 </TableCell>

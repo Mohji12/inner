@@ -38,6 +38,7 @@ class UserOut(BaseModel):
     last_login: datetime | None
     account_status: str
     email_verified: bool
+    is_totp_enabled: bool = False
     created_at: datetime
     updated_at: datetime
 

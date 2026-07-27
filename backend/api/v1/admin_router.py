@@ -329,6 +329,21 @@ def admin_update_mentor_approval(
     return _admin_mentor_row(mentor)
 
 
+@router.delete("/mentors/{mentor_id}")
+def admin_delete_mentor(
+    mentor_id: str,
+    db: DbSession,
+    _admin: CurrentAdmin,
+):
+    """Permanently delete a coach and all related data (cascaded via FK)."""
+    mentor = db.query(Mentor).filter(Mentor.id == mentor_id).first()
+    if not mentor:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Coach not found")
+    db.delete(mentor)
+    db.commit()
+    return {"ok": True, "deleted_id": mentor_id}
+
+
 @router.post("/mentors/{mentor_id}/verify-email", response_model=AdminMentorRow)
 def admin_verify_mentor_email(
     mentor_id: str,

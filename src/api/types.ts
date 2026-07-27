@@ -21,6 +21,11 @@ export interface TwoFactorVerifyRequest {
   code: string;
 }
 
+export interface TwoFactorDisableRequest {
+  password: string;
+  code: string;
+}
+
 export interface TwoFactorLoginRequest {
   email: string;
   code: string;
@@ -52,6 +57,7 @@ export interface UserOut {
   last_login: string | null;
   account_status: string;
   email_verified: boolean;
+  is_totp_enabled?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -125,6 +131,7 @@ export interface MentorAccount extends MentorDetail {
   agreement_accepted_at?: string | null;
   agreement_version?: string | null;
   updated_at: string;
+  is_totp_enabled?: boolean;
   public_card_visibility?: Partial<Record<string, boolean>> | null;
 }
 

@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { apiFetch } from "@/api/client";
 import { getMentorMe, patchMentorMe } from "@/api/mentors";
 import type { MentorAccount } from "@/api/types";
@@ -173,6 +174,17 @@ const MentorProfilePage = () => {
             <div className="space-y-2">
               <Label htmlFor="phone">{up.phone}</Label>
               <Input id="phone" value={me?.phone_number ?? ""} disabled />
+            </div>
+            <div className="flex flex-col gap-2 rounded-lg border border-border/60 bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold">{mpf.twoFactorSection}</p>
+                <p className="text-sm text-muted-foreground">
+                  {me?.is_totp_enabled ? mpf.twoFactorEnabled : mpf.twoFactorDisabled}
+                </p>
+              </div>
+              <Button type="button" variant="outline" size="sm" asChild>
+                <Link to="/mentor/security">{mpf.manageSecurity}</Link>
+              </Button>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">

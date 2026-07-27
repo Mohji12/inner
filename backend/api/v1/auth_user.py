@@ -23,6 +23,7 @@ from schemas.auth import (
     TwoFactorLoginRequest,
     TwoFactorSetupResponse,
     TwoFactorVerifyRequest,
+    TwoFactorDisableRequest,
     VerifyEmailRequest
 )
 from schemas.user import UserLogin, UserOut, UserRegister, UserRegisterResponse
@@ -197,7 +198,9 @@ def setup_user_2fa(db: DbSession, user: CurrentUser) -> TwoFactorSetupResponse:
         user.totp_secret = two_factor_service.generate_secret()
         db.commit()
     
-    uri = two_factor_service.get_provisioning_uri(user.email, user.totp_secret)
+    uri = two_factor_service.get_provisioning_uri(
+        user.email, user.totp_secret, issuer_name=settings.two_factor_issuer
+    )
     qr_b64 = two_factor_service.generate_qr_code_base64(uri)
     
     return TwoFactorSetupResponse(
@@ -243,10 +246,29 @@ def login_user_2fa(db: DbSession, payload: TwoFactorLoginRequest, response: Resp
         return LoginResponse(
             access_token=access,
             expires_in=settings.access_token_expire_minutes * 60,
-            two_factor_required=True
+            two_factor_required=False
         )
     else:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid 2FA code")
+
+
+@router.post("/2fa/disable", response_model=MessageResponse)
+def disable_user_2fa(db: DbSession, user: CurrentUser, payload: TwoFactorDisableRequest) -> MessageResponse:
+    if not user.is_totp_enabled or not user.totp_secret:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "2FA is not enabled")
+    if not user.password_hash or user.password_hash == "social_login":
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Set a password on your account before disabling 2FA, or contact support.",
+        )
+    if not verify_password(payload.password, user.password_hash):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid password")
+    if not two_factor_service.verify_otp(user.totp_secret, payload.code):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid code")
+    user.is_totp_enabled = False
+    user.totp_secret = None
+    db.commit()
+    return MessageResponse(message="Two-factor authentication disabled.")
 
 
 @router.post("/google", response_model=LoginResponse)

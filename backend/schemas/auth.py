@@ -36,6 +36,11 @@ class TwoFactorVerifyRequest(BaseModel):
     code: str
 
 
+class TwoFactorDisableRequest(BaseModel):
+    password: str = Field(min_length=1, max_length=128)
+    code: str = Field(min_length=6, max_length=6)
+
+
 class TwoFactorLoginRequest(BaseModel):
     email: EmailStr
     code: str

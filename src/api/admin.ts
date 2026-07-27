@@ -388,6 +388,12 @@ export function updateMentorApproval(mentorId: string, payload: MentorApprovalUp
   });
 }
 
+export function deleteAdminMentor(mentorId: string) {
+  return apiFetch<{ ok: boolean; deleted_id: string }>(`/admin/mentors/${mentorId}`, {
+    method: "DELETE",
+  });
+}
+
 export function fetchAdminBookings(skip = 0, limit = 50) {
   return apiFetch<Paginated<AdminBookingRow>>(`/admin/bookings${qs({ skip, limit })}`);
 }
