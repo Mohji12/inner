@@ -1466,6 +1466,24 @@ def admin_analytics(
     total_payments = db.query(func.count(Payment.id)).scalar() or 0
     paid_payments = db.query(func.count(Payment.id)).filter(Payment.status == "paid").scalar() or 0
     pending_payments = db.query(func.count(Payment.id)).filter(Payment.status == "pending").scalar() or 0
+    active_mentors = (
+        db.query(func.count(Mentor.id))
+        .filter(Mentor.is_approved.is_(True), Mentor.status == "active")
+        .scalar()
+        or 0
+    )
+    rejected_mentors = (
+        db.query(func.count(Mentor.id)).filter(Mentor.status == "rejected").scalar() or 0
+    )
+    pending_mentors = (
+        db.query(func.count(Mentor.id))
+        .filter(Mentor.is_approved.is_(False), Mentor.status != "rejected")
+        .scalar()
+        or 0
+    )
+    new_coach_applications = (
+        db.query(func.count(CoachApplication.id)).filter(CoachApplication.status == "new").scalar() or 0
+    )
 
     summary = AnalyticsSummary(
         bookings=bookings_n,
@@ -1478,6 +1496,10 @@ def admin_analytics(
         total_payments=total_payments,
         paid_payments=paid_payments,
         pending_payments=pending_payments,
+        active_mentors=active_mentors,
+        rejected_mentors=rejected_mentors,
+        pending_mentors=pending_mentors,
+        new_coach_applications=new_coach_applications,
     )
 
     return AnalyticsResponse(

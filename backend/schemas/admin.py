@@ -176,6 +176,10 @@ class AnalyticsSummary(BaseModel):
     total_payments: int
     paid_payments: int
     pending_payments: int
+    active_mentors: int
+    rejected_mentors: int
+    pending_mentors: int
+    new_coach_applications: int
 
 
 class AnalyticsResponse(BaseModel):

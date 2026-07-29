@@ -1,4 +1,4 @@
-export type Language = "en" | "fr" | "nl" | "ar" | "zh" | "ru" | "es" | "it" | "de";
+export type Language = "en" | "fr" | "nl" | "ar" | "zh" | "ru" | "es" | "it" | "de" | "ro";
 
 export const languageLabels: Record<Language, string> = {
   en: "English",
@@ -10,6 +10,7 @@ export const languageLabels: Record<Language, string> = {
   es: "Español",
   it: "Italiano",
   de: "Deutsch",
+  ro: "Română",
 };
 
 /** BCP-47 tags for `<html lang>` / inputs — improves browser spellcheck dictionaries. */
@@ -23,6 +24,7 @@ export const languageHtmlLang: Record<Language, string> = {
   es: "es-ES",
   it: "it-IT",
   de: "de-DE",
+  ro: "ro-RO",
 };
 
 export const rtlLanguages: Language[] = ["ar"];
@@ -827,6 +829,94 @@ export const translations = {
       contactTitle: "Kontakt",
       contactCountry: "Niederlande",
       rights: "Alle Rechte vorbehalten.",
+    },
+  },
+  ro: {
+    nav: { home: "Acasă", about: "Despre noi", services: "Servicii", pricing: "Prețuri", contact: "Contact" },
+    hero: {
+      heading: "Drumul Meu de Viață",
+      subtext: "Descoperă. Crește. Trăiește-ți calea.",
+      cta1: "Începe-ți Călătoria",
+      cta2: "Rezervă o Sesiune",
+      cta3: "Rezervă un coach",
+    },
+    music: {
+      play: "Redă muzica de fundal",
+      pause: "Pauză muzica de fundal",
+      label: "Muzică de fundal",
+      enterTitle: "Mijn levenspad",
+      enterHint: "Apasă Enter pentru a deschide site-ul cu muzică de fundal liniștitoare.",
+      enterAction: "Intră",
+    },
+    coaches: {
+      label: "Coach-ii Noștri",
+      heading: "Cunoaște-ți Ghizii Spirituali",
+      sub: "Răsfoiește coach-ii disponibili și rezervă o sesiune live potrivită pentru tine.",
+      viewAll: "Vezi toți coach-ii",
+    },
+    about: {
+      label: "Despre Noi",
+      heading: "Calea Ta Către Pacea Interioară",
+      p1: "La Mijn Levenspad te ghidăm într-o călătorie transformatoare de auto-descoperire. Prin coaching spiritual și îndrumare energetică, te ajutăm să te conectezi cu forța ta interioară și să găsești pacea pe care o cauți.",
+      p2: "Abordarea noastră combină înțelepciunea antică cu perspective moderne, astfel încât să poți crește către cea mai bună versiune a ta într-un mod sigur și iubitor.",
+      link: "Descoperă serviciile noastre →",
+    },
+    services: {
+      label: "Servicii",
+      heading: "Ce Oferim",
+      items: [
+        { title: "Chat live, audio și video cu un coach", desc: "Conectează-te cu coach-i experimentați pentru îndrumare spirituală în timp real prin chat, apel audio sau apel video. Despre dragoste, pierdere, viitor sau creștere personală — tu alegi subiectul, coach-ul și cât de mult vrei să vorbești. Plătești pe minut cu creditele tale." },
+        { title: "Coaching Spiritual", desc: "Împreună cu un coach spiritual, lucrezi la dezvoltarea personală, recuperarea emoțională sau viața conștientă. Coaching-ul are loc prin chat, email sau apel video. Rezervi sesiuni folosind credite și primești îndrumare personalizată." },
+        { title: "Antrenament Energetic", desc: "Vrei să înveți cum să lucrezi cu energia, intuiția sau protecția spirituală? Cursurile noastre sunt disponibile online și pot fi achiziționate cu credite sau plătite direct prin magazinul web." },
+        { title: "Consultație Personală cu Programare", desc: "Preferi îndrumare individuală cu calm și profunzime?\nAtunci rezervă o consultație privată la un moment potrivit — prin chat, telefon sau video.\nAceste sesiuni pot fi rezervate cu credite sau prin plată individuală." },
+      ],
+      explore: "Explorează →",
+    },
+    whyChoose: {
+      label: "De Ce Noi",
+      heading: "De Ce Să Ne Alegi",
+      introTagline: "Îndrumare personală, sigură și intuitivă pe drumul tău de viață",
+      items: [
+        { title: "Dezvoltare Personală", desc: "Deblochează-ți potențialul prin practici spirituale ghidate și creștere personală." },
+        { title: "Libertatea Alegerii", desc: "Călătoria ta, ritmul tău. Respectăm drumul tău unic cu îndrumare flexibilă." },
+        { title: "Spațiu Sigur", desc: "Un mediu fără judecăți în care poți explora și vindeca cu încredere." },
+      ],
+    },
+    pricing: {
+      label: "Prețuri",
+      heading: "Alege-ți Sesiunea",
+      popular: "Popular",
+      bookNow: "Rezervă Acum",
+      plans: [
+        { features: ["Sesiune de ghidare rapidă", "O întrebare focalizată", "Lectură energetică"] },
+        { features: ["Consultație aprofundată", "Întrebări multiple", "Vindecare energetică", "Note de follow-up"] },
+        { features: ["Sesiune completă", "Întrebări nelimitate", "Lucru energetic complet", "Plan de acțiune personal"] },
+      ],
+    },
+    testimonials: {
+      label: "Experiențe",
+      heading: "Ce Spun Alții",
+      worldwideCaption: "Voci din comunitate în mai multe limbi — derulează pentru a vedea mai mult.",
+      items: [
+        { name: "Marieke de Vries", text: "Sesiunile m-au ajutat să mă reconectez cu mine însămi. O experiență minunată." },
+        { name: "Thomas Bakker", text: "M-am simțit în largul meu imediat. Îndrumarea a fost caldă, sinceră și exact ceea ce aveam nevoie." },
+        { name: "Lotte Jansen", text: "După o singură sesiune m-am simțit deja mai calmă și mai clară. Cu adevărat recomandat." },
+        { name: "Erik Mulder", text: "Un loc sigur unde poți fi cu adevărat tu însuți. Coaching-ul mi-a schimbat viața." },
+        { name: "Sophie Klein", text: "Profesional și iubitor. Vin mereu aici cu inima liniștită." },
+        { name: "Daan Visser", text: "Antrenamentele energetice mi-au oferit perspective noi despre mine pe care nu le-am găsit nicăieri altundeva." },
+      ],
+    },
+    cta: {
+      heading: "Începe-ți Călătoria Spirituală Astăzi",
+      subtext: "Fă primul pas către pacea interioară și auto-descoperire. Suntem aici să te ghidăm la fiecare pas.",
+      button: "Începe",
+    },
+    footer: {
+      description: "Partenerul tău pe drumul către pacea interioară, auto-descoperirea și creșterea spirituală.",
+      quickLinks: "Linkuri Rapide",
+      contactTitle: "Contact",
+      contactCountry: "Țările de Jos",
+      rights: "Toate drepturile rezervate.",
     },
   },
 } as const;

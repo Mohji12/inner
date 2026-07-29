@@ -172,7 +172,22 @@ export default function AdminMentorsPage() {
           <TableBody>
             {data.items.map((m) => (
               <TableRow key={m.id}>
-                <TableCell>{m.full_name}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    {m.profile_image ? (
+                      <img
+                        src={mediaUrlFromApi(m.profile_image)}
+                        alt=""
+                        className="h-8 w-8 shrink-0 rounded-full object-cover ring-1 ring-border"
+                      />
+                    ) : (
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground ring-1 ring-border">
+                        {m.full_name?.charAt(0)?.toUpperCase() || "?"}
+                      </div>
+                    )}
+                    <span>{m.full_name}</span>
+                  </div>
+                </TableCell>
                 <TableCell>{m.email}</TableCell>
                 <TableCell>{m.phone_number || "—"}</TableCell>
                 <TableCell className="max-w-[140px] truncate">{m.current_company || "—"}</TableCell>
@@ -182,38 +197,45 @@ export default function AdminMentorsPage() {
                 </TableCell>
                 <TableCell>{m.is_approved ? d.yes : d.no}</TableCell>
                 <TableCell className="text-muted-foreground">{new Date(m.created_at).toLocaleString()}</TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button size="sm" variant="secondary" onClick={() => setProfileMentorId(m.id)}>
-                      {d.viewProfile}
-                    </Button>
-                    <Button size="sm" variant="secondary" onClick={() => void openBankDetails(m.id)}>
-                      {d.bankDetails}
-                    </Button>
+                <TableCell className="min-w-[160px]">
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex gap-1.5">
+                      <Button size="sm" variant="secondary" className="flex-1 text-xs" onClick={() => setProfileMentorId(m.id)}>
+                        {d.viewProfile}
+                      </Button>
+                      <Button size="sm" variant="secondary" className="flex-1 text-xs" onClick={() => void openBankDetails(m.id)}>
+                        {d.bankDetails}
+                      </Button>
+                    </div>
                     <Button
                       size="sm"
                       variant="outline"
+                      className="w-full text-xs"
                       disabled={approvalMut.isPending || (m.is_approved && m.status === "active")}
                       onClick={() => onApprove(m.id)}
                     >
                       {d.approve}
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      disabled={approvalMut.isPending || m.status === "rejected"}
-                      onClick={() => onReject(m.id)}
-                    >
-                      {d.reject}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      disabled={deleteMut.isPending}
-                      onClick={() => onDelete(m.id, m.full_name)}
-                    >
-                      🗑 Delete
-                    </Button>
+                    <div className="flex gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="flex-1 text-xs"
+                        disabled={approvalMut.isPending || m.status === "rejected"}
+                        onClick={() => onReject(m.id)}
+                      >
+                        {d.reject}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="flex-1 text-xs"
+                        disabled={deleteMut.isPending}
+                        onClick={() => onDelete(m.id, m.full_name)}
+                      >
+                        🗑 {d.delete ?? "Delete"}
+                      </Button>
+                    </div>
                   </div>
                 </TableCell>
               </TableRow>

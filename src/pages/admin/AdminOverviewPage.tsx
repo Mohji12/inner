@@ -1,9 +1,21 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { fetchAdminAnalytics, fetchAdminCoachApplications } from "@/api/admin";
+import { fetchAdminAnalytics } from "@/api/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLanguage } from "@/i18n/LanguageContext";
-import { CalendarDays, CheckCircle2, Clock3, CreditCard, FileUser, Star, UserRound, Users, Wallet } from "lucide-react";
+import {
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  CreditCard,
+  FileUser,
+  Star,
+  UserCheck,
+  UserRound,
+  Users,
+  UserX,
+  Wallet,
+} from "lucide-react";
 import { formatDateLocal } from "@/lib/timeZone";
 import { useEffectiveTimeZone } from "@/hooks/useEffectiveTimeZone";
 
@@ -17,12 +29,6 @@ export default function AdminOverviewPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "analytics", "month"],
     queryFn: () => fetchAdminAnalytics("month"),
-  });
-
-  const coachAppsQ = useQuery({
-    queryKey: ["admin", "coach-applications", "new-count"],
-    queryFn: () => fetchAdminCoachApplications(0, 1, undefined, "new"),
-    refetchInterval: 30_000,
   });
 
   if (isLoading || !data) {
@@ -39,10 +45,16 @@ export default function AdminOverviewPage() {
     { label: d.summaryRevenue, value: summary.revenue, icon: CreditCard },
     { label: d.summaryTotalUsers, value: summary.total_users, icon: UserRound },
     { label: d.summaryTotalMentors, value: summary.total_mentors, icon: Users },
+    { label: d.summaryActiveMentors, value: summary.active_mentors, icon: UserCheck },
+    { label: d.summaryPendingMentors, value: summary.pending_mentors, icon: Clock3 },
+    { label: d.summaryRejectedMentors, value: summary.rejected_mentors, icon: UserX },
+    { label: d.summaryNewCoachApplications, value: summary.new_coach_applications, icon: FileUser },
     { label: d.summaryTotalPayments, value: summary.total_payments, icon: Wallet },
     { label: d.summaryPaidPayments, value: summary.paid_payments, icon: CheckCircle2 },
     { label: d.summaryPendingPayments, value: summary.pending_payments, icon: Clock3 },
   ];
+
+  const newApplications = summary.new_coach_applications ?? 0;
 
   return (
     <div className="space-y-6">
@@ -50,10 +62,11 @@ export default function AdminOverviewPage() {
         <p className="text-sm uppercase tracking-widest text-accent">{d.overview}</p>
         <h1 className="font-serif text-3xl">{d.overviewHeading}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {d.last30Days} · {formatDateLocal(data.range_start, undefined, effectiveTimeZone)} – {formatDateLocal(data.range_end, undefined, effectiveTimeZone)}
+          {d.last30Days} · {formatDateLocal(data.range_start, undefined, effectiveTimeZone)} –{" "}
+          {formatDateLocal(data.range_end, undefined, effectiveTimeZone)}
         </p>
       </div>
-      {(coachAppsQ.data?.total ?? 0) > 0 ? (
+      {newApplications > 0 ? (
         <Card className="border-accent/40 bg-accent/5">
           <CardContent className="flex flex-wrap items-center justify-between gap-4 py-5">
             <div className="flex items-center gap-3">
@@ -61,7 +74,7 @@ export default function AdminOverviewPage() {
               <div>
                 <p className="font-medium">{d.coachApplications}</p>
                 <p className="text-sm text-muted-foreground">
-                  {d.overviewBanner.replace("{count}", String(coachAppsQ.data?.total ?? 0))}
+                  {d.overviewBanner.replace("{count}", String(newApplications))}
                 </p>
               </div>
             </div>

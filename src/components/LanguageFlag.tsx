@@ -2,7 +2,7 @@ import type { ComponentType, SVGProps } from "react";
 import { cn } from "@/lib/utils";
 import type { Language } from "@/i18n/translations";
 import { languageLabels } from "@/i18n/translations";
-import { GB, FR, NL, SA, CN, RU, ES, IT, DE } from "country-flag-icons/react/3x2";
+import { GB, FR, NL, SA, CN, RU, ES, IT, DE, RO } from "country-flag-icons/react/3x2";
 
 const FLAG_BY_LANGUAGE: Record<Language, ComponentType<SVGProps<SVGSVGElement>>> = {
   en: GB,
@@ -14,6 +14,7 @@ const FLAG_BY_LANGUAGE: Record<Language, ComponentType<SVGProps<SVGSVGElement>>>
   es: ES,
   it: IT,
   de: DE,
+  ro: RO,
 };
 
 type Props = {

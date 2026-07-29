@@ -1137,4 +1137,136 @@ Sie erkennen diese Bedingungen zum Zeitpunkt der Registrierung an und akzeptiere
       preparing: "Wird vorbereitet…",
     },
   },
+  ro: {
+    coachAgreementPage: {
+      back: "Înapoi",
+      title: "Acordul de coach",
+      version: "Versiune",
+      signTitle: "Semnează acordul",
+      signDescription:
+        "Citește condițiile de mai sus, confirmă acceptul și introdu numele tău legal complet ca semnătură electronică.",
+      acceptLabel:
+        "Am citit și accept Acordul de coach, inclusiv cota de 70% coach și taxa de 30% platformă pentru chat-urile pe minut.",
+      signatureLabel: "Nume complet (semnătură electronică)",
+      signaturePlaceholder: "Introdu numele tău legal complet",
+      signatureHint: "Numele și acceptul tău sunt salvate împreună cu versiunea și textul acordului.",
+      submit: "Semnează acordul",
+      submitting: "Se semnează…",
+      continueRegister: "Continuă la înregistrare",
+      alreadySigned: "Ai semnat deja acest acord.",
+      signedOn: "Semnat pe {date}",
+      footerNote:
+        "Această pagină este afișată pentru transparență. Coach-ii trebuie să accepte acest acord înainte de a deveni activi pe platformă.",
+      toastSigned: "Acordul de coach a fost semnat cu succes.",
+      toastSaved: "Acceptul a fost salvat. Continuă cu înregistrarea de coach pentru a finaliza contul.",
+      errMustAccept: "Te rugăm să confirmi că accepți Acordul de coach.",
+      errSignature: "Introdu numele tău complet pentru a semna (minim 2 caractere).",
+      errFailed: "Acceptul nu a putut fi salvat.",
+      body: `Acordul de coach
+
+Cu înregistrarea ca coach pe această platformă, accepți următoarele condiții de plată:
+
+1) Chat pe minut: primești 70% din tariful brut pe minut (facturat pe minut/secundă), inclusiv obligațiile tale fiscale; platforma reține 30% ca taxe de platformă.
+2) Utilizatorii plătesc de asemenea o taxă fixă de tranzacție de 0,50 € per sesiune de chat către platformă (nesplituit cu coach-ii).
+
+Recunoști și accepți aceste condiții la momentul înregistrării.
+`,
+    },
+    dashboardMentor: {
+      dashboard: "Panou de control",
+      activeChat: "Chat activ",
+      payouts: "Plăți",
+      monthlyFees: "Taxe lunare",
+      messages: "Mesaje",
+    },
+    mollieConnect: {
+      statusLabel: "Status Connect",
+      title: "Mollie Connect (opțional)",
+      noAccountTitle: "Încă nu ai un cont Mollie?",
+      noAccountBody:
+        "Primul buton deschide site-ul securizat Mollie. Pagina poate arăta ca un ecran de autentificare — folosește Creează cont sau Înregistrare dacă nu ai folosit Mollie înainte. După crearea organizației, adaugă banca ta în procesul de integrare Mollie. Dacă dorești doar un transfer bancar fără Mollie, sari peste această secțiune și introdu datele bancare mai jos.",
+      optionalBlurb:
+        "Opțional — plăți automate din portofel: Prin conectarea cu Mollie, plățile aprobate pot fi trimise în contul bancar verificat în Mollie.",
+      onboardingPrefix: "Integrare",
+      kycPrefix: "KYC",
+      payoutsPrefix: "Plăți",
+      payoutsEnabled: "Activat",
+      payoutsDisabled: "Dezactivat",
+      destinationTitle: "Destinația plăților (prin Mollie)",
+      accountLabel: "Cont",
+      bankRefLabel: "Referință bancară",
+      settlementAvailable: "Sold disponibil pentru decontare Mollie (moneda implicită): EUR {amount}",
+      startSetup: "Începe configurarea plăților Mollie",
+      opening: "Se deschide…",
+      continueVerification: "Continuă verificarea bancară în Mollie",
+      refreshStatus: "Actualizează statusul",
+      refreshing: "Se actualizează...",
+      refreshHint:
+        "Dacă ai finalizat procesul Mollie, apasă pe Actualizează statusul pentru a încărca link-ul tău personal de integrare.",
+      loadError: "Statusul Connect nu a putut fi încărcat. Poți începe totuși integrarea.",
+      toastOpenedTitle: "Mollie deschis în tab nou",
+      toastOpenedBody:
+        "Un cont Mollie existent nu este necesar. Pe pagina Mollie, folosește Creează cont / Înregistrare și apoi conectează plățile cu această platformă.",
+      toastBalanceTitle: "Sold Mollie",
+      toastStatusUpdated: "Statusul Connect a fost actualizat",
+    },
+    coachBankTransfer: {
+      title: "Contul tău bancar — fără Mollie",
+      description:
+        "Dacă nu dorești un cont Mollie, folosește acest formular: Salvăm IBAN-ul și titularul contului pentru ca platforma să te poată plăti prin transfer bancar. Mollie Connect este doar pentru plăți automate din portofel.",
+      loading: "Se încarcă…",
+      status: "Status",
+      accountHolder: "Titular cont",
+      iban: "IBAN",
+      bic: "BIC / SWIFT",
+      lastUpdated: "Ultima actualizare {date}",
+      securityNote: "Din motive de securitate, IBAN-ul complet nu mai este afișat după salvare. Introdu-l din nou pentru a-l înlocui.",
+      holderLabel: "Titular cont (ca pe contul bancar)",
+      holderPlaceholder: "ex. Jane Coach",
+      ibanPlaceholder: "ex. NL00 BANK 0123 4567 89",
+      ibanUpdatePlaceholder: "Introdu noul IBAN pentru actualizare",
+      bicLabel: "BIC / SWIFT (opțional)",
+      bicPlaceholder: "8 sau 11 caractere, dacă banca ta cere",
+      save: "Salvează datele bancare",
+      update: "Actualizează datele bancare",
+      saving: "Se salvează…",
+      toastSaved: "Datele bancare au fost salvate.",
+    },
+    mentorPayouts: {
+      title: "Plăți",
+      descriptionLead: "Nu ai cont Mollie?",
+      description:
+        "Poți fi plătit oricum: adaugă datele tale bancare în prima secțiune pentru un transfer manual. Mollie este necesar doar pentru plăți automate din portofel.",
+      pendingBalance: "Sold în așteptare",
+      withdrawableBalance: "Sold disponibil pentru retragere",
+      withdrawalAmount: "Sumă de retragere (EUR)",
+      requestPayout: "Solicită plata",
+      requesting: "Se solicită...",
+      historyTitle: "Istoricul plăților",
+      emptyHistory: "Încă nicio solicitare de plată.",
+      colRequested: "Solicitat",
+      colAmount: "Sumă",
+      colStatus: "Status",
+      colProcessed: "Procesat",
+      colFailure: "Eroare",
+      toastConnectSuccess: 'Contul Mollie a fost conectat. Folosește „Actualizează statusul" după KYC dacă plățile rămân dezactivate.',
+      toastConnectFailed: "Mollie Connect nu a fost finalizat.",
+      toastConnectFailedReason: "Conectare eșuată: {reason}",
+      toastRequested: "Solicitarea de plată a fost trimisă",
+      toastInvalidAmount: "Introdu o sumă validă",
+    },
+    coachWallet: {
+      label: "Portofel Coach",
+      loading: "Se încarcă...",
+      pending: "În așteptare",
+      withdrawable: "Disponibil",
+      loadError: "Soldul portofelului de coach nu a putut fi încărcat.",
+    },
+    mentorEarnings: {
+      loading: "Se încarcă câștigurile…",
+      title: "Câștiguri",
+      description: "Plăți reușite pentru rezervările tale.",
+      total: "Total ({currency})",
+    },
+  },
 };

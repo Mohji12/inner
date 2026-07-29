@@ -140,6 +140,10 @@ export interface AnalyticsResponse {
     total_payments: number;
     paid_payments: number;
     pending_payments: number;
+    active_mentors: number;
+    rejected_mentors: number;
+    pending_mentors: number;
+    new_coach_applications: number;
   };
   bookings_by_day: DateCountPoint[];
   payments_by_day: DateAmountPoint[];
