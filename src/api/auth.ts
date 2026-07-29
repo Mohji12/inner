@@ -139,6 +139,14 @@ export function sendMentorMetaCompleteRegistration(mentorId: string): Promise<vo
   });
 }
 
+export function sendUserMetaLead(userId: string): Promise<void> {
+  return apiFetch<void>("/auth/user/meta/lead", {
+    method: "POST",
+    body: JSON.stringify({ user_id: userId }),
+    skipAuth: true,
+  });
+}
+
 export function verifyMentorEmail(
   body: VerifyEmailBody,
 ): Promise<{ message: string; account_active?: boolean; mentor_id: string }> {

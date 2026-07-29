@@ -79,6 +79,20 @@ export function trackCompleteRegistration(options?: {
   window.fbq("track", "CompleteRegistration", params);
 }
 
+/** Browser Pixel Lead — pair `eventId` with server CAPI for deduplication. */
+export function trackLead(options: {
+  eventId: string;
+  contentName?: string;
+}): void {
+  if (!isMetaPixelEnabled() || !initialized || typeof window === "undefined" || !window.fbq) {
+    return;
+  }
+  window.fbq("track", "Lead", {
+    content_name: options.contentName ?? "user_registration",
+    eventID: options.eventId,
+  });
+}
+
 /** Browser Pixel — pair `eventId` with server CAPI for deduplication. */
 export function trackPurchase(options: {
   eventId: string;

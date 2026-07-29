@@ -334,6 +334,12 @@ export function fetchAdminUsers(skip = 0, limit = 50, q?: string) {
   return apiFetch<Paginated<AdminUserRow>>(`/admin/users${qs({ skip, limit, q })}`);
 }
 
+export function deleteAdminUser(userId: string) {
+  return apiFetch<{ ok: boolean; deleted_id: string }>(`/admin/users/${userId}`, {
+    method: "DELETE",
+  });
+}
+
 export function fetchAdminMentors(skip = 0, limit = 50, q?: string) {
   return apiFetch<Paginated<AdminMentorRow>>(`/admin/mentors${qs({ skip, limit, q })}`);
 }

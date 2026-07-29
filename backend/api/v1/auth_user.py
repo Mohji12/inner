@@ -31,9 +31,14 @@ from services.otp_service import create_and_send_otp, verify_otp
 from services.token_service import revoke_refresh_token, rotate_refresh_token, store_refresh_token
 from services.two_factor_service import two_factor_service
 from services.social_auth_service import social_auth_service
-from services.meta_capi_service import track_user_registration_verified
+from services.meta_capi_service import track_user_lead, track_user_registration_verified
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/auth/user", tags=["auth-user"])
+
+
+class UserMetaLeadIn(BaseModel):
+    user_id: str
 
 
 def _set_refresh_cookie(response: Response, raw: str) -> None:
@@ -135,6 +140,28 @@ def verify_user_email(db: DbSession, payload: VerifyEmailRequest) -> MessageResp
         phone_number=user.phone_number,
     )
     return MessageResponse(message="Email verified. You can sign in now.")
+
+
+@router.post("/meta/lead", status_code=status.HTTP_204_NO_CONTENT)
+def user_meta_lead(
+    request: Request,
+    db: DbSession,
+    payload: UserMetaLeadIn,
+) -> None:
+    """Browser thank-you page calls this to send enriched Meta CAPI Lead (IP, UA, cookies)."""
+    user = (
+        db.query(User)
+        .filter(User.id == payload.user_id.strip(), User.email_verified.is_(True))
+        .first()
+    )
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Verified user not found")
+    track_user_lead(
+        user_id=user.id,
+        email=user.email,
+        phone_number=user.phone_number,
+        request=request,
+    )
 
 
 @router.post("/resend-verify-email", response_model=MessageResponse)

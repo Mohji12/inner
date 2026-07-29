@@ -23,6 +23,8 @@ from models.platform_pricing import PlatformPricing
 from models.review import Review
 from models.user import User
 from models.wallet import Wallet, WalletTransaction
+from models.refresh_token import RefreshToken
+from models.email_otp import EmailOtpCode
 from schemas.chat import ChatInvoiceConversationLineOut, ChatInvoiceDetailOut, ChatInvoiceLineOut, ChatInvoiceSummaryOut
 from services.onboarding_payment_service import activate_coach_after_email_verification
 from services.mentor_presence_tracking_service import (
@@ -266,6 +268,29 @@ def admin_list_users(
         for u in rows
     ]
     return AdminUserList(items=items, total=total, skip=skip, limit=limit)
+
+
+@router.delete("/users/{user_id}")
+def admin_delete_user(
+    user_id: str,
+    db: DbSession,
+    _admin: CurrentAdmin,
+):
+    """Permanently delete a user and related data (bookings, payments, chats, wallet, etc.)."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    db.query(RefreshToken).filter(
+        RefreshToken.subject_id == user_id,
+        RefreshToken.role == "user",
+    ).delete(synchronize_session=False)
+    db.query(EmailOtpCode).filter(
+        EmailOtpCode.subject_id == user_id,
+        EmailOtpCode.role == "user",
+    ).delete(synchronize_session=False)
+    db.delete(user)
+    db.commit()
+    return {"ok": True, "deleted_id": user_id}
 
 
 @router.get("/mentors", response_model=AdminMentorList)

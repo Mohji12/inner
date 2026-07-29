@@ -151,6 +151,24 @@ def track_user_registration_verified(
     )
 
 
+def track_user_lead(
+    *,
+    user_id: str,
+    email: str | None,
+    phone_number: str | None,
+    request: Request | None = None,
+) -> None:
+    _send_event(
+        event_name="Lead",
+        event_id=f"user-lead-{user_id}",
+        user_email=email,
+        user_phone=phone_number,
+        custom_data={"content_name": "user_registration"},
+        request=request,
+        event_source_url=f"{settings.mollie_redirect_base_url.rstrip('/')}/user/register/thank-you",
+    )
+
+
 def track_mentor_registration_verified(
     *,
     mentor_id: str,
