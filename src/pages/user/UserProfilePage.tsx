@@ -7,6 +7,7 @@ import {
   stringListToCommaSeparated,
   unknownListToStrings,
 } from "@/lib/dbJsonFields";
+import { formatUploadError, validateImageFile } from "@/lib/imageUpload";
 import { mediaUrlFromApi } from "@/lib/mediaUrl";
 import { resolveBrowserTimeZone } from "@/lib/timeZone";
 import { useLanguage } from "@/i18n/LanguageContext";
@@ -20,19 +21,6 @@ import { toast } from "sonner";
 function dateInputValue(iso: string | null): string {
   if (!iso) return "";
   return iso.slice(0, 10);
-}
-
-function validateImageFile(file: File, sizeLimitMessage: string): string | null {
-  const name = file.name.toLowerCase();
-  const typedOk = Boolean(file.type && file.type.startsWith("image/"));
-  const extOk = /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(name);
-  if (!typedOk && !extOk) {
-    return "File must be an image";
-  }
-  if (file.size > 2 * 1024 * 1024) {
-    return sizeLimitMessage;
-  }
-  return null;
 }
 
 async function postUserAvatar(file: File): Promise<string> {
@@ -164,7 +152,7 @@ const UserProfilePage = () => {
                   />
                   <Input
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
                     aria-label={up.uploadPhoto}
                     onChange={(e) => {
                       void (async () => {
@@ -181,7 +169,7 @@ const UserProfilePage = () => {
                           setProfileImage(url);
                           toast.success(up.toastPhotoOk);
                         } catch (err) {
-                          toast.error(err instanceof Error ? err.message : up.toastPhotoFail);
+                          toast.error(formatUploadError(err, up.toastPhotoFail));
                         }
                       })();
                     }}

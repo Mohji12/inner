@@ -43,6 +43,7 @@ def upload_image_bytes(contents: bytes, *, kind: Kind, session_id: str | None = 
             folder=folder,
             public_id=public_id,
             resource_type="image",
+            format="jpg",
             use_filename=False,
             unique_filename=False,
         )

@@ -175,13 +175,24 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
       credentials: "include",
     });
 
-  let response = await exec();
+  let response: Response;
+  try {
+    response = await exec();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(msg || "Failed to fetch");
+  }
 
   if (response.status === 401 && !skipAuth) {
     const newToken = await refreshAccessToken({ clearOnFailure: true });
     if (newToken) {
       headers.set("Authorization", `Bearer ${newToken}`);
-      response = await exec();
+      try {
+        response = await exec();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(msg || "Failed to fetch");
+      }
     }
   }
 

@@ -8,6 +8,7 @@ import { normalizeSpokenLanguagesFromApi } from "@/lib/spokenLanguageOptions";
 import CoachCardVisibilityPicker from "@/components/CoachCardVisibilityPicker";
 import SpokenLanguageCheckboxGroup from "@/components/SpokenLanguageCheckboxGroup";
 import { DEFAULT_COACH_CARD_VISIBILITY, normalizeCoachCardVisibility, type CoachCardVisibility } from "@/lib/coachCardVisibility";
+import { formatUploadError, validateImageFile } from "@/lib/imageUpload";
 import { mediaUrlFromApi } from "@/lib/mediaUrl";
 import { resolveBrowserTimeZone } from "@/lib/timeZone";
 import { useLanguage } from "@/i18n/LanguageContext";
@@ -25,20 +26,6 @@ async function postMentorImage(kind: "avatar" | "banner", file: File): Promise<s
   const path = kind === "banner" ? "/upload/banner" : "/upload/avatar";
   const data = await apiFetch<{ url: string }>(path, { method: "POST", body: formData });
   return data.url;
-}
-
-function validateImageFile(file: File): string | null {
-  const name = file.name.toLowerCase();
-  const typedOk = Boolean(file.type && file.type.startsWith("image/"));
-  const extOk = /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(name);
-  if (!typedOk && !extOk) {
-    return "File must be an image";
-  }
-  const maxBytes = 2 * 1024 * 1024;
-  if (file.size > maxBytes) {
-    return "Image size should be less than 2 MB.";
-  }
-  return null;
 }
 
 const MentorProfilePage = () => {
@@ -232,12 +219,12 @@ const MentorProfilePage = () => {
                   />
                   <Input
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
                     onChange={(e) => {
                       void (async () => {
                         const file = e.target.files?.[0];
                         if (!file) return;
-                        const validation = validateImageFile(file);
+                        const validation = validateImageFile(file, mpf.imageSizeLimit);
                         if (validation) {
                           toast.error(validation);
                           return;
@@ -247,7 +234,7 @@ const MentorProfilePage = () => {
                           setProfileImage(url);
                           toast.success("Profile image uploaded");
                         } catch (err) {
-                          toast.error(err instanceof Error ? err.message : "Failed to upload image");
+                          toast.error(formatUploadError(err, "Failed to upload image"));
                         }
                       })();
                     }}
@@ -283,12 +270,12 @@ const MentorProfilePage = () => {
               />
               <Input
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
                 onChange={(e) => {
                   void (async () => {
                     const file = e.target.files?.[0];
                     if (!file) return;
-                    const validation = validateImageFile(file);
+                    const validation = validateImageFile(file, mpf.imageSizeLimit);
                     if (validation) {
                       toast.error(validation);
                       return;
@@ -298,7 +285,7 @@ const MentorProfilePage = () => {
                       setBannerImage(url);
                       toast.success("Banner uploaded");
                     } catch (err) {
-                      toast.error(err instanceof Error ? err.message : "Failed to upload banner");
+                      toast.error(formatUploadError(err, "Failed to upload banner"));
                     }
                   })();
                 }}

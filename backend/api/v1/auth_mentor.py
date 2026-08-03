@@ -126,6 +126,10 @@ def _smtp_configured() -> bool:
     return bool(settings.smtp_host and settings.smtp_from_email)
 
 
+def _expose_dev_otp() -> bool:
+    return (not _smtp_configured()) or ((settings.environment or "").lower() == "development")
+
+
 @router.post("/register", response_model=MentorRegisterResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/minute")
 def register_mentor(request: Request, db: DbSession, payload: MentorRegister) -> MentorRegisterResponse:
@@ -213,7 +217,7 @@ def register_mentor(request: Request, db: DbSession, payload: MentorRegister) ->
     base = MentorAccountOut.model_validate(mentor)
     return MentorRegisterResponse(
         **base.model_dump(),
-        dev_verification_code=None if _smtp_configured() else code,
+        dev_verification_code=code if _expose_dev_otp() else None,
     )
 
 

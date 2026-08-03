@@ -84,6 +84,14 @@ def create_and_send_otp(
         send_plain_email(to_email=email_l, subject=subject, body=body)
     except Exception as e:
         logger.exception("Failed to send OTP email: %s", e)
+        # Local/dev: keep the OTP so registration can continue (UI may use dev_verification_code).
+        if (settings.environment or "").lower() == "development":
+            logger.warning(
+                "Development fallback: email not delivered; OTP for %s is %s",
+                email_l,
+                code,
+            )
+            return code
         raise
     return code
 
