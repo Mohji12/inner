@@ -45,6 +45,10 @@ class MentorRegister(BaseModel):
     agreement_accepted: bool = False
     agreement_version: str | None = None
     agreement_text_snapshot: str | None = None
+    # Payout bank details (required so the platform can transfer earnings).
+    account_holder_name: str = Field(min_length=2, max_length=255)
+    iban: str = Field(min_length=15, max_length=42)
+    bic: str | None = Field(default=None, max_length=11)
 
 
 class MentorCreate(BaseModel):
@@ -85,6 +89,7 @@ class MentorPublicOut(BaseModel):
     chat_available: bool = False
     is_online: bool = False
     last_seen_at: datetime | None = None
+    next_availability_at: datetime | None = None
     status: str
     created_at: datetime
     badges: list[str] = Field(default_factory=list)

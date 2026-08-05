@@ -68,6 +68,9 @@ class Mentor(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
     slots = relationship("AvailabilitySlot", back_populates="mentor", cascade="all, delete-orphan")
+    availability_windows = relationship(
+        "MentorAvailabilityWindow", back_populates="mentor", cascade="all, delete-orphan"
+    )
     bookings = relationship("Booking", back_populates="mentor")
     reviews = relationship("Review", back_populates="mentor")
     chat_sessions = relationship("ChatSession", back_populates="mentor")

@@ -15,6 +15,7 @@ from core.security import (
     validate_password_strength
 )
 from models.mentor import Mentor
+from models.mentor_payout_account import MentorPayoutAccount
 from schemas.auth import (
     AccessTokenResponse, 
     LoginResponse,
@@ -32,6 +33,7 @@ from pydantic import BaseModel, EmailStr, Field
 from typing import Literal
 from services.otp_service import create_and_send_otp, verify_otp
 from services.mentor_card_visibility import normalize_card_visibility
+from services.payout_bank_service import mask_iban, normalize_bic, validate_and_normalize_iban
 from services.onboarding_payment_service import (
     activate_coach_after_email_verification,
     create_onboarding_checkout,
@@ -153,6 +155,15 @@ def register_mentor(request: Request, db: DbSession, payload: MentorRegister) ->
     if payload.agreement_text_snapshot and payload.agreement_text_snapshot.strip() != COACH_AGREEMENT_TEXT.strip():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Coach agreement text mismatch")
 
+    try:
+        iban = validate_and_normalize_iban(payload.iban)
+        bic = normalize_bic(payload.bic)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    holder = (payload.account_holder_name or "").strip()
+    if len(holder) < 2:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Account holder name is required")
+
     now = datetime.now(timezone.utc)
     mentor = Mentor(
         id=new_uuid(),
@@ -204,6 +215,22 @@ def register_mentor(request: Request, db: DbSession, payload: MentorRegister) ->
     )
     db.add(mentor)
     db.flush()
+    iban_mask = mask_iban(iban)
+    db.add(
+        MentorPayoutAccount(
+            id=new_uuid(),
+            mentor_id=mentor.id,
+            provider_name="platform_manual_transfer",
+            provider_account_ref=f"iban:{iban_mask}",
+            account_holder_name=holder,
+            iban=iban,
+            bic=bic,
+            status="submitted",
+            verified_at=None,
+            created_at=now,
+            updated_at=now,
+        )
+    )
     try:
         code = create_and_send_otp(db, email=email, role="mentor", subject_id=mentor.id, otp_id=new_uuid())
     except Exception:

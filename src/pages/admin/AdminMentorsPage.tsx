@@ -4,6 +4,7 @@ import {
   fetchAdminMentor,
   fetchAdminMentors,
   getAdminMentorPayoutBankDetails,
+  updateAdminMentorCardVisibility,
   updateMentorApproval,
 } from "@/api/admin";
 import type { AdminMentorBankDetailsPrivate, AdminMentorRow } from "@/api/admin";
@@ -18,9 +19,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { unknownListToStrings } from "@/lib/dbJsonFields";
 import { mediaUrlFromApi } from "@/lib/mediaUrl";
+import { normalizeCoachCardVisibility } from "@/lib/coachCardVisibility";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
@@ -88,6 +92,24 @@ export default function AdminMentorsPage() {
     onError: (e: Error) => toast.error(e.message || d.mentorApprovalFailed),
   });
 
+  const visibilityMut = useMutation({
+    mutationFn: ({
+      mentorId,
+      profile_photo,
+      banner_photo,
+    }: {
+      mentorId: string;
+      profile_photo?: boolean;
+      banner_photo?: boolean;
+    }) => updateAdminMentorCardVisibility(mentorId, { profile_photo, banner_photo }),
+    onSuccess: () => {
+      toast.success(d.cardVisibilitySaved);
+      void queryClient.invalidateQueries({ queryKey: ["admin", "mentor-detail", profileMentorId] });
+      void queryClient.invalidateQueries({ queryKey: ["admin", "mentors"] });
+    },
+    onError: (e: Error) => toast.error(e.message || d.cardVisibilityFailed),
+  });
+
   const deleteMut = useMutation({
     mutationFn: (mentorId: string) => deleteAdminMentor(mentorId),
     onSuccess: () => {
@@ -135,6 +157,7 @@ export default function AdminMentorsPage() {
   const profile: AdminMentorRow | null = profileQ.data ?? null;
   const profileImg = profile?.profile_image ? mediaUrlFromApi(profile.profile_image) : null;
   const bannerImg = profile?.banner_image ? mediaUrlFromApi(profile.banner_image) : null;
+  const cardVis = normalizeCoachCardVisibility(profile?.public_card_visibility ?? null);
 
   return (
     <Card className="border-border/60 glass-card">
@@ -273,8 +296,45 @@ export default function AdminMentorsPage() {
                       className="h-16 w-16 rounded-full object-cover ring-2 ring-border"
                     />
                   ) : null}
+                  {profileImg && !cardVis.profile_photo ? (
+                    <Badge variant="destructive">{d.photoHiddenBadge}</Badge>
+                  ) : null}
                 </div>
               )}
+
+              <div className="rounded-lg border border-border/60 bg-muted/20 p-4 space-y-3">
+                <div>
+                  <p className="text-sm font-medium">{d.cardVisibilityTitle}</p>
+                  <p className="text-xs text-muted-foreground">{d.cardVisibilityHint}</p>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="admin-show-profile-photo" className="text-sm font-normal">
+                    {d.showProfilePhoto}
+                  </Label>
+                  <Switch
+                    id="admin-show-profile-photo"
+                    checked={cardVis.profile_photo}
+                    disabled={visibilityMut.isPending || !profile.profile_image}
+                    onCheckedChange={(checked) =>
+                      visibilityMut.mutate({ mentorId: profile.id, profile_photo: checked })
+                    }
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="admin-show-banner-photo" className="text-sm font-normal">
+                    {d.showBannerPhoto}
+                  </Label>
+                  <Switch
+                    id="admin-show-banner-photo"
+                    checked={cardVis.banner_photo}
+                    disabled={visibilityMut.isPending || !profile.banner_image}
+                    onCheckedChange={(checked) =>
+                      visibilityMut.mutate({ mentorId: profile.id, banner_photo: checked })
+                    }
+                  />
+                </div>
+              </div>
+
               <dl className="grid gap-3 text-sm sm:grid-cols-2">
                 <DetailField label={d.fullName} value={profile.full_name} />
                 <DetailField label={d.email} value={profile.email} />

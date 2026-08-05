@@ -11,7 +11,9 @@ from core.config import settings
 from models.availability_slot import AvailabilitySlot
 from models.booking import Booking
 from models.mentor import Mentor
+from models.mentor_availability_window import MentorAvailabilityWindow
 from schemas.mentor import MentorDetailOut, MentorPublicOut, PlatformPricingPublicOut
+from schemas.availability_window import AvailabilityWindowPublicOut
 from schemas.slot import SlotOut
 from services.mentor_card_visibility import apply_card_visibility_to_public, normalize_card_visibility
 from services.chat_service import mentor_ids_with_live_chat, mentor_chat_busy
@@ -224,6 +226,17 @@ def get_mentor(mentor_id: str, db: DbSession, lang: RequestLang) -> MentorDetail
     # Never expose company / KVK on the public coach profile.
     detail["current_company"] = None
     detail["kvk_number"] = None
+    now = datetime.now(timezone.utc)
+    next_win = (
+        db.query(MentorAvailabilityWindow)
+        .filter(
+            MentorAvailabilityWindow.mentor_id == mentor.id,
+            MentorAvailabilityWindow.end_at_utc > now,
+        )
+        .order_by(MentorAvailabilityWindow.start_at_utc.asc())
+        .first()
+    )
+    detail["next_availability_at"] = next_win.start_at_utc if next_win else None
     return MentorDetailOut.model_validate(detail)
 
 
@@ -244,6 +257,28 @@ def mentor_chat_availability(mentor_id: str, db: DbSession) -> ChatAvailabilityO
     elif busy:
         reason = "mentor_busy"
     return ChatAvailabilityOut(available=available, reason=reason)
+
+
+@router.get("/{mentor_id}/availability-windows", response_model=list[AvailabilityWindowPublicOut])
+def list_mentor_availability_windows(
+    mentor_id: str,
+    db: DbSession,
+    limit: int = Query(default=5, ge=1, le=20),
+) -> list[MentorAvailabilityWindow]:
+    mentor = db.query(Mentor).filter(Mentor.id == mentor_id).first()
+    if not mentor or not _mentor_visible_for_public(mentor):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Coach not found")
+    now = datetime.now(timezone.utc)
+    return (
+        db.query(MentorAvailabilityWindow)
+        .filter(
+            MentorAvailabilityWindow.mentor_id == mentor_id,
+            MentorAvailabilityWindow.end_at_utc > now,
+        )
+        .order_by(MentorAvailabilityWindow.start_at_utc.asc())
+        .limit(limit)
+        .all()
+    )
 
 
 @router.get("/{mentor_id}/slots", response_model=list[SlotOut])

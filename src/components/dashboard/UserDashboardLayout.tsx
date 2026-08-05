@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { CalendarDays, LogOut, Receipt, UserRound, Users, Wallet as WalletIcon, LayoutDashboard, Shield } from "lucide-react";
+import { CalendarDays, LogOut, Receipt, UserRound, Users, Wallet as WalletIcon, LayoutDashboard, Shield, LifeBuoy } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import {
@@ -72,6 +72,14 @@ export function UserDashboardLayout() {
                     <NavLink to="/user/security" className={dashboardNavLinkClass}>
                       <Shield />
                       <span>{d.security}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip={d.support}>
+                    <NavLink to="/user/support" className={dashboardNavLinkClass}>
+                      <LifeBuoy />
+                      <span>{d.support}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

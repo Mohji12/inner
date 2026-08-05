@@ -110,14 +110,18 @@ def list_presence_for_week(
     *,
     week_start: date,
     q: str | None = None,
+    mentor_id: str | None = None,
     skip: int = 0,
     limit: int = 50,
 ) -> tuple[list[tuple[Mentor, MentorPresenceWeek | None]], int]:
-    """Return (mentor, week_row|None) for approved/active coaches, optionally filtered by name/email."""
-    query = db.query(Mentor).filter(Mentor.is_approved.is_(True), Mentor.status == "active")
-    if q and q.strip():
-        term = f"%{q.strip()}%"
-        query = query.filter((Mentor.email.like(term)) | (Mentor.full_name.like(term)))
+    """Return (mentor, week_row|None) for approved/active coaches, optionally filtered by id/name/email."""
+    if mentor_id and mentor_id.strip():
+        query = db.query(Mentor).filter(Mentor.id == mentor_id.strip())
+    else:
+        query = db.query(Mentor).filter(Mentor.is_approved.is_(True), Mentor.status == "active")
+        if q and q.strip():
+            term = f"%{q.strip()}%"
+            query = query.filter((Mentor.email.like(term)) | (Mentor.full_name.like(term)))
     total = query.count()
     mentors = query.order_by(Mentor.full_name.asc()).offset(skip).limit(limit).all()
     mentor_ids = [m.id for m in mentors]
@@ -173,6 +177,130 @@ def mentor_presence_history(
                 )
             )
     return out
+
+
+def month_start_for(dt: datetime | None = None) -> date:
+    now = dt or datetime.now(timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    local = now.astimezone(presence_tz()).date()
+    return local.replace(day=1)
+
+
+def _add_months(d: date, months: int) -> date:
+    y = d.year + (d.month - 1 + months) // 12
+    m = (d.month - 1 + months) % 12 + 1
+    return date(y, m, 1)
+
+
+def sum_presence_seconds_for_range(
+    db: Session,
+    *,
+    mentor_id: str,
+    week_start_from: date,
+    week_start_before: date,
+) -> int:
+    """Sum seconds for week rows with week_start in [from, before)."""
+    rows = (
+        db.query(MentorPresenceWeek.seconds_online)
+        .filter(
+            MentorPresenceWeek.mentor_id == mentor_id,
+            MentorPresenceWeek.week_start >= week_start_from,
+            MentorPresenceWeek.week_start < week_start_before,
+        )
+        .all()
+    )
+    return int(sum(int(r[0] or 0) for r in rows))
+
+
+def mentor_presence_month_totals(
+    db: Session,
+    *,
+    mentor_id: str,
+    months: int = 6,
+) -> list[tuple[date, int]]:
+    """Newest-first list of (month_start, seconds) for calendar months in presence TZ."""
+    limit = max(1, min(int(months), 24))
+    current = month_start_for()
+    out: list[tuple[date, int]] = []
+    for i in range(limit):
+        start = _add_months(current, -i)
+        end = _add_months(start, 1)
+        seconds = sum_presence_seconds_for_range(
+            db,
+            mentor_id=mentor_id,
+            week_start_from=start,
+            week_start_before=end,
+        )
+        out.append((start, seconds))
+    return out
+
+
+def mentor_presence_self_stats(
+    db: Session,
+    *,
+    mentor_id: str,
+    weeks: int = 12,
+    months: int = 6,
+) -> dict:
+    """Stats payload for the coach's own platform-time dashboard."""
+    min_hours = float(settings.mentor_weekly_min_hours or 20)
+    threshold = min_weekly_seconds()
+    this_week_start = week_start_for()
+    this_month_start = month_start_for()
+    next_month = _add_months(this_month_start, 1)
+
+    week_row = (
+        db.query(MentorPresenceWeek)
+        .filter(
+            MentorPresenceWeek.mentor_id == mentor_id,
+            MentorPresenceWeek.week_start == this_week_start,
+        )
+        .first()
+    )
+    week_seconds = int(week_row.seconds_online or 0) if week_row else 0
+    month_seconds = sum_presence_seconds_for_range(
+        db,
+        mentor_id=mentor_id,
+        week_start_from=this_month_start,
+        week_start_before=next_month,
+    )
+    history = mentor_presence_history(db, mentor_id=mentor_id, weeks=weeks)
+    month_totals = mentor_presence_month_totals(db, mentor_id=mentor_id, months=months)
+    return {
+        "min_hours": min_hours,
+        "timezone": settings.mentor_presence_timezone or "Europe/Amsterdam",
+        "this_week": {
+            "week_start": this_week_start,
+            "seconds_online": week_seconds,
+            "hours_online": hours_from_seconds(week_seconds),
+            "meets_minimum": week_seconds >= threshold,
+            "warning_sent_at": week_row.warning_sent_at if week_row else None,
+        },
+        "this_month": {
+            "month_start": this_month_start,
+            "seconds_online": month_seconds,
+            "hours_online": hours_from_seconds(month_seconds),
+        },
+        "weeks": [
+            {
+                "week_start": r.week_start,
+                "seconds_online": int(r.seconds_online or 0),
+                "hours_online": hours_from_seconds(int(r.seconds_online or 0)),
+                "meets_minimum": int(r.seconds_online or 0) >= threshold,
+                "warning_sent_at": r.warning_sent_at,
+            }
+            for r in history
+        ],
+        "months": [
+            {
+                "month_start": ms,
+                "seconds_online": secs,
+                "hours_online": hours_from_seconds(secs),
+            }
+            for ms, secs in month_totals
+        ],
+    }
 
 
 def send_weekly_presence_warnings(db: Session) -> int:

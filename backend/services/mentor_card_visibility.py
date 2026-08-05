@@ -51,9 +51,18 @@ def apply_card_visibility_to_public(
         updates["badges"] = [b for b in (out.badges or []) if b != "Top Rated"]
     if not vis["session_packages"]:
         updates["session_packages_available"] = False
-    if not vis["profile_photo"]:
+
+    raw_profile = out.profile_image
+    raw_banner = out.banner_image
+    if vis["profile_photo"]:
+        updates["profile_image"] = raw_profile
+    else:
         updates["profile_image"] = None
-    if not vis["banner_photo"]:
+
+    if vis["banner_photo"]:
+        # Banner slot enabled: use banner file, or fall back to portrait so cards aren't blank.
+        updates["banner_image"] = raw_banner or raw_profile
+    else:
         updates["banner_image"] = None
 
     return out.model_copy(update=updates)

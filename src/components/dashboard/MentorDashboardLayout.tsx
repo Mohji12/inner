@@ -1,6 +1,6 @@
 import { NavLink, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, Coins, LayoutDashboard, LogOut, MessageSquare, UserRound, FileText, Landmark, Home, Shield } from "lucide-react";
+import { CalendarDays, Clock, Coins, LayoutDashboard, LogOut, MessageSquare, UserRound, FileText, Landmark, Home, Shield, LifeBuoy, Timer } from "lucide-react";
 import { getMentorActiveChatSession } from "@/api/chat";
 import { useAuth } from "@/auth/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
@@ -76,10 +76,34 @@ export function MentorDashboardLayout() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip={d.availability}>
+                    <NavLink to="/mentor/availability" className={dashboardNavLinkClass}>
+                      <Clock />
+                      <span>{d.availability}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip={d.platformTime}>
+                    <NavLink to="/mentor/platform-time" className={dashboardNavLinkClass}>
+                      <Timer />
+                      <span>{d.platformTime}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.security}>
                     <NavLink to="/mentor/security" className={dashboardNavLinkClass}>
                       <Shield />
                       <span>{d.security}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip={d.support}>
+                    <NavLink to="/mentor/support" className={dashboardNavLinkClass}>
+                      <LifeBuoy />
+                      <span>{d.support}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

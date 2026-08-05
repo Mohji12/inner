@@ -8,6 +8,7 @@ from api.v1 import (
     auth_user,
     bookings,
     chat,
+    contact,
     meetings,
     mentor_me,
     mentors_public,
@@ -43,6 +44,7 @@ api_router.include_router(booking_reschedule.router)
 api_router.include_router(booking_calendar.router)
 api_router.include_router(waitlist.router)
 api_router.include_router(coach_applications.router)
+api_router.include_router(contact.router)
 api_router.include_router(chat.router)
 api_router.include_router(meetings.router)
 api_router.include_router(reviews.router)

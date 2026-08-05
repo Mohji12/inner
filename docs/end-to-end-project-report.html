@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Mijn Levenspad - End-to-End Project Report</title>
+<script src="vendor/mermaid.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    function boot() {
+      if (typeof mermaid === "undefined") {
+        var n = document.getElementById("diagram-status");
+        if (n) n.textContent = "Mermaid failed to load. Keep this HTML next to the vendor/ folder, or check internet for CDN fallback.";
+        return;
+      }
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: "neutral",
+        securityLevel: "loose",
+        flowchart: { htmlLabels: false },
+        er: { useMaxWidth: true },
+        sequence: { useMaxWidth: true }
+      });
+      mermaid.run({ querySelector: ".mermaid" }).then(function () {
+        var n = document.getElementById("diagram-status");
+        if (n) n.textContent = "Diagrams rendered. Use Print / Save as PDF when ready.";
+      }).catch(function (err) {
+        console.error(err);
+        var n = document.getElementById("diagram-status");
+        if (n) n.textContent = "Some diagrams failed to render. Open the browser console for details.";
+      });
+    }
+    if (typeof mermaid === "undefined") {
+      var s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js";
+      s.onload = boot;
+      s.onerror = boot;
+      document.head.appendChild(s);
+    } else {
+      boot();
+    }
+  });
+</script>
+<style>
+  :root {
+    --ink: #1a1f16;
+    --muted: #5a6454;
+    --line: #d5d9cf;
+    --bg: #f7f6f1;
+    --card: #ffffff;
+    --accent: #4a5d3a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.55;
+    font-size: 14px;
+  }
+  .toolbar {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; gap: 12px; align-items: center; justify-content: space-between;
+    padding: 12px 20px;
+    background: #2f3b28; color: #fff;
+  }
+  .toolbar button {
+    background: #e8efe0; color: #1a1f16; border: 0; border-radius: 8px;
+    padding: 8px 14px; font-weight: 600; cursor: pointer;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 28px 20px 80px; }
+  h1 { font-size: 28px; margin: 0 0 8px; color: var(--accent); }
+  h2 { font-size: 20px; margin-top: 36px; padding-top: 12px; border-top: 1px solid var(--line); }
+  h3 { font-size: 16px; margin-top: 22px; }
+  p { margin: 10px 0; }
+  a { color: var(--accent); }
+  code { background: #eef1ea; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  pre:not(.mermaid) { background: #1e241c; color: #e8efe0; padding: 14px; border-radius: 10px; overflow: auto; font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; background: var(--card); }
+  th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #eef2e8; }
+  pre.mermaid {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px; margin: 16px 0; overflow-x: auto;
+    font-family: ui-monospace, Consolas, monospace; font-size: 12px;
+    white-space: pre-wrap;
+  }
+  pre.mermaid[data-processed="true"] {
+    font-family: inherit; font-size: inherit; white-space: normal;
+  }
+  #diagram-status {
+    background: #e8efe0; border: 1px solid #c5d3b8; border-radius: 8px;
+    padding: 10px 12px; margin-bottom: 18px; color: #2f3b28;
+  }
+  ul, ol { padding-left: 22px; }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
+  .meta { color: var(--muted); margin-bottom: 24px; }
+  @media print {
+    .toolbar { display: none !important; }
+    #diagram-status { display: none !important; }
+    body { background: #fff; font-size: 11pt; }
+    .wrap { max-width: none; padding: 0; }
+    h2 { break-before: page; border-top: 0; margin-top: 0; }
+    h2:first-of-type { break-before: avoid; }
+    .mermaid, table { break-inside: avoid; }
+    a { color: inherit; text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <div><strong>Mijn Levenspad</strong> · End-to-End Project Report</div>
+    <button type="button" onclick="window.print()">Download / Print as PDF</button>
+  </div>
+  <div class="wrap">
+    <p class="meta">Open this file in a browser. Click <strong>Download / Print as PDF</strong> (or Ctrl+P) and choose <em>Save as PDF</em>. Keep this file next to <code>docs/vendor/</code> so diagrams load offline.</p>
+    <div id="diagram-status">Loading diagrams…</div>
+    <h1>Mijn Levenspad — End-to-End Project Report</h1>
+<p><strong>Product:</strong> Spiritual coaching marketplace (booking, metered chat, LiveKit, Mollie payouts)   <strong>Stack:</strong> React (Vite) + FastAPI + MySQL + Redis/Celery + Mollie + LiveKit   <strong>Report type:</strong> Application overview · Problems faced · Solutions · Prevention   <strong>Related docs:</strong> <code>TECHNICAL_ARCHITECTURE.md</code> · <code>technical-architecture.html</code>   <strong>Version:</strong> 1.0</p>
+<hr/>
+<h2 id="table-of-contents">Table of contents</h2>
+<ol><li><a href="#1-executive-summary">Executive summary</a></li><li><a href="#2-application-overview">Application overview</a></li><li><a href="#3-end-to-end-flows">End-to-end flows</a></li><li><a href="#4-features-delivered-in-this-workstream">Features delivered in this workstream</a></li><li><a href="#5-problems-solutions-and-prevention">Problems, solutions, and prevention</a></li><li><a href="#6-open-risks">Open risks</a></li><li><a href="#7-definition-of-done--payments">Definition of done — payments</a></li><li><a href="#8-preventive-operating-model">Preventive operating model</a></li><li><a href="#9-document-map">Document map</a></li><li><a href="#10-closing">Closing</a></li></ol>
+<hr/>
+<h2 id="1-executive-summary">1. Executive summary</h2>
+<p>Mijn Levenspad is a multi-sided coaching platform:</p>
+<table>
+<tr><th>Role</th><th>Primary jobs</th></tr>
+<tr><td><strong>User</strong></td><td>Discover coaches, book sessions, pay via Mollie, metered chat, wallet, reviews</td></tr>
+<tr><td><strong>Coach</strong></td><td>Register (KVK + bank), set availability, deliver sessions, earn 70% of metered chat, request payouts</td></tr>
+<tr><td><strong>Admin</strong></td><td>Approve coaches, KPIs/analytics, settlements, marketplace payouts, support ops</td></tr>
+</table>
+<p><strong>Revenue split (metered chat):</strong> coach <strong>70%</strong> / platform <strong>30%</strong>.</p>
+<p>This report covers how the system works end-to-end, what broke during build and operations, what we fixed, and how to avoid the same problems later.</p>
+<hr/>
+<h2 id="2-application-overview">2. Application overview</h2>
+<h3>2.1 Architecture at a glance</h3>
+<pre class="mermaid">
+flowchart TB
+  User[User Browser]
+  Coach[Coach Browser]
+  Admin[Admin Browser]
+  SPA[React SPA Vite Amplify]
+  API[FastAPI API]
+  DB[(MySQL therapy)]
+  REDIS[(Redis Upstash)]
+  CEL[Celery Worker]
+  Mollie[Mollie]
+  LK[LiveKit]
+  SMTP[ZeptoMail SMTP]
+
+  User --> SPA
+  Coach --> SPA
+  Admin --> SPA
+  SPA -->|REST and WS| API
+  API --> DB
+  API --> REDIS
+  CEL --> REDIS
+  CEL --> DB
+  API <--> Mollie
+  Mollie -->|webhook| API
+  API --> LK
+  API --> SMTP
+</pre>
+<h3>2.2 Technology stack</h3>
+<table>
+<tr><th>Layer</th><th>Choice</th></tr>
+<tr><td>Frontend</td><td>React + TypeScript + Vite + Tailwind + TanStack Query</td></tr>
+<tr><td>Backend</td><td>FastAPI + SQLAlchemy + Pydantic</td></tr>
+<tr><td>Auth</td><td>JWT access + httpOnly refresh cookies (user / mentor / admin)</td></tr>
+<tr><td>Database</td><td>MySQL (<code>therapy</code>)</td></tr>
+<tr><td>Queue</td><td>Redis / Upstash + Celery</td></tr>
+<tr><td>Payments</td><td>Mollie (checkout + Connect) + manual IBAN path</td></tr>
+<tr><td>Realtime</td><td>WebSocket chat hub + LiveKit WebRTC</td></tr>
+<tr><td>Email</td><td>ZeptoMail SMTP</td></tr>
+<tr><td>Media</td><td>Cloudinary (or local <code>/uploads</code>)</td></tr>
+</table>
+<h3>2.3 Major domains</h3>
+<table>
+<tr><th>Domain</th><th>Responsibility</th></tr>
+<tr><td>Auth &amp; OTP</td><td>Register, login, refresh, email verification</td></tr>
+<tr><td>Booking</td><td>Slots, bookings, reschedule, waitlist</td></tr>
+<tr><td>Payments</td><td>Mollie intent, webhook, sync, promos, FX</td></tr>
+<tr><td>Chat</td><td>Metered minutes, messages, invoices</td></tr>
+<tr><td>Meetings</td><td>LiveKit tokens / optional SIP</td></tr>
+<tr><td>Marketplace</td><td>Ledger wallets, Connect, coach payout requests</td></tr>
+<tr><td>Settlements</td><td>Cycle aggregation, approve, pay / mark paid</td></tr>
+<tr><td>Admin</td><td>KPIs, filters, ops console</td></tr>
+<tr><td>Support</td><td>Public contact + user/coach support forms</td></tr>
+</table>
+<hr/>
+<h2 id="3-end-to-end-flows">3. End-to-end flows</h2>
+<h3>3.1 User happy path</h3>
+<ol><li>Register / verify email (OTP)  </li><li>Browse coaches → pick slot → book  </li><li>Pay via Mollie (<code>POST /payments/create-intent</code>)  </li><li>Webhook (or SPA <code>sync-mollie-payment</code>) marks booking paid  </li><li>Optional: start/extend metered chat → Mollie → WebSocket messages  </li><li>Optional: LiveKit video/call  </li><li>After completion → review  </li></ol>
+<pre class="mermaid">
+sequenceDiagram
+  participant User
+  participant SPA
+  participant API
+  participant Mollie
+  participant DB
+
+  User->>SPA: Select slot and Book
+  SPA->>API: POST bookings
+  API->>DB: Create booking pending_payment
+  SPA->>API: POST payments create-intent
+  API->>Mollie: Create payment with webhookUrl
+  Mollie-->>SPA: checkoutUrl
+  User->>Mollie: Pay iDEAL or card
+  Mollie->>API: POST payments webhook
+  API->>DB: Payment paid and booking confirmed
+  Mollie-->>SPA: Redirect thank-you
+  opt Webhook unreachable
+    SPA->>API: POST payments sync-mollie-payment
+  end
+</pre>
+<h3>3.2 Coach happy path</h3>
+<ol><li>Register with KVK + <strong>IBAN</strong> (payout account created at signup)  </li><li>Email verify → admin approval → <code>active</code>  </li><li>Set availability / presence  </li><li>Deliver sessions / chat  </li><li>Earnings → settlement / marketplace wallet  </li><li>Payout via <strong>manual bank transfer</strong> and/or <strong>Mollie Connect</strong>  </li></ol>
+<pre class="mermaid">
+flowchart TD
+  A[Paid bookings + chat purchases] --> B[Admin generate settlements]
+  B --> C{Settlement approved}
+  C -->|Mollie Connect ready| D[Execute Connect payout]
+  C -->|Manual IBAN| E[Ops bank transfer]
+  E --> F[Mark settlement paid]
+  D --> G[Payout status processing or paid]
+  H[Coach wallet withdraw request] --> I[Admin approve marketplace payout]
+  I --> D
+</pre>
+<h3>3.3 Admin happy path</h3>
+<ol><li>Approve coaches / applications  </li><li>Monitor KPIs (overview + analytics with filters)  </li><li>Generate settlements → approve → pay / mark paid  </li><li>Marketplace payout approve/execute  </li><li>Announcements, presence, invoices, wallet ops  </li></ol>
+<hr/>
+<h2 id="4-features-delivered-in-this-workstream">4. Features delivered in this workstream</h2>
+<table>
+<tr><th>Area</th><th>What was added or changed</th></tr>
+<tr><td>Coach registration</td><td>Required bank details (holder, IBAN, optional BIC)</td></tr>
+<tr><td>Admin dashboard</td><td>KPI sections + coach/user/date filters (DB dropdowns)</td></tr>
+<tr><td>Support</td><td>Public <code>/contact</code>, user + coach support pages</td></tr>
+<tr><td>Availability</td><td>Coach windows + user popup when offline/busy</td></tr>
+<tr><td>Admin messaging</td><td>All coaches or one coach + optional email</td></tr>
+<tr><td>Architecture pack</td><td>Technical architecture MD + print HTML</td></tr>
+<tr><td>Ops hardening</td><td>Startup DB resilience; payment readiness checklist</td></tr>
+<tr><td>Docs cleanup</td><td>Dump artifacts ignored; DB source-of-truth clarified</td></tr>
+</table>
+<hr/>
+<h2 id="5-problems-solutions-and-prevention">5. Problems, solutions, and prevention</h2>
+<h3>Problem 1 — MySQL startup / lost connection during schema bootstrap</h3>
+<p><strong>Symptom:</strong> API startup failed or hung on long DDL (<code>ensure_marketplace_ledger_tables</code>); MySQL <code>2013 Lost connection</code>.</p>
+<p><strong>Root cause:</strong> Large batch DDL against remote MySQL; transient disconnects / lock waits aborted boot.</p>
+<p><strong>Solution applied:</strong></p>
+<ul><li>Per-DDL execution with retries in <code>startup_schema.py</code></li><li>Soft-fail transient DB errors in <code>main.py</code> <code>_run_startup_step</code> so the API can still start</li></ul>
+<p><strong>Future measures:</strong></p>
+<ul><li>Prefer Alembic migrations over heavy runtime DDL</li><li>Health-check DB before long schema steps</li><li>Separate migrate job from web process in production</li><li>Alert on startup soft-fails (do not silently skip forever)</li></ul>
+<hr/>
+<h3>Problem 2 — SMTP / OTP email failures (ZeptoMail)</h3>
+<p><strong>Symptom:</strong> OTP / registration email failed (<code>535 Authentication Failed</code>).</p>
+<p><strong>Root cause:</strong> Invalid or revoked SMTP API token; From must be a verified sender.</p>
+<p><strong>Solution applied:</strong></p>
+<ul><li>Diagnosed ZeptoMail auth failure</li><li>Documented correct SMTP env (<code>emailapikey</code> + API token + verified From)</li><li>Dev fallback: OTP returned/logged when SMTP host empty</li></ul>
+<p><strong>Future measures:</strong></p>
+<ul><li>Secrets rotation calendar; never commit <code>.env</code></li><li>Staging SMTP smoke test in deploy checklist</li><li>Monitor bounce / auth failures for transactional email</li></ul>
+<hr/>
+<h3>Problem 3 — Payment webhooks unreachable (<code>innerfixintix.in</code> DNS)</h3>
+<p><strong>Symptom:</strong> Mollie cannot notify API after payment. Configured webhook host does not resolve (DNS NXDOMAIN). SPA hosts do not proxy <code>/api</code>.</p>
+<p><strong>Root cause:</strong> API hostname in env is dead; Amplify / static frontend cannot receive Mollie webhooks.</p>
+<p><strong>Solution applied:</strong></p>
+<ul><li>Live checklist against running backend</li><li>Confirmed Mollie live key works, but webhook host is unreachable</li><li>Documented target topology: SPA → public API ← Mollie webhooks</li><li>Client fallback: <code>POST /payments/sync-mollie-payment</code></li></ul>
+<p><strong>Future measures:</strong></p>
+<table>
+<tr><th>Measure</th><th>Detail</th></tr>
+<tr><td>Stable API DNS</td><td>e.g. <code>api.mijnlevenspad.com</code> with TLS + nginx</td></tr>
+<tr><td>Env split</td><td><code>MOLLIE_WEBHOOK_BASE_URL</code> = API; <code>MOLLIE_REDIRECT_BASE_URL</code> = SPA</td></tr>
+<tr><td>Deploy gate</td><td>Pricing + webhook URL must resolve before go-live</td></tr>
+<tr><td>No live Mollie on localhost</td><td>without tunnel + test key</td></tr>
+</table>
+<p><strong>Status:</strong> Still an <strong>open production blocker</strong> until DNS/API host is fixed.</p>
+<hr/>
+<h3>Problem 4 — Local development using Mollie live keys</h3>
+<p><strong>Symptom:</strong> Local <code>ENVIRONMENT=development</code> with <code>live_</code> Mollie key → real charges + broken webhooks.</p>
+<p><strong>Root cause:</strong> Same <code>.env</code> used for production-like credentials on a laptop.</p>
+<p><strong>Solution applied:</strong></p>
+<ul><li>Identified live key mode in checklist</li><li>Recommended <code>test_</code> keys locally; empty webhook base or ngrok for local webhook tests</li></ul>
+<p><strong>Future measures:</strong></p>
+<ul><li>Separate <code>.env.development</code> / <code>.env.production</code></li><li>Guardrail: warn or refuse <code>live_</code> keys when host is localhost</li><li>Only production server holds live secrets (vault / CI secrets)</li></ul>
+<hr/>
+<h3>Problem 5 — Celery / Upstash Redis outbox overflow</h3>
+<p><strong>Symptom:</strong> Logs show <code>max single record size exceeded</code> for marketplace outbox / reconcile; async jobs stuck.</p>
+<p><strong>Root cause:</strong> Oversized Celery/outbox payload in Upstash Redis; worker cycle unhealthy.</p>
+<p><strong>Solution applied:</strong></p>
+<ul><li>Flagged as ops blocker in payment checklist</li><li>Recommended flush/trim Redis key or new DB + run Celery worker</li></ul>
+<p><strong>Future measures:</strong></p>
+<ul><li>Cap outbox payload size; store large blobs in DB, queue only IDs</li><li>Redis memory monitoring + alerts</li><li>Always run Celery worker in production</li><li>Periodic outbox cleanup job</li></ul>
+<hr/>
+<h3>Problem 6 — Coach payout readiness incomplete</h3>
+<p><strong>Symptom:</strong> Active coaches missing IBAN; most Mollie Connect accounts not <code>payouts_enabled</code>.</p>
+<p><strong>Root cause:</strong> Bank details historically optional / post-registration; Connect KYC incomplete.</p>
+<p><strong>Solution applied:</strong></p>
+<ul><li>Required bank fields on coach registration (UI + API)</li><li>Creates <code>mentor_payout_accounts</code> (<code>platform_manual_transfer</code>, <code>submitted</code>)</li><li>Updated become-a-coach copy</li><li>Coaches can still update bank later on payouts page</li></ul>
+<p><strong>Future measures:</strong></p>
+<ul><li>Admin alert: active coaches without IBAN</li><li>Policy: block go-live until IBAN present</li><li>Connect onboarding checklist in coach dashboard</li><li>Ops runbook: manual settlement until Connect ready</li></ul>
+<hr/>
+<h3>Problem 7 — Admin analytics hard to operate (no filters)</h3>
+<p><strong>Symptom:</strong> KPIs existed but no slice by coach, user, or custom dates across sections.</p>
+<p><strong>Solution applied:</strong></p>
+<ul><li>Backend analytics/list APIs: <code>coach_id</code>, <code>user_id</code>, <code>date_from</code>, <code>date_to</code></li><li>Shared <code>AdminEntityFilters</code> UI</li><li>Dropdowns from <code>/admin/filter-options</code></li><li>Applied on Overview, Analytics, Bookings, Payments, Reviews</li></ul>
+<p><strong>Future measures:</strong></p>
+<ul><li>Extend filters to Transactions / Settlements / Chat invoices</li><li>Persist filter state in URL query params</li><li>Export filtered CSV for finance</li></ul>
+<hr/>
+<h3>Problem 8 — Support / contact routing unclear</h3>
+<p><strong>Symptom:</strong> Navbar Contact pointed to footer; no unified support channels.</p>
+<p><strong>Solution applied:</strong></p>
+<ul><li>Public <code>/contact</code></li><li>User <code>/user/support</code>, Coach <code>/mentor/support</code></li><li>Emails to platform support addresses</li><li>Admin announcements: all coaches or one coach + optional email</li></ul>
+<p><strong>Future measures:</strong></p>
+<ul><li>Ticket IDs + status tracking in DB (not only email)</li><li>SLA dashboard for open inquiries</li></ul>
+<hr/>
+<h3>Problem 9 — Coach availability UX incomplete for users</h3>
+<p><strong>Symptom:</strong> Users needed clearer signal when coach offline/busy.</p>
+<p><strong>Solution applied:</strong></p>
+<ul><li><code>mentor_availability_windows</code> table/model</li><li>Coach UI <code>/mentor/availability</code></li><li>User popup on mentor detail when offline/busy</li><li>Live booking still requires online presence rules</li></ul>
+<p><strong>Future measures:</strong></p>
+<ul><li>Calendar sync; timezone-aware window validation tests</li><li>Public next-available badge on directory cards</li></ul>
+<hr/>
+<h3>Problem 10 — Architecture docs / diagrams not PDF-friendly</h3>
+<p><strong>Symptom:</strong> Need deep architecture pack; Mermaid graphs blank in HTML (CDN ES modules + HTML-escaped arrows).</p>
+<p><strong>Solution applied:</strong></p>
+<ul><li>Wrote technical architecture Markdown with C4-style diagrams</li><li>HTML generator + print CSS</li><li>Fixed Mermaid: classic script, local vendor JS, unescaped diagram source</li></ul>
+<p><strong>Future measures:</strong></p>
+<ul><li>Regenerate HTML in CI when MD changes</li><li>Prefer local vendor assets for offline/PDF print</li><li>Update architecture doc when payment/deploy topology changes</li></ul>
+<hr/>
+<h3>Problem 11 — DB credential / dump confusion</h3>
+<p><strong>Symptom:</strong> Risk of mixing old RDS hostnames / dumps with live <code>.env</code>.</p>
+<p><strong>Solution applied:</strong></p>
+<ul><li>Confirmed live app uses <code>backend/.env</code> only</li><li>Cleaned dump artifacts; tightened <code>.gitignore</code></li></ul>
+<p><strong>Future measures:</strong></p>
+<ul><li>Never store dumps with secrets in repo</li><li>Document single source of truth for DB in onboarding README</li></ul>
+<hr/>
+<h2 id="6-open-risks">6. Open risks</h2>
+<table>
+<tr><th>#</th><th>Risk</th><th>Impact</th><th>Owner action</th></tr>
+<tr><td>1</td><td>API DNS / webhook host broken</td><td>Payments may not auto-confirm</td><td>Fix public API domain + Mollie webhook URL</td></tr>
+<tr><td>2</td><td>Live Mollie on local/dev</td><td>Accidental real charges</td><td>Switch local to <code>test_</code> keys</td></tr>
+<tr><td>3</td><td>Redis outbox overflow</td><td>Marketplace/payouts async stuck</td><td>Flush Redis + run Celery worker</td></tr>
+<tr><td>4</td><td>Coaches without IBAN / Connect</td><td>Cannot pay coaches smoothly</td><td>Complete IBAN + KYC</td></tr>
+<tr><td>5</td><td>Zero payment traffic proven E2E</td><td>Money path unproven</td><td>One test-mode booking → paid → settlement drill</td></tr>
+</table>
+<hr/>
+<h2 id="7-definition-of-done-payments">7. Definition of done — payments</h2>
+<ol><li>Public API HTTPS resolves and serves <code>/api/v1/mentors/pricing</code>  </li><li>Mollie webhook hits that API and verifies signature  </li><li>Test-key booking → paid → booking confirmed  </li><li>Chat purchase webhook → minutes active  </li><li>Settlement generated for a coach with IBAN  </li><li>Manual mark-paid and (optional) Connect execute path tested  </li><li>Celery worker healthy for 24h without outbox errors  </li></ol>
+<hr/>
+<h2 id="8-preventive-operating-model">8. Preventive operating model</h2>
+<h3>Environments</h3>
+<table>
+<tr><th>Environment</th><th>Mollie</th><th>Webhook</th><th>Secrets</th></tr>
+<tr><td>Local</td><td><code>test_</code></td><td>empty or ngrok</td><td>no live keys</td></tr>
+<tr><td>Staging</td><td><code>test_</code></td><td>real public API DNS</td><td>staging only</td></tr>
+<tr><td>Production</td><td><code>live_</code></td><td>production API host only</td><td>vault / CI</td></tr>
+</table>
+<h3>Release checklist</h3>
+<ul><li>[ ] Webhook URL resolves  </li><li>[ ] Connect redirect URI matches Mollie dashboard exactly  </li><li>[ ] CORS includes SPA origins  </li><li>[ ] nginx WS upgrade for <code>/api/v1/ws/</code>  </li><li>[ ] Celery worker running  </li><li>[ ] Redis memory under limit  </li><li>[ ] No <code>live_</code> key in non-prod  </li></ul>
+<h3>Observability</h3>
+<ul><li>Webhook success/fail counters  </li><li>Payments stuck in <code>pending</code> longer than N minutes  </li><li>Count of active coaches missing IBAN  </li><li>Outbox queue depth / failed Celery tasks  </li></ul>
+<hr/>
+<h2 id="9-document-map">9. Document map</h2>
+<table>
+<tr><th>Document</th><th>Purpose</th></tr>
+<tr><td>This report (<code>END_TO_END_PROJECT_REPORT.md</code> / HTML)</td><td>Problems → solutions → prevention</td></tr>
+<tr><td><code>TECHNICAL_ARCHITECTURE.md</code></td><td>Deep system design + Mermaid diagrams</td></tr>
+<tr><td><code>technical-architecture.html</code></td><td>Architecture print / Save as PDF</td></tr>
+<tr><td><code>backend/README.md</code></td><td>API runbook, WS nginx notes</td></tr>
+<tr><td>Root <code>README.md</code></td><td>Local frontend + booking QA path</td></tr>
+</table>
+<hr/>
+<h2 id="10-closing">10. Closing</h2>
+<p>The product surface (auth, booking, chat, admin KPIs/filters, coach bank at registration, support channels) is largely in place. The <strong>highest remaining risk is infrastructure for money</strong>: public API DNS/webhooks, Redis/Celery health, and finishing coach payout readiness.</p>
+<p><strong>Priority order:</strong></p>
+<ol><li>Fix public API hostname and Mollie webhook/redirect env  </li><li>Use test Mollie keys on local; prove one paid booking end-to-end  </li><li>Heal Redis/Celery outbox  </li><li>Complete IBAN / Connect for active coaches  </li><li>Run settlement drill (generate → approve → pay / mark paid)</li></ol>
+<hr/>
+<h2 id="document-control">Document control</h2>
+<table>
+<tr><th>Field</th><th>Value</th></tr>
+<tr><td>Source</td><td>Application repository + delivery workstream</td></tr>
+<tr><td>PDF export</td><td>Open this HTML → Print → Save as PDF</td></tr>
+<tr><td>Companion</td><td>Keep next to <code>docs/vendor/mermaid.min.js</code> for offline diagrams</td></tr>
+</table>
+<p>*End of end-to-end project report.*</p>
+  </div>
+</body>
+</html>

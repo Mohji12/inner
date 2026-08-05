@@ -1,10 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import type { AdminPeriod } from "@/api/admin";
 import { fetchAdminAnalytics } from "@/api/admin";
+import {
+  AdminEntityFilters,
+  emptyAdminEntityFilters,
+  toAdminEntityApiFilters,
+} from "@/components/admin/AdminEntityFilters";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/i18n/LanguageContext";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   CartesianGrid,
   Legend,
@@ -24,43 +29,47 @@ export default function AdminAnalyticsPage() {
   const { t } = useLanguage();
   const d = t.app.dashboardAdmin;
   const [period, setPeriod] = useState<AdminPeriod>("month");
+  const [draft, setDraft] = useState(emptyAdminEntityFilters);
+  const [applied, setApplied] = useState(emptyAdminEntityFilters);
+  const apiFilters = useMemo(() => toAdminEntityApiFilters(applied), [applied]);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["admin", "analytics", period],
-    queryFn: () => fetchAdminAnalytics(period),
+  const { data, isLoading, isFetching, isError, error } = useQuery({
+    queryKey: ["admin", "analytics", period, apiFilters],
+    queryFn: () => fetchAdminAnalytics(period, apiFilters),
   });
 
-  if (isLoading || !data) {
-    return <p className="text-muted-foreground">{d.tableLoading}</p>;
-  }
-
-  const pick = (rows: { date: string; count: number }[], date: string) => rows.find((r) => r.date === date)?.count ?? 0;
+  const pick = (rows: { date: string; count: number }[], date: string) =>
+    rows.find((r) => r.date === date)?.count ?? 0;
   const pickAmt = (rows: { date: string; amount: string }[], date: string) =>
     Number(rows.find((r) => r.date === date)?.amount ?? 0);
 
-  const dates = new Set<string>();
-  for (const x of [
-    ...data.bookings_by_day,
-    ...data.users_by_day,
-    ...data.mentors_by_day,
-    ...data.reviews_by_day,
-    ...data.payments_by_day,
-  ]) {
-    dates.add(x.date);
-  }
-  const merged = [...dates]
-    .sort()
-    .map((date) => ({
-      date,
-      bookings: pick(data.bookings_by_day, date),
-      users: pick(data.users_by_day, date),
-      mentors: pick(data.mentors_by_day, date),
-      reviews: pick(data.reviews_by_day, date),
-      revenue: pickAmt(data.payments_by_day, date),
-    }));
+  const merged = useMemo(() => {
+    if (!data) return [];
+    const dates = new Set<string>();
+    for (const x of [
+      ...data.bookings_by_day,
+      ...data.users_by_day,
+      ...data.mentors_by_day,
+      ...data.reviews_by_day,
+      ...data.payments_by_day,
+    ]) {
+      dates.add(x.date);
+    }
+    return [...dates]
+      .sort()
+      .map((date) => ({
+        date,
+        bookings: pick(data.bookings_by_day, date),
+        users: pick(data.users_by_day, date),
+        mentors: pick(data.mentors_by_day, date),
+        reviews: pick(data.reviews_by_day, date),
+        revenue: pickAmt(data.payments_by_day, date),
+      }));
+  }, [data]);
 
   const periodLabel =
     period === "day" ? d.day : period === "week" ? d.week : period === "month" ? d.month : d.year;
+  const hasCustomDates = Boolean(applied.dateFrom || applied.dateTo);
 
   return (
     <div className="space-y-6">
@@ -69,94 +78,124 @@ export default function AdminAnalyticsPage() {
           <p className="text-sm uppercase tracking-widest text-accent">{d.analytics}</p>
           <h1 className="font-serif text-3xl">{d.trends}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {periodLabel} · {new Date(data.range_start).toLocaleString()} → {new Date(data.range_end).toLocaleString()}
+            {data
+              ? `${hasCustomDates ? d.filteredRange : periodLabel} · ${new Date(data.range_start).toLocaleString()} → ${new Date(data.range_end).toLocaleString()}`
+              : hasCustomDates
+                ? d.filteredRange
+                : periodLabel}
+            {isFetching ? ` · ${d.tableLoading}` : ""}
           </p>
         </div>
-        <Tabs value={period} onValueChange={(v) => setPeriod(v as AdminPeriod)}>
-          <TabsList>
-            <TabsTrigger value="day">{d.day}</TabsTrigger>
-            <TabsTrigger value="week">{d.week}</TabsTrigger>
-            <TabsTrigger value="month">{d.month}</TabsTrigger>
-            <TabsTrigger value="year">{d.year}</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        {!hasCustomDates ? (
+          <Tabs value={period} onValueChange={(v) => setPeriod(v as AdminPeriod)}>
+            <TabsList>
+              <TabsTrigger value="day">{d.day}</TabsTrigger>
+              <TabsTrigger value="week">{d.week}</TabsTrigger>
+              <TabsTrigger value="month">{d.month}</TabsTrigger>
+              <TabsTrigger value="year">{d.year}</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        ) : null}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <Card className="border-border/60">
-          <CardHeader className="pb-2">
-            <CardDescription>{d.summaryBookings}</CardDescription>
-            <CardTitle className="font-serif text-2xl">{data.summary.bookings}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className="border-border/60">
-          <CardHeader className="pb-2">
-            <CardDescription>{d.summaryUsers}</CardDescription>
-            <CardTitle className="font-serif text-2xl">{data.summary.new_users}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className="border-border/60">
-          <CardHeader className="pb-2">
-            <CardDescription>{d.summaryMentors}</CardDescription>
-            <CardTitle className="font-serif text-2xl">{data.summary.new_mentors}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className="border-border/60">
-          <CardHeader className="pb-2">
-            <CardDescription>{d.summaryReviews}</CardDescription>
-            <CardTitle className="font-serif text-2xl">{data.summary.reviews}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className="border-border/60">
-          <CardHeader className="pb-2">
-            <CardDescription>{d.summaryRevenue}</CardDescription>
-            <CardTitle className="font-serif text-2xl">{data.summary.revenue}</CardTitle>
-          </CardHeader>
-        </Card>
-      </div>
+      <AdminEntityFilters
+        value={draft}
+        onChange={setDraft}
+        onApply={() => setApplied({ ...draft })}
+        onClear={() => {
+          const empty = emptyAdminEntityFilters();
+          setDraft(empty);
+          setApplied(empty);
+        }}
+      />
 
-      {merged.length === 0 ? (
-        <p className="text-muted-foreground">{d.noData}</p>
-      ) : (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <Card className="border-border/60 glass-card lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="font-serif text-lg">{d.activityByDay}</CardTitle>
-            </CardHeader>
-            <CardContent className="h-[320px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={merged}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="bookings" name={d.bookingsSeries} stroke={strokePrimary} strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="users" name={d.usersSeries} stroke={strokeAccent} strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="reviews" name={d.reviews} stroke={strokeMuted} strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-          <Card className="border-border/60 glass-card lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="font-serif text-lg">{d.revenueByDay}</CardTitle>
-            </CardHeader>
-            <CardContent className="h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={merged}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="revenue" name={d.revenueSeries} stroke={strokePrimary} strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {isError ? (
+        <p className="text-sm text-destructive">
+          {(error as Error)?.message || d.tableLoading}
+        </p>
+      ) : null}
+
+      {isLoading && !data ? <p className="text-muted-foreground">{d.tableLoading}</p> : null}
+
+      {data ? (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <Card className="border-border/60">
+              <CardHeader className="pb-2">
+                <CardDescription>{d.summaryBookings}</CardDescription>
+                <CardTitle className="font-serif text-2xl">{data.summary.bookings}</CardTitle>
+              </CardHeader>
+            </Card>
+            <Card className="border-border/60">
+              <CardHeader className="pb-2">
+                <CardDescription>{d.summaryUsers}</CardDescription>
+                <CardTitle className="font-serif text-2xl">{data.summary.new_users}</CardTitle>
+              </CardHeader>
+            </Card>
+            <Card className="border-border/60">
+              <CardHeader className="pb-2">
+                <CardDescription>{d.summaryMentors}</CardDescription>
+                <CardTitle className="font-serif text-2xl">{data.summary.new_mentors}</CardTitle>
+              </CardHeader>
+            </Card>
+            <Card className="border-border/60">
+              <CardHeader className="pb-2">
+                <CardDescription>{d.summaryReviews}</CardDescription>
+                <CardTitle className="font-serif text-2xl">{data.summary.reviews}</CardTitle>
+              </CardHeader>
+            </Card>
+            <Card className="border-border/60">
+              <CardHeader className="pb-2">
+                <CardDescription>{d.summaryRevenue}</CardDescription>
+                <CardTitle className="font-serif text-2xl">{data.summary.revenue}</CardTitle>
+              </CardHeader>
+            </Card>
+          </div>
+
+          {merged.length === 0 ? (
+            <p className="text-muted-foreground">{d.noData}</p>
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-2">
+              <Card className="border-border/60 glass-card lg:col-span-2">
+                <CardHeader>
+                  <CardTitle className="font-serif text-lg">{d.activityByDay}</CardTitle>
+                </CardHeader>
+                <CardContent className="h-[320px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={merged}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
+                      <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <Tooltip />
+                      <Legend />
+                      <Line type="monotone" dataKey="bookings" name={d.bookingsSeries} stroke={strokePrimary} strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="users" name={d.usersSeries} stroke={strokeAccent} strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="reviews" name={d.reviews} stroke={strokeMuted} strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+              <Card className="border-border/60 glass-card lg:col-span-2">
+                <CardHeader>
+                  <CardTitle className="font-serif text-lg">{d.revenueByDay}</CardTitle>
+                </CardHeader>
+                <CardContent className="h-[280px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={merged}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
+                      <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <Tooltip />
+                      <Legend />
+                      <Line type="monotone" dataKey="revenue" name={d.revenueSeries} stroke={strokePrimary} strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </>
+      ) : null}
     </div>
   );
 }

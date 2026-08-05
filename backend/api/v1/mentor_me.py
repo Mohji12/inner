@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response, status
@@ -14,6 +14,7 @@ from core.security import new_uuid
 from models.availability_slot import AvailabilitySlot
 from models.booking import Booking
 from models.mentor import Mentor
+from models.mentor_availability_window import MentorAvailabilityWindow
 from models.mentor_monthly_invoice import MentorMonthlyInvoice
 from models.mentor_payout_account import MentorPayoutAccount
 from models.mentor_onboarding_payment import MentorOnboardingPayment
@@ -29,7 +30,11 @@ from schemas.mentor import (
     MentorUpdate,
 )
 from schemas.platform_invoice import MentorMonthlyFeeStatementOut, MentorOnboardingInvoiceOut
+from schemas.availability_window import AvailabilityWindowCreate, AvailabilityWindowOut
+from schemas.contact import AuthenticatedSupportCreate, SupportContactMessage
 from schemas.slot import SlotCreate, SlotOut, SlotUpdate
+from core.limiter import limiter
+from services.support_inquiry_service import send_support_inquiry
 from services.fx_checkout import FxCheckoutError, FxUpstreamError
 from services.invoice_service import InvoiceError
 from services.mentor_monthly_fee_service import ensure_monthly_invoice_mollie_checkout
@@ -44,7 +49,7 @@ from services.i18n_service import resolve_i18n_text, to_i18n_map
 from services.booking_slot_service import SLOT_BLOCKING_STATUSES
 from core.coach_agreement import COACH_AGREEMENT_TEXT, COACH_AGREEMENT_VERSION
 from services.presence_service import presence_service
-from services.mentor_presence_tracking_service import accrue_mentor_presence
+from services.mentor_presence_tracking_service import accrue_mentor_presence, mentor_presence_self_stats
 from services.ledger_service import (
     ACCOUNT_COACH_PENDING,
     ACCOUNT_COACH_WITHDRAWABLE,
@@ -167,6 +172,28 @@ def mentor_profile(me: CurrentMentor, lang: RequestLang) -> MentorAccountOut:
     return MentorAccountOut.model_validate(out)
 
 
+@router.post("/support", response_model=SupportContactMessage, status_code=status.HTTP_200_OK)
+@limiter.limit("10/hour")
+def submit_mentor_support(
+    request: Request,
+    me: CurrentMentor,
+    payload: AuthenticatedSupportCreate,
+) -> SupportContactMessage:
+    send_support_inquiry(
+        source="coach_dashboard",
+        full_name=me.full_name,
+        email=me.email,
+        subject=payload.subject,
+        message=payload.message,
+        phone=payload.phone or me.phone_number,
+        role="coach",
+        account_id=me.id,
+    )
+    return SupportContactMessage(
+        message="Thank you! Your message was sent. Our team will get back to you by email."
+    )
+
+
 @router.post("/presence", status_code=status.HTTP_204_NO_CONTENT)
 def mentor_presence_heartbeat(db: DbSession, me: CurrentMentor) -> Response:
     """Mark mentor online when dashboard/app is open and accrue weekly platform time."""
@@ -194,6 +221,29 @@ class MentorPresenceStatusOut(BaseModel):
     status: str
 
 
+class MentorPresenceWeekStatOut(BaseModel):
+    week_start: date
+    seconds_online: int
+    hours_online: float
+    meets_minimum: bool
+    warning_sent_at: datetime | None = None
+
+
+class MentorPresenceMonthStatOut(BaseModel):
+    month_start: date
+    seconds_online: int
+    hours_online: float
+
+
+class MentorPresenceSelfStatsOut(BaseModel):
+    min_hours: float
+    timezone: str
+    this_week: MentorPresenceWeekStatOut
+    this_month: MentorPresenceMonthStatOut
+    weeks: list[MentorPresenceWeekStatOut]
+    months: list[MentorPresenceMonthStatOut]
+
+
 @router.get("/presence-status", response_model=MentorPresenceStatusOut)
 def mentor_presence_status(db: DbSession, me: CurrentMentor) -> MentorPresenceStatusOut:
     from services.chat_service import mentor_chat_busy
@@ -207,6 +257,18 @@ def mentor_presence_status(db: DbSession, me: CurrentMentor) -> MentorPresenceSt
     else:
         status_label = "offline"
     return MentorPresenceStatusOut(is_online=online, chat_busy=busy, status=status_label)
+
+
+@router.get("/presence-time", response_model=MentorPresenceSelfStatsOut)
+def mentor_presence_time(
+    db: DbSession,
+    me: CurrentMentor,
+    weeks: int = Query(12, ge=1, le=52),
+    months: int = Query(6, ge=1, le=24),
+) -> MentorPresenceSelfStatsOut:
+    """Coach view: weekly and monthly time spent with the dashboard open."""
+    payload = mentor_presence_self_stats(db, mentor_id=me.id, weeks=weeks, months=months)
+    return MentorPresenceSelfStatsOut(**payload)
 
 
 @router.patch("", response_model=MentorAccountOut)
@@ -722,6 +784,74 @@ def delete_slot(slot_id: str, db: DbSession, me: CurrentMentor) -> None:
     if slot.is_booked:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Cannot delete a booked slot")
     db.delete(slot)
+    db.commit()
+
+
+@router.get("/availability-windows", response_model=list[AvailabilityWindowOut])
+def list_my_availability_windows(db: DbSession, me: CurrentMentor) -> list[MentorAvailabilityWindow]:
+    now = datetime.now(timezone.utc)
+    return (
+        db.query(MentorAvailabilityWindow)
+        .filter(
+            MentorAvailabilityWindow.mentor_id == me.id,
+            MentorAvailabilityWindow.end_at_utc > now,
+        )
+        .order_by(MentorAvailabilityWindow.start_at_utc.asc())
+        .all()
+    )
+
+
+@router.post(
+    "/availability-windows",
+    response_model=AvailabilityWindowOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_availability_window(
+    db: DbSession,
+    me: CurrentMentor,
+    payload: AvailabilityWindowCreate,
+) -> MentorAvailabilityWindow:
+    now = datetime.now(timezone.utc)
+    tz_name = payload.timezone or me.timezone or "UTC"
+    try:
+        tz_name = validate_timezone_name(tz_name)
+    except TimezoneConversionError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
+
+    start_at_utc = date_time_to_utc(payload.window_date, payload.start_time, tz_name)
+    end_at_utc = date_time_to_utc(payload.window_date, payload.end_time, tz_name)
+    if end_at_utc <= start_at_utc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "End time must be after start time")
+    if end_at_utc <= now:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Availability window must be in the future")
+
+    row = MentorAvailabilityWindow(
+        id=new_uuid(),
+        mentor_id=me.id,
+        start_at_utc=start_at_utc,
+        end_at_utc=end_at_utc,
+        timezone=tz_name,
+        created_at=now,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+@router.delete("/availability-windows/{window_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_availability_window(window_id: str, db: DbSession, me: CurrentMentor) -> None:
+    row = (
+        db.query(MentorAvailabilityWindow)
+        .filter(
+            MentorAvailabilityWindow.id == window_id,
+            MentorAvailabilityWindow.mentor_id == me.id,
+        )
+        .first()
+    )
+    if not row:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Availability window not found")
+    db.delete(row)
     db.commit()
 
 

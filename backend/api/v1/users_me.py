@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, HTTPException, Query, Response, status
+from fastapi import APIRouter, HTTPException, Query, Request, Response, status
 from sqlalchemy import func
 from pydantic import BaseModel
 from typing import Any
@@ -12,9 +12,12 @@ from models.payment import Payment
 from models.chat_purchase import ChatPurchase
 from models.chat_session import ChatSession
 from schemas.user import DateAmountPoint, UserOut, UserSpendingSeriesOut, UserUpdate
+from schemas.contact import AuthenticatedSupportCreate, SupportContactMessage
 from core.booking_states import STATUS_CONFIRMED, STATUS_COMPLETED, PAYMENT_RECORD_SUCCEEDED
+from core.limiter import limiter
 from services.timezone_service import TimezoneConversionError, validate_timezone_name
 from services.presence_service import presence_service
+from services.support_inquiry_service import send_support_inquiry
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -57,6 +60,29 @@ def update_me(db: DbSession, user: CurrentUser, payload: UserUpdate) -> User:
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.post("/me/support", response_model=SupportContactMessage, status_code=status.HTTP_200_OK)
+@limiter.limit("10/hour")
+def submit_user_support(
+    request: Request,
+    user: CurrentUser,
+    payload: AuthenticatedSupportCreate,
+) -> SupportContactMessage:
+    send_support_inquiry(
+        source="user_dashboard",
+        full_name=user.full_name,
+        email=user.email,
+        subject=payload.subject,
+        message=payload.message,
+        phone=payload.phone or user.phone_number,
+        role="user",
+        account_id=user.id,
+    )
+    return SupportContactMessage(
+        message="Thank you! Your message was sent. Our team will get back to you by email."
+    )
+
 
 class UserDashboardStats(BaseModel):
     upcoming_session: Any | None

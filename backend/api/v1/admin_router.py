@@ -27,6 +27,7 @@ from models.wallet import Wallet, WalletTransaction
 from models.refresh_token import RefreshToken
 from models.email_otp import EmailOtpCode
 from schemas.chat import ChatInvoiceConversationLineOut, ChatInvoiceDetailOut, ChatInvoiceLineOut, ChatInvoiceSummaryOut
+from services.mentor_card_visibility import normalize_card_visibility
 from services.onboarding_payment_service import activate_coach_after_email_verification
 from services.mentor_presence_tracking_service import (
     hours_from_seconds,
@@ -57,6 +58,7 @@ from schemas.admin import (
     AdminAnnouncementCreate,
     AdminAnnouncementList,
     AdminAnnouncementRow,
+    AdminMentorCardVisibilityUpdate,
     AdminPlatformPricingOut,
     AdminPlatformPricingUpdateRequest,
     AdminMentorRow,
@@ -78,6 +80,8 @@ from schemas.admin import (
     AdminReviewRow,
     AdminUserList,
     AdminUserRow,
+    AdminFilterOptionsResponse,
+    AdminFilterPersonOption,
     AnalyticsResponse,
     AnalyticsSummary,
     DateAmountPoint,
@@ -134,6 +138,48 @@ def _period_bounds(period: Period) -> tuple[datetime, datetime]:
         start = end - timedelta(days=30)
     else:
         start = end - timedelta(days=365)
+    return start, end
+
+
+def _parse_query_datetime(value: str | None, *, end_of_day: bool = False) -> datetime | None:
+    """Accept YYYY-MM-DD or ISO datetime; treat bare dates as UTC day bounds."""
+    if value is None or not str(value).strip():
+        return None
+    raw = str(value).strip()
+    try:
+        if len(raw) == 10 and raw[4] == "-" and raw[7] == "-":
+            d = date.fromisoformat(raw)
+            if end_of_day:
+                return datetime(d.year, d.month, d.day, 23, 59, 59, tzinfo=timezone.utc)
+            return datetime(d.year, d.month, d.day, 0, 0, 0, tzinfo=timezone.utc)
+        dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Invalid datetime: {raw}") from exc
+
+
+def _name_term(value: str | None) -> str | None:
+    if value is None or not value.strip():
+        return None
+    return f"%{value.strip()}%"
+
+
+def _resolve_analytics_range(
+    period: Period,
+    date_from: str | None,
+    date_to: str | None,
+) -> tuple[datetime, datetime]:
+    start, end = _period_bounds(period)
+    custom_from = _parse_query_datetime(date_from, end_of_day=False)
+    custom_to = _parse_query_datetime(date_to, end_of_day=True)
+    if custom_from is not None:
+        start = custom_from
+    if custom_to is not None:
+        end = custom_to
+    if start > end:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "date_from must be before or equal to date_to")
     return start, end
 
 
@@ -232,7 +278,7 @@ def _admin_mentor_row(m: Mentor, lang: str = "en") -> AdminMentorRow:
         deactivated_at=m.deactivated_at,
         is_totp_enabled=bool(getattr(m, "is_totp_enabled", False)),
         has_google_id=bool(getattr(m, "google_id", None)),
-        public_card_visibility=getattr(m, "public_card_visibility", None),
+        public_card_visibility=normalize_card_visibility(getattr(m, "public_card_visibility", None)),
         status=m.status,
         is_approved=m.is_approved,
         email_verified=m.email_verified,
@@ -271,6 +317,42 @@ def admin_list_users(
     return AdminUserList(items=items, total=total, skip=skip, limit=limit)
 
 
+@router.get("/filter-options", response_model=AdminFilterOptionsResponse)
+def admin_filter_options(
+    db: DbSession,
+    _admin: CurrentAdmin,
+) -> AdminFilterOptionsResponse:
+    """Names for admin dashboard filter dropdowns."""
+    coaches = (
+        db.query(Mentor.id, Mentor.full_name, Mentor.email)
+        .order_by(Mentor.full_name.asc())
+        .all()
+    )
+    users = (
+        db.query(User.id, User.full_name, User.email)
+        .order_by(User.full_name.asc())
+        .all()
+    )
+    return AdminFilterOptionsResponse(
+        coaches=[
+            AdminFilterPersonOption(
+                id=r.id,
+                full_name=(r.full_name or "").strip() or r.id,
+                email=(r.email or "").strip(),
+            )
+            for r in coaches
+        ],
+        users=[
+            AdminFilterPersonOption(
+                id=r.id,
+                full_name=(r.full_name or "").strip() or r.id,
+                email=(r.email or "").strip(),
+            )
+            for r in users
+        ],
+    )
+
+
 @router.delete("/users/{user_id}")
 def admin_delete_user(
     user_id: str,
@@ -278,9 +360,13 @@ def admin_delete_user(
     _admin: CurrentAdmin,
 ):
     """Permanently delete a user and related data (bookings, payments, chats, wallet, etc.)."""
+    from models.marketplace import LedgerEntry, WalletAccount
+    from sqlalchemy.exc import IntegrityError
+
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+
     db.query(RefreshToken).filter(
         RefreshToken.subject_id == user_id,
         RefreshToken.role == "user",
@@ -289,8 +375,40 @@ def admin_delete_user(
         EmailOtpCode.subject_id == user_id,
         EmailOtpCode.role == "user",
     ).delete(synchronize_session=False)
-    db.delete(user)
-    db.commit()
+
+    # Marketplace ledger accounts are RESTRICT — remove before user/wallet cascades.
+    account_ids = [
+        row[0]
+        for row in db.query(WalletAccount.id)
+        .filter(WalletAccount.owner_type == "user", WalletAccount.owner_id == user_id)
+        .all()
+    ]
+    if account_ids:
+        db.query(LedgerEntry).filter(LedgerEntry.wallet_account_id.in_(account_ids)).delete(
+            synchronize_session=False
+        )
+        db.query(WalletAccount).filter(WalletAccount.id.in_(account_ids)).delete(
+            synchronize_session=False
+        )
+
+    # Delete wallet rows explicitly so ORM does not try to NULL user_id.
+    wallet_ids = [row[0] for row in db.query(Wallet.id).filter(Wallet.user_id == user_id).all()]
+    if wallet_ids:
+        db.query(WalletTransaction).filter(WalletTransaction.wallet_id.in_(wallet_ids)).delete(
+            synchronize_session=False
+        )
+        db.query(Wallet).filter(Wallet.id.in_(wallet_ids)).delete(synchronize_session=False)
+
+    try:
+        # SQL DELETE lets MySQL CASCADE handle bookings/payments/chats/etc.
+        db.query(User).filter(User.id == user_id).delete(synchronize_session=False)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Cannot delete user because related records still reference them: {e.orig}",
+        ) from e
     return {"ok": True, "deleted_id": user_id}
 
 
@@ -353,6 +471,30 @@ def admin_update_mentor_approval(
     db.commit()
     db.refresh(mentor)
     return _admin_mentor_row(mentor)
+
+
+@router.patch("/mentors/{mentor_id}/card-visibility", response_model=AdminMentorRow)
+def admin_update_mentor_card_visibility(
+    mentor_id: str,
+    payload: AdminMentorCardVisibilityUpdate,
+    db: DbSession,
+    _admin: CurrentAdmin,
+    lang: RequestLang,
+) -> AdminMentorRow:
+    """Admin override for what appears on the coach's public browse/detail card."""
+    mentor = db.query(Mentor).filter(Mentor.id == mentor_id).first()
+    if not mentor:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Coach not found")
+    updates = payload.model_dump(exclude_none=True)
+    if not updates:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "No visibility fields provided")
+    vis = normalize_card_visibility(getattr(mentor, "public_card_visibility", None))
+    vis.update(updates)
+    mentor.public_card_visibility = vis
+    mentor.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(mentor)
+    return _admin_mentor_row(mentor, lang)
 
 
 @router.delete("/mentors/{mentor_id}")
@@ -689,8 +831,35 @@ def admin_list_bookings(
     _admin: CurrentAdmin,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    coach_id: str | None = Query(None, description="Filter by coach id"),
+    user_id: str | None = Query(None, description="Filter by user id"),
+    coach_name: str | None = Query(None, description="Filter by coach full name (contains)"),
+    user_name: str | None = Query(None, description="Filter by user full name (contains)"),
+    date_from: str | None = Query(None, description="Created-at start (YYYY-MM-DD or ISO datetime)"),
+    date_to: str | None = Query(None, description="Created-at end (YYYY-MM-DD or ISO datetime)"),
 ) -> AdminBookingList:
+    cid = coach_id.strip() if coach_id and coach_id.strip() else None
+    uid = user_id.strip() if user_id and user_id.strip() else None
+    coach_term = None if cid else _name_term(coach_name)
+    user_term = None if uid else _name_term(user_name)
+    start = _parse_query_datetime(date_from, end_of_day=False)
+    end = _parse_query_datetime(date_to, end_of_day=True)
+    if start is not None and end is not None and start > end:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "date_from must be before or equal to date_to")
+
     query = db.query(Booking).options(joinedload(Booking.user), joinedload(Booking.mentor))
+    if start is not None:
+        query = query.filter(Booking.created_at >= start)
+    if end is not None:
+        query = query.filter(Booking.created_at <= end)
+    if cid:
+        query = query.filter(Booking.mentor_id == cid)
+    elif coach_term:
+        query = query.join(Mentor, Booking.mentor_id == Mentor.id).filter(Mentor.full_name.like(coach_term))
+    if uid:
+        query = query.filter(Booking.user_id == uid)
+    elif user_term:
+        query = query.join(User, Booking.user_id == User.id).filter(User.full_name.like(user_term))
     total = query.count()
     rows = query.order_by(Booking.created_at.desc()).offset(skip).limit(limit).all()
     items: list[AdminBookingRow] = []
@@ -724,8 +893,39 @@ def admin_list_payments(
     _admin: CurrentAdmin,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    coach_id: str | None = Query(None, description="Filter by coach id via booking"),
+    user_id: str | None = Query(None, description="Filter by user id"),
+    coach_name: str | None = Query(None, description="Filter by coach full name via booking"),
+    user_name: str | None = Query(None, description="Filter by user full name (contains)"),
+    date_from: str | None = Query(None, description="Created-at start (YYYY-MM-DD or ISO datetime)"),
+    date_to: str | None = Query(None, description="Created-at end (YYYY-MM-DD or ISO datetime)"),
 ) -> AdminPaymentList:
+    cid = coach_id.strip() if coach_id and coach_id.strip() else None
+    uid = user_id.strip() if user_id and user_id.strip() else None
+    coach_term = None if cid else _name_term(coach_name)
+    user_term = None if uid else _name_term(user_name)
+    start = _parse_query_datetime(date_from, end_of_day=False)
+    end = _parse_query_datetime(date_to, end_of_day=True)
+    if start is not None and end is not None and start > end:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "date_from must be before or equal to date_to")
+
     query = db.query(Payment)
+    if start is not None:
+        query = query.filter(Payment.created_at >= start)
+    if end is not None:
+        query = query.filter(Payment.created_at <= end)
+    if uid:
+        query = query.filter(Payment.user_id == uid)
+    elif user_term:
+        query = query.join(User, Payment.user_id == User.id).filter(User.full_name.like(user_term))
+    if cid:
+        query = query.join(Booking, Payment.booking_id == Booking.id).filter(Booking.mentor_id == cid)
+    elif coach_term:
+        query = (
+            query.join(Booking, Payment.booking_id == Booking.id)
+            .join(Mentor, Booking.mentor_id == Mentor.id)
+            .filter(Mentor.full_name.like(coach_term))
+        )
     total = query.count()
     rows = query.order_by(Payment.created_at.desc()).offset(skip).limit(limit).all()
     items = [AdminPaymentRow.model_validate(p) for p in rows]
@@ -862,8 +1062,35 @@ def admin_list_reviews(
     lang: RequestLang,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    coach_id: str | None = Query(None, description="Filter by coach id"),
+    user_id: str | None = Query(None, description="Filter by user id"),
+    coach_name: str | None = Query(None, description="Filter by coach full name (contains)"),
+    user_name: str | None = Query(None, description="Filter by user full name (contains)"),
+    date_from: str | None = Query(None, description="Created-at start (YYYY-MM-DD or ISO datetime)"),
+    date_to: str | None = Query(None, description="Created-at end (YYYY-MM-DD or ISO datetime)"),
 ) -> AdminReviewList:
+    cid = coach_id.strip() if coach_id and coach_id.strip() else None
+    uid = user_id.strip() if user_id and user_id.strip() else None
+    coach_term = None if cid else _name_term(coach_name)
+    user_term = None if uid else _name_term(user_name)
+    start = _parse_query_datetime(date_from, end_of_day=False)
+    end = _parse_query_datetime(date_to, end_of_day=True)
+    if start is not None and end is not None and start > end:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "date_from must be before or equal to date_to")
+
     query = db.query(Review).options(joinedload(Review.user), joinedload(Review.mentor))
+    if start is not None:
+        query = query.filter(Review.created_at >= start)
+    if end is not None:
+        query = query.filter(Review.created_at <= end)
+    if cid:
+        query = query.filter(Review.mentor_id == cid)
+    elif coach_term:
+        query = query.join(Mentor, Review.mentor_id == Mentor.id).filter(Mentor.full_name.like(coach_term))
+    if uid:
+        query = query.filter(Review.user_id == uid)
+    elif user_term:
+        query = query.join(User, Review.user_id == User.id).filter(User.full_name.like(user_term))
     total = query.count()
     rows = query.order_by(Review.created_at.desc()).offset(skip).limit(limit).all()
     items: list[AdminReviewRow] = []
@@ -1394,12 +1621,34 @@ def admin_download_chat_invoice_pdf(
     )
 
 
-def _revenue_sum(db: DbSession, start: datetime, end: datetime) -> Decimal:
+def _revenue_sum(
+    db: DbSession,
+    start: datetime,
+    end: datetime,
+    *,
+    coach_id: str | None = None,
+    user_id: str | None = None,
+    coach_term: str | None = None,
+    user_term: str | None = None,
+) -> Decimal:
     q = (
         db.query(func.coalesce(func.sum(Payment.amount), 0))
+        .select_from(Payment)
         .filter(_in_range(Payment, start, end))
         .filter(Payment.status.in_(["completed", "paid", "succeeded"]))
     )
+    if user_id:
+        q = q.filter(Payment.user_id == user_id)
+    elif user_term:
+        q = q.join(User, Payment.user_id == User.id).filter(User.full_name.like(user_term))
+    if coach_id:
+        q = q.join(Booking, Payment.booking_id == Booking.id).filter(Booking.mentor_id == coach_id)
+    elif coach_term:
+        q = (
+            q.join(Booking, Payment.booking_id == Booking.id)
+            .join(Mentor, Booking.mentor_id == Mentor.id)
+            .filter(Mentor.full_name.like(coach_term))
+        )
     v = q.scalar()
     if v is None:
         return Decimal("0")
@@ -1412,16 +1661,227 @@ def _count_in_range(db: DbSession, model, start: datetime, end: datetime) -> int
     )
 
 
-def _series_counts(db: DbSession, model, start: datetime, end: datetime) -> list[DateCountPoint]:
+def _count_bookings(
+    db: DbSession,
+    start: datetime,
+    end: datetime,
+    *,
+    coach_id: str | None = None,
+    user_id: str | None = None,
+    coach_term: str | None = None,
+    user_term: str | None = None,
+) -> int:
+    q = db.query(func.count(Booking.id)).select_from(Booking).filter(_in_range(Booking, start, end))
+    if coach_id:
+        q = q.filter(Booking.mentor_id == coach_id)
+    elif coach_term:
+        q = q.join(Mentor, Booking.mentor_id == Mentor.id).filter(Mentor.full_name.like(coach_term))
+    if user_id:
+        q = q.filter(Booking.user_id == user_id)
+    elif user_term:
+        q = q.join(User, Booking.user_id == User.id).filter(User.full_name.like(user_term))
+    return int(q.scalar() or 0)
+
+
+def _count_reviews(
+    db: DbSession,
+    start: datetime,
+    end: datetime,
+    *,
+    coach_id: str | None = None,
+    user_id: str | None = None,
+    coach_term: str | None = None,
+    user_term: str | None = None,
+) -> int:
+    q = db.query(func.count(Review.id)).select_from(Review).filter(_in_range(Review, start, end))
+    if coach_id:
+        q = q.filter(Review.mentor_id == coach_id)
+    elif coach_term:
+        q = q.join(Mentor, Review.mentor_id == Mentor.id).filter(Mentor.full_name.like(coach_term))
+    if user_id:
+        q = q.filter(Review.user_id == user_id)
+    elif user_term:
+        q = q.join(User, Review.user_id == User.id).filter(User.full_name.like(user_term))
+    return int(q.scalar() or 0)
+
+
+def _count_users(
+    db: DbSession,
+    start: datetime | None = None,
+    end: datetime | None = None,
+    *,
+    user_id: str | None = None,
+    user_term: str | None = None,
+    coach_id: str | None = None,
+    coach_term: str | None = None,
+) -> int:
+    if coach_id or coach_term:
+        q = db.query(func.count(func.distinct(Booking.user_id))).select_from(Booking)
+        if coach_id:
+            q = q.filter(Booking.mentor_id == coach_id)
+        else:
+            q = q.join(Mentor, Booking.mentor_id == Mentor.id).filter(Mentor.full_name.like(coach_term))
+        if start is not None and end is not None:
+            q = q.filter(_in_range(Booking, start, end))
+        if user_id:
+            q = q.filter(Booking.user_id == user_id)
+        elif user_term:
+            q = q.join(User, Booking.user_id == User.id).filter(User.full_name.like(user_term))
+        return int(q.scalar() or 0)
+
+    q = db.query(func.count(User.id)).select_from(User)
+    if start is not None and end is not None:
+        q = q.filter(_in_range(User, start, end))
+    if user_id:
+        q = q.filter(User.id == user_id)
+    elif user_term:
+        q = q.filter(User.full_name.like(user_term))
+    return int(q.scalar() or 0)
+
+
+def _count_mentors(
+    db: DbSession,
+    start: datetime | None = None,
+    end: datetime | None = None,
+    *,
+    coach_id: str | None = None,
+    coach_term: str | None = None,
+    status: str | None = None,
+    approved: bool | None = None,
+    exclude_rejected: bool = False,
+) -> int:
+    q = db.query(func.count(Mentor.id)).select_from(Mentor)
+    if start is not None and end is not None:
+        q = q.filter(_in_range(Mentor, start, end))
+    if coach_id:
+        q = q.filter(Mentor.id == coach_id)
+    elif coach_term:
+        q = q.filter(Mentor.full_name.like(coach_term))
+    if status is not None:
+        q = q.filter(Mentor.status == status)
+    if approved is True:
+        q = q.filter(Mentor.is_approved.is_(True))
+    elif approved is False:
+        q = q.filter(Mentor.is_approved.is_(False))
+    if exclude_rejected:
+        q = q.filter(Mentor.status != "rejected")
+    return int(q.scalar() or 0)
+
+
+def _count_payments(
+    db: DbSession,
+    *,
+    start: datetime | None = None,
+    end: datetime | None = None,
+    payment_status: str | None = None,
+    coach_id: str | None = None,
+    user_id: str | None = None,
+    coach_term: str | None = None,
+    user_term: str | None = None,
+) -> int:
+    q = db.query(func.count(Payment.id)).select_from(Payment)
+    if start is not None and end is not None:
+        q = q.filter(_in_range(Payment, start, end))
+    if payment_status is not None:
+        q = q.filter(Payment.status == payment_status)
+    if user_id:
+        q = q.filter(Payment.user_id == user_id)
+    elif user_term:
+        q = q.join(User, Payment.user_id == User.id).filter(User.full_name.like(user_term))
+    if coach_id:
+        q = q.join(Booking, Payment.booking_id == Booking.id).filter(Booking.mentor_id == coach_id)
+    elif coach_term:
+        q = (
+            q.join(Booking, Payment.booking_id == Booking.id)
+            .join(Mentor, Booking.mentor_id == Mentor.id)
+            .filter(Mentor.full_name.like(coach_term))
+        )
+    return int(q.scalar() or 0)
+
+
+def _count_coach_applications(
+    db: DbSession,
+    *,
+    coach_id: str | None = None,
+    coach_term: str | None = None,
+    application_status: str = "new",
+) -> int:
+    q = db.query(func.count(CoachApplication.id)).filter(CoachApplication.status == application_status)
+    if coach_id:
+        mentor = db.query(Mentor).filter(Mentor.id == coach_id).first()
+        if mentor:
+            q = q.filter(CoachApplication.full_name == mentor.full_name)
+        else:
+            return 0
+    elif coach_term:
+        q = q.filter(CoachApplication.full_name.like(coach_term))
+    return int(q.scalar() or 0)
+
+
+def _series_counts(
+    db: DbSession,
+    model,
+    start: datetime,
+    end: datetime,
+    *,
+    coach_id: str | None = None,
+    user_id: str | None = None,
+    coach_term: str | None = None,
+    user_term: str | None = None,
+) -> list[DateCountPoint]:
     day = func.date(model.created_at)
-    rows = (
-        db.query(day, func.count(model.id))
-        .select_from(model)
-        .filter(_in_range(model, start, end))
-        .group_by(day)
-        .order_by(day)
-        .all()
-    )
+    if model is User:
+        if coach_id or coach_term:
+            q = (
+                db.query(day, func.count(func.distinct(User.id)))
+                .select_from(User)
+                .join(Booking, Booking.user_id == User.id)
+                .filter(_in_range(User, start, end))
+            )
+            if coach_id:
+                q = q.filter(Booking.mentor_id == coach_id)
+            else:
+                q = q.join(Mentor, Booking.mentor_id == Mentor.id).filter(Mentor.full_name.like(coach_term))
+            if user_id:
+                q = q.filter(User.id == user_id)
+            elif user_term:
+                q = q.filter(User.full_name.like(user_term))
+        else:
+            q = db.query(day, func.count(User.id)).select_from(User).filter(_in_range(User, start, end))
+            if user_id:
+                q = q.filter(User.id == user_id)
+            elif user_term:
+                q = q.filter(User.full_name.like(user_term))
+    elif model is Booking:
+        q = db.query(day, func.count(Booking.id)).select_from(Booking).filter(_in_range(Booking, start, end))
+        if coach_id:
+            q = q.filter(Booking.mentor_id == coach_id)
+        elif coach_term:
+            q = q.join(Mentor, Booking.mentor_id == Mentor.id).filter(Mentor.full_name.like(coach_term))
+        if user_id:
+            q = q.filter(Booking.user_id == user_id)
+        elif user_term:
+            q = q.join(User, Booking.user_id == User.id).filter(User.full_name.like(user_term))
+    elif model is Review:
+        q = db.query(day, func.count(Review.id)).select_from(Review).filter(_in_range(Review, start, end))
+        if coach_id:
+            q = q.filter(Review.mentor_id == coach_id)
+        elif coach_term:
+            q = q.join(Mentor, Review.mentor_id == Mentor.id).filter(Mentor.full_name.like(coach_term))
+        if user_id:
+            q = q.filter(Review.user_id == user_id)
+        elif user_term:
+            q = q.join(User, Review.user_id == User.id).filter(User.full_name.like(user_term))
+    elif model is Mentor:
+        q = db.query(day, func.count(Mentor.id)).select_from(Mentor).filter(_in_range(Mentor, start, end))
+        if coach_id:
+            q = q.filter(Mentor.id == coach_id)
+        elif coach_term:
+            q = q.filter(Mentor.full_name.like(coach_term))
+    else:
+        q = db.query(day, func.count(model.id)).select_from(model).filter(_in_range(model, start, end))
+
+    rows = q.group_by(day).order_by(day).all()
     out: list[DateCountPoint] = []
     for d, c in rows:
         if d is None:
@@ -1431,16 +1891,36 @@ def _series_counts(db: DbSession, model, start: datetime, end: datetime) -> list
     return out
 
 
-def _series_payment_amounts(db: DbSession, start: datetime, end: datetime) -> list[DateAmountPoint]:
+def _series_payment_amounts(
+    db: DbSession,
+    start: datetime,
+    end: datetime,
+    *,
+    coach_id: str | None = None,
+    user_id: str | None = None,
+    coach_term: str | None = None,
+    user_term: str | None = None,
+) -> list[DateAmountPoint]:
     day = func.date(Payment.created_at)
-    rows = (
+    q = (
         db.query(day, func.coalesce(func.sum(Payment.amount), 0))
+        .select_from(Payment)
         .filter(_in_range(Payment, start, end))
         .filter(Payment.status.in_(["completed", "paid", "succeeded"]))
-        .group_by(day)
-        .order_by(day)
-        .all()
     )
+    if user_id:
+        q = q.filter(Payment.user_id == user_id)
+    elif user_term:
+        q = q.join(User, Payment.user_id == User.id).filter(User.full_name.like(user_term))
+    if coach_id:
+        q = q.join(Booking, Payment.booking_id == Booking.id).filter(Booking.mentor_id == coach_id)
+    elif coach_term:
+        q = (
+            q.join(Booking, Payment.booking_id == Booking.id)
+            .join(Mentor, Booking.mentor_id == Mentor.id)
+            .filter(Mentor.full_name.like(coach_term))
+        )
+    rows = q.group_by(day).order_by(day).all()
     out: list[DateAmountPoint] = []
     for d, amt in rows:
         if d is None:
@@ -1455,36 +1935,62 @@ def admin_analytics(
     db: DbSession,
     _admin: CurrentAdmin,
     period: Period = Query("month"),
+    coach_id: str | None = Query(None, description="Filter by coach id"),
+    user_id: str | None = Query(None, description="Filter by user id"),
+    coach_name: str | None = Query(None, description="Filter by coach full name (contains)"),
+    user_name: str | None = Query(None, description="Filter by user full name (contains)"),
+    date_from: str | None = Query(None, description="Range start (YYYY-MM-DD or ISO datetime)"),
+    date_to: str | None = Query(None, description="Range end (YYYY-MM-DD or ISO datetime)"),
 ) -> AnalyticsResponse:
-    start, end = _period_bounds(period)
-    bookings_n = _count_in_range(db, Booking, start, end)
-    users_n = _count_in_range(db, User, start, end)
-    mentors_n = _count_in_range(db, Mentor, start, end)
-    reviews_n = _count_in_range(db, Review, start, end)
-    rev = _revenue_sum(db, start, end)
-    total_users = db.query(func.count(User.id)).scalar() or 0
-    total_mentors = db.query(func.count(Mentor.id)).scalar() or 0
-    total_payments = db.query(func.count(Payment.id)).scalar() or 0
-    paid_payments = db.query(func.count(Payment.id)).filter(Payment.status == "paid").scalar() or 0
-    pending_payments = db.query(func.count(Payment.id)).filter(Payment.status == "pending").scalar() or 0
-    active_mentors = (
-        db.query(func.count(Mentor.id))
-        .filter(Mentor.is_approved.is_(True), Mentor.status == "active")
-        .scalar()
-        or 0
+    start, end = _resolve_analytics_range(period, date_from, date_to)
+    cid = coach_id.strip() if coach_id and coach_id.strip() else None
+    uid = user_id.strip() if user_id and user_id.strip() else None
+    coach_term = None if cid else _name_term(coach_name)
+    user_term = None if uid else _name_term(user_name)
+
+    bookings_n = _count_bookings(
+        db, start, end, coach_id=cid, user_id=uid, coach_term=coach_term, user_term=user_term
     )
-    rejected_mentors = (
-        db.query(func.count(Mentor.id)).filter(Mentor.status == "rejected").scalar() or 0
+    users_n = _count_users(
+        db, start, end, user_id=uid, user_term=user_term, coach_id=cid, coach_term=coach_term
     )
-    pending_mentors = (
-        db.query(func.count(Mentor.id))
-        .filter(Mentor.is_approved.is_(False), Mentor.status != "rejected")
-        .scalar()
-        or 0
+    mentors_n = _count_mentors(db, start, end, coach_id=cid, coach_term=coach_term)
+    reviews_n = _count_reviews(
+        db, start, end, coach_id=cid, user_id=uid, coach_term=coach_term, user_term=user_term
     )
-    new_coach_applications = (
-        db.query(func.count(CoachApplication.id)).filter(CoachApplication.status == "new").scalar() or 0
+    rev = _revenue_sum(
+        db, start, end, coach_id=cid, user_id=uid, coach_term=coach_term, user_term=user_term
     )
+
+    total_users = _count_users(db, user_id=uid, user_term=user_term, coach_id=cid, coach_term=coach_term)
+    total_mentors = _count_mentors(db, coach_id=cid, coach_term=coach_term)
+    total_payments = _count_payments(
+        db, coach_id=cid, user_id=uid, coach_term=coach_term, user_term=user_term
+    )
+    paid_payments = _count_payments(
+        db,
+        payment_status="paid",
+        coach_id=cid,
+        user_id=uid,
+        coach_term=coach_term,
+        user_term=user_term,
+    )
+    pending_payments = _count_payments(
+        db,
+        payment_status="pending",
+        coach_id=cid,
+        user_id=uid,
+        coach_term=coach_term,
+        user_term=user_term,
+    )
+    active_mentors = _count_mentors(
+        db, coach_id=cid, coach_term=coach_term, status="active", approved=True
+    )
+    rejected_mentors = _count_mentors(db, coach_id=cid, coach_term=coach_term, status="rejected")
+    pending_mentors = _count_mentors(
+        db, coach_id=cid, coach_term=coach_term, approved=False, exclude_rejected=True
+    )
+    new_coach_applications = _count_coach_applications(db, coach_id=cid, coach_term=coach_term)
 
     summary = AnalyticsSummary(
         bookings=bookings_n,
@@ -1508,11 +2014,48 @@ def admin_analytics(
         range_start=start,
         range_end=end,
         summary=summary,
-        bookings_by_day=_series_counts(db, Booking, start, end),
-        payments_by_day=_series_payment_amounts(db, start, end),
-        reviews_by_day=_series_counts(db, Review, start, end),
-        users_by_day=_series_counts(db, User, start, end),
-        mentors_by_day=_series_counts(db, Mentor, start, end),
+        bookings_by_day=_series_counts(
+            db,
+            Booking,
+            start,
+            end,
+            coach_id=cid,
+            user_id=uid,
+            coach_term=coach_term,
+            user_term=user_term,
+        ),
+        payments_by_day=_series_payment_amounts(
+            db,
+            start,
+            end,
+            coach_id=cid,
+            user_id=uid,
+            coach_term=coach_term,
+            user_term=user_term,
+        ),
+        reviews_by_day=_series_counts(
+            db,
+            Review,
+            start,
+            end,
+            coach_id=cid,
+            user_id=uid,
+            coach_term=coach_term,
+            user_term=user_term,
+        ),
+        users_by_day=_series_counts(
+            db,
+            User,
+            start,
+            end,
+            coach_id=cid,
+            user_id=uid,
+            coach_term=coach_term,
+            user_term=user_term,
+        ),
+        mentors_by_day=_series_counts(
+            db, Mentor, start, end, coach_id=cid, coach_term=coach_term
+        ),
     )
 
 
@@ -1522,6 +2065,7 @@ def admin_list_mentor_presence(
     _admin: CurrentAdmin,
     week_start: date | None = Query(None, description="Monday of the week (YYYY-MM-DD)"),
     q: str | None = Query(None, description="Filter by coach name or email"),
+    mentor_id: str | None = Query(None, description="Filter by specific coach id"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
 ) -> AdminMentorPresenceList:
@@ -1530,7 +2074,10 @@ def admin_list_mentor_presence(
     ws = ws - timedelta(days=ws.weekday())
     min_hours = float(settings.mentor_weekly_min_hours or 20)
     threshold = min_weekly_seconds()
-    pairs, total = list_presence_for_week(db, week_start=ws, q=q, skip=skip, limit=limit)
+    mid = mentor_id.strip() if mentor_id and mentor_id.strip() else None
+    pairs, total = list_presence_for_week(
+        db, week_start=ws, q=q, mentor_id=mid, skip=skip, limit=limit
+    )
     items: list[AdminMentorPresenceRow] = []
     for mentor, row in pairs:
         seconds = int(row.seconds_online or 0) if row else 0
@@ -1605,6 +2152,7 @@ def admin_create_announcement(
             title=payload.title,
             body=payload.body,
             send_email=payload.send_email,
+            mentor_id=payload.mentor_id,
         )
     except ValueError as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e

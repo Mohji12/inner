@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState } from "react";
 import {
+  fetchAdminFilterOptions,
   fetchAdminMentorPresence,
   fetchAdminMentorPresenceDetail,
   type AdminMentorPresenceRow,
@@ -9,8 +10,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useLanguage } from "@/i18n/LanguageContext";
+
+const ALL_COACHES = "__all__";
 
 /** Monday (UTC date string YYYY-MM-DD) for a given Date, using local calendar Monday. */
 function mondayOf(date: Date): string {
@@ -38,45 +48,67 @@ export default function AdminMentorPresencePage() {
   const { t } = useLanguage();
   const d = t.app.dashboardAdmin;
   const [weekStart, setWeekStart] = useState(() => mondayOf(new Date()));
-  const [q, setQ] = useState("");
-  const [search, setSearch] = useState("");
+  const [coachId, setCoachId] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [limit, setLimit] = useState(50);
 
+  const coachesQ = useQuery({
+    queryKey: ["admin", "filter-options"],
+    queryFn: fetchAdminFilterOptions,
+    staleTime: 60_000,
+  });
+  const coaches = coachesQ.data?.coaches ?? [];
+
   const listQuery = useQuery({
-    queryKey: ["admin", "mentor-presence", weekStart, search, limit],
+    queryKey: ["admin", "mentor-presence", weekStart, coachId, limit],
     queryFn: () =>
       fetchAdminMentorPresence({
         week_start: weekStart,
-        q: search || undefined,
+        mentor_id: coachId || undefined,
         skip: 0,
         limit,
       }),
   });
 
+  const detailId = selectedId || coachId || null;
   const detailQuery = useQuery({
-    queryKey: ["admin", "mentor-presence-detail", selectedId],
-    queryFn: () => fetchAdminMentorPresenceDetail(selectedId!, 8),
-    enabled: Boolean(selectedId),
+    queryKey: ["admin", "mentor-presence-detail", detailId],
+    queryFn: () => fetchAdminMentorPresenceDetail(detailId!, 8),
+    enabled: Boolean(detailId),
   });
 
   const items = listQuery.data?.items ?? [];
   const minHours = listQuery.data?.min_hours ?? 20;
   const selectedRow = useMemo(
-    () => items.find((r) => r.mentor_id === selectedId) ?? null,
-    [items, selectedId],
+    () => items.find((r) => r.mentor_id === detailId) ?? null,
+    [items, detailId],
   );
-
-  const onSearch = (event: FormEvent) => {
-    event.preventDefault();
-    setSearch(q.trim());
-  };
+  const selectedCoachMeta = useMemo(() => {
+    if (selectedRow) return { full_name: selectedRow.full_name, email: selectedRow.email };
+    if (detailQuery.data) {
+      return { full_name: detailQuery.data.full_name, email: detailQuery.data.email };
+    }
+    const fromList = coaches.find((c) => c.id === detailId);
+    return fromList ? { full_name: fromList.full_name, email: fromList.email } : null;
+  }, [selectedRow, detailQuery.data, coaches, detailId]);
 
   const weekEndLabel = useMemo(() => {
     const d0 = new Date(`${weekStart}T12:00:00`);
     d0.setDate(d0.getDate() + 6);
     return d0.toISOString().slice(0, 10);
   }, [weekStart]);
+
+  const onCoachChange = (value: string) => {
+    if (value === ALL_COACHES) {
+      setCoachId("");
+      setSelectedId(null);
+      setLimit(50);
+      return;
+    }
+    setCoachId(value);
+    setSelectedId(value);
+    setLimit(50);
+  };
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -89,7 +121,8 @@ export default function AdminMentorPresencePage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">{d.mentorPresenceFilters}</CardTitle>
           <CardDescription>
-            {d.mentorPresenceWeekLabel}: {weekStart} → {weekEndLabel} · {d.mentorPresenceMinHours.replace("{hours}", String(minHours))}
+            {d.mentorPresenceWeekLabel}: {weekStart} → {weekEndLabel} ·{" "}
+            {d.mentorPresenceMinHours.replace("{hours}", String(minHours))}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
@@ -116,17 +149,34 @@ export default function AdminMentorPresencePage() {
               {d.mentorPresenceNextWeek}
             </Button>
           </div>
-          <form onSubmit={onSearch} className="flex flex-1 flex-wrap gap-2 md:justify-end">
-            <Input
-              placeholder={d.mentorPresenceSearchPlaceholder}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              className="min-w-[12rem] max-w-sm"
-            />
-            <Button type="submit" variant="secondary">
-              {d.mentorPresenceSearch}
-            </Button>
-          </form>
+          <div className="min-w-[16rem] flex-1 space-y-1 md:max-w-md md:ml-auto">
+            <label className="text-xs text-muted-foreground" htmlFor="presence-coach">
+              {d.mentorPresenceCoachLabel}
+            </label>
+            <Select
+              value={coachId || ALL_COACHES}
+              onValueChange={onCoachChange}
+              disabled={coachesQ.isLoading}
+            >
+              <SelectTrigger id="presence-coach">
+                <SelectValue placeholder={d.mentorPresenceCoachPlaceholder} />
+              </SelectTrigger>
+              <SelectContent className="z-[100] max-h-72">
+                <SelectItem value={ALL_COACHES}>{d.mentorPresenceAllCoaches}</SelectItem>
+                {coaches.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.full_name}
+                    {c.email ? ` · ${c.email}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {coachesQ.isError ? (
+              <p className="text-[11px] text-destructive">
+                {d.filterOptionsError ?? "Could not load coaches."}
+              </p>
+            ) : null}
+          </div>
         </CardContent>
       </Card>
 
@@ -137,7 +187,9 @@ export default function AdminMentorPresencePage() {
             <CardDescription>
               {listQuery.isLoading
                 ? d.tableLoading
-                : d.mentorPresenceTotal.replace("{count}", String(listQuery.data?.total ?? 0))}
+                : listQuery.isError
+                  ? (listQuery.error as Error)?.message || d.tableLoading
+                  : d.mentorPresenceTotal.replace("{count}", String(listQuery.data?.total ?? 0))}
             </CardDescription>
           </CardHeader>
           <CardContent className="overflow-x-auto">
@@ -155,7 +207,7 @@ export default function AdminMentorPresencePage() {
                 {items.map((row: AdminMentorPresenceRow) => (
                   <TableRow
                     key={row.mentor_id}
-                    className={`cursor-pointer ${selectedId === row.mentor_id ? "bg-muted/50" : ""}`}
+                    className={`cursor-pointer ${detailId === row.mentor_id ? "bg-muted/50" : ""}`}
                     onClick={() => setSelectedId(row.mentor_id)}
                   >
                     <TableCell className="font-medium">{row.full_name}</TableCell>
@@ -176,7 +228,7 @@ export default function AdminMentorPresencePage() {
                 {!listQuery.isLoading && items.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center text-muted-foreground">
-                      {d.mentorPresenceEmpty}
+                      {listQuery.isError ? (listQuery.error as Error)?.message : d.mentorPresenceEmpty}
                     </TableCell>
                   </TableRow>
                 ) : null}
@@ -196,16 +248,20 @@ export default function AdminMentorPresencePage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">{d.mentorPresenceDetailTitle}</CardTitle>
             <CardDescription>
-              {selectedRow
-                ? `${selectedRow.full_name} · ${selectedRow.email}`
+              {selectedCoachMeta
+                ? `${selectedCoachMeta.full_name} · ${selectedCoachMeta.email}`
                 : d.mentorPresenceDetailHint}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {!selectedId ? (
+            {!detailId ? (
               <p className="text-sm text-muted-foreground">{d.mentorPresenceSelectCoach}</p>
             ) : detailQuery.isLoading ? (
               <p className="text-sm text-muted-foreground">{d.tableLoading}</p>
+            ) : detailQuery.isError ? (
+              <p className="text-sm text-destructive">
+                {(detailQuery.error as Error)?.message || d.tableLoading}
+              </p>
             ) : (
               <Table>
                 <TableHeader>

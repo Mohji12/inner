@@ -3,7 +3,15 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/auth/AuthContext";
 import { createBooking } from "@/api/bookings";
-import { getMentor, getPlatformPricing, getSimilarMentors, joinWaitlist, leaveWaitlist, getWaitlistPosition } from "@/api/mentors";
+import {
+  getMentor,
+  getPlatformPricing,
+  getSimilarMentors,
+  joinWaitlist,
+  leaveWaitlist,
+  getWaitlistPosition,
+  listMentorAvailabilityWindows,
+} from "@/api/mentors";
 import type { MentorDetail, MentorPublic } from "@/api/types";
 import { getMentorAvailabilityStatus, sessionPackageEur } from "@/api/types";
 import { unknownListToStrings } from "@/lib/dbJsonFields";
@@ -14,6 +22,14 @@ import { PresenceIndicator } from "@/components/PresenceIndicator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Phone, Video } from "lucide-react";
 import { formatDateLocal, formatTimeLocal, isSameCalendarDayLocal } from "@/lib/timeZone";
@@ -37,6 +53,7 @@ const MentorDetailPage = () => {
   const { t } = useLanguage();
   const md = t.app.mentorDetail;
   const [selectedDuration, setSelectedDuration] = useState<(typeof SESSION_PACKAGES)[number]>(5);
+  const [availabilityOpen, setAvailabilityOpen] = useState(false);
   const effectiveTimeZone = useEffectiveTimeZone();
 
   const { data: mentor, isLoading: loadingMentor } = useQuery({
@@ -45,6 +62,17 @@ const MentorDetailPage = () => {
     enabled: Boolean(mentorId),
     refetchInterval: 15_000,
     refetchOnWindowFocus: true,
+  });
+
+  const availability = mentor ? getMentorAvailabilityStatus(mentor) : "offline";
+  const mentorBusy = availability === "busy";
+  const mentorOffline = availability === "offline";
+  const canBookLive = availability === "available";
+
+  const { data: upcomingWindows = [] } = useQuery({
+    queryKey: ["mentor", mentorId, "availability-windows"],
+    queryFn: () => listMentorAvailabilityWindows(mentorId!, 5),
+    enabled: Boolean(mentorId) && (mentorOffline || mentorBusy || availabilityOpen),
   });
 
   const { data: pricing } = useQuery({
@@ -78,12 +106,8 @@ const MentorDetailPage = () => {
 
   const handleBookingError = (e: Error) => {
     const lower = e.message.toLowerCase();
-    if (lower.includes("offline")) {
-      toast.error("This coach is offline. Book when they are online on the platform.");
-      return;
-    }
-    if (lower.includes("mentor is currently in a chat session") || lower.includes("mentor_in_chat")) {
-      toast.error("This coach is currently in another session. Please try again shortly.");
+    if (lower.includes("offline") || lower.includes("mentor_in_chat") || lower.includes("currently in a chat")) {
+      setAvailabilityOpen(true);
       return;
     }
     toast.error(humanizeApiError(e));
@@ -142,15 +166,15 @@ const MentorDetailPage = () => {
   const skills = tagList(mentor, "skills");
   const sessionModes = tagList(mentor, "session_modes");
   const tools = tagList(mentor, "tools_technologies");
-  const availability = getMentorAvailabilityStatus(mentor);
-  const mentorBusy = availability === "busy";
-  const mentorOffline = availability === "offline";
-  const canBookLive = availability === "available";
 
   const handleDurationSelect = (minutes: (typeof SESSION_PACKAGES)[number]) => {
     if (role !== "user" || !userAccessToken) {
       toast.message(md.loginToBook);
       navigate("/login?role=user", { state: { from: `/mentors/${mentorId}` } });
+      return;
+    }
+    if (!canBookLive) {
+      setAvailabilityOpen(true);
       return;
     }
     setSelectedDuration(minutes);
@@ -162,12 +186,8 @@ const MentorDetailPage = () => {
       navigate("/login?role=user", { state: { from: `/mentors/${mentorId}` } });
       return;
     }
-    if (mentorOffline) {
-      toast.error("This coach is offline. You can book only while they are online on the platform.");
-      return;
-    }
-    if (mentorBusy) {
-      toast.error("This coach is currently in another session. Please try again shortly.");
+    if (mentorOffline || mentorBusy) {
+      setAvailabilityOpen(true);
       return;
     }
     liveBookMut.mutate({ durationMinutes: selectedDuration, communicationMode });
@@ -327,27 +347,29 @@ const MentorDetailPage = () => {
                     {SESSION_PACKAGES.map((mins) => {
                       const amount = sessionPackageEur(mentor, pricing, mins);
                       const isSelected = selectedDuration === mins;
-                      const pricingLocked = !pricing.is_active || !canBookLive;
+                      const pricingInactive = !pricing.is_active;
+                      const offlineOrBusy = !canBookLive;
+                      const muted = pricingInactive || offlineOrBusy;
                       return (
                         <Button
                           key={mins}
                           type="button"
-                          variant={isSelected && !pricingLocked ? "default" : "outline"}
+                          variant={isSelected && !muted ? "default" : "outline"}
                           className={
-                            pricingLocked
+                            muted
                               ? "h-auto min-h-[4.75rem] flex-col gap-0.5 border-2 border-dashed border-border/80 bg-background/80 py-3 text-center font-normal text-muted-foreground opacity-80"
                               : isSelected
                                 ? "gradient-cta text-white flex h-auto min-h-[4.75rem] flex-col gap-0.5 py-3 text-center font-normal shadow-md ring-2 ring-accent/40"
                                 : "flex h-auto min-h-[4.75rem] flex-col gap-0.5 border-2 border-border/80 bg-background py-3 text-center font-normal hover:border-accent/50"
                           }
-                          disabled={pricingLocked}
+                          disabled={pricingInactive}
                           title={
-                            !pricing.is_active
+                            pricingInactive
                               ? "Session checkout is disabled"
                               : mentorOffline
-                                ? "Coach is offline — booking unavailable"
+                                ? md.offline
                                 : mentorBusy
-                                  ? "Coach is in another session"
+                                  ? md.inSession
                                   : `Select ${mins}-minute session`
                           }
                           onClick={() => handleDurationSelect(mins)}
@@ -355,7 +377,7 @@ const MentorDetailPage = () => {
                           <span className="text-sm font-semibold tracking-wide">{mins} {md.mins}</span>
                           <span
                             className={
-                              pricingLocked ? "text-base font-semibold" : "text-base font-bold text-white"
+                              muted ? "text-base font-semibold" : "text-base font-bold text-white"
                             }
                           >
                             {pricing.currency} {amount.toFixed(2)}
@@ -401,13 +423,13 @@ const MentorDetailPage = () => {
               </Button>
               <Button
                 type="button"
-                className="gradient-cta text-white disabled:opacity-60"
-                disabled={bookSessionDisabled || liveBookMut.isPending || !pricing?.is_active}
+                className={`gradient-cta text-white disabled:opacity-60 ${bookSessionDisabled ? "opacity-80" : ""}`}
+                disabled={liveBookMut.isPending || (!bookSessionDisabled && !pricing?.is_active)}
                 title={
                   mentorOffline
-                    ? "Coach is offline"
+                    ? md.offline
                     : mentorBusy
-                      ? "Coach is currently in another session"
+                      ? md.inSession
                       : `Book ${selectedDuration}-minute video session`
                 }
                 onClick={() => handleLiveBook("video")}
@@ -418,13 +440,13 @@ const MentorDetailPage = () => {
               <Button
                 type="button"
                 variant="secondary"
-                className="disabled:opacity-60"
-                disabled={bookSessionDisabled || liveBookMut.isPending || !pricing?.is_active}
+                className={`disabled:opacity-60 ${bookSessionDisabled ? "opacity-80" : ""}`}
+                disabled={liveBookMut.isPending || (!bookSessionDisabled && !pricing?.is_active)}
                 title={
                   mentorOffline
-                    ? "Coach is offline"
+                    ? md.offline
                     : mentorBusy
-                      ? "Coach is currently in another session"
+                      ? md.inSession
                       : `Book ${selectedDuration}-minute voice call`
                 }
                 onClick={() => handleLiveBook("call")}
@@ -432,9 +454,62 @@ const MentorDetailPage = () => {
                 <Phone className="mr-2 h-4 w-4" />
                 Call
               </Button>
+              {bookSessionDisabled ? (
+                <Button type="button" variant="outline" onClick={() => setAvailabilityOpen(true)}>
+                  {md.seeWhenAvailable}
+                </Button>
+              ) : null}
             </div>
           </CardContent>
         </Card>
+
+        <Dialog open={availabilityOpen} onOpenChange={setAvailabilityOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{md.notAvailableTitle}</DialogTitle>
+              <DialogDescription>
+                {mentorBusy ? md.notAvailableBusyBody : md.notAvailableOfflineBody}{" "}
+                {md.bookWhenOnline}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              {upcomingWindows.length > 0 ? (
+                <>
+                  <p className="text-sm font-medium text-foreground">{md.nextAvailable}</p>
+                  <ul className="space-y-2">
+                    {upcomingWindows.map((w) => (
+                      <li
+                        key={w.id}
+                        className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm"
+                      >
+                        <span className="font-medium">
+                          {formatDateLocal(
+                            w.start_at_utc,
+                            { weekday: "short", month: "short", day: "numeric", year: "numeric" },
+                            effectiveTimeZone,
+                          )}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {" · "}
+                          {formatTimeLocal(w.start_at_utc, undefined, effectiveTimeZone)}
+                          {" – "}
+                          {formatTimeLocal(w.end_at_utc, undefined, effectiveTimeZone)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">{md.noUpcomingWindows}</p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button type="button" onClick={() => setAvailabilityOpen(false)}>
+                {md.dismiss}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <SimilarCoaches mentorId={mentor.id} />
       </main>

@@ -14,14 +14,72 @@ logger = logging.getLogger(__name__)
 # MySQL / MariaDB: ER_DUP_FIELDNAME (column already exists)
 _DUP_COLUMN_ERRNO = 1060
 _LOCK_WAIT_TIMEOUT_ERRNO = 1205
+# Server gone away / lost connection during query (common on remote MySQL over flaky networks)
+_LOST_CONNECTION_ERRNOS = {2006, 2013}
+
+
+def _db_error_code(exc: BaseException) -> int | None:
+    orig = getattr(exc, "orig", None)
+    if orig is None:
+        return None
+    args = getattr(orig, "args", ())
+    if not args:
+        return None
+    try:
+        return int(args[0])
+    except (TypeError, ValueError):
+        return None
+
+
+def _is_transient_db_error(exc: BaseException) -> bool:
+    code = _db_error_code(exc)
+    if code in _LOST_CONNECTION_ERRNOS or code == _LOCK_WAIT_TIMEOUT_ERRNO:
+        return True
+    msg = str(exc).lower()
+    return (
+        "lost connection" in msg
+        or "server has gone away" in msg
+        or "can't connect" in msg
+        or "timed out" in msg
+    )
+
+
+def _execute_ddl(ddl_sql: str, *, attempts: int = 3) -> None:
+    """Run one DDL statement in its own short transaction, with retries for network blips."""
+    last: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(ddl_sql))
+            return
+        except DBAPIError as e:
+            last = e
+            code = _db_error_code(e)
+            if code == _DUP_COLUMN_ERRNO:
+                return
+            if _is_transient_db_error(e) and attempt < attempts:
+                logger.warning(
+                    "Transient DB error on DDL (attempt %s/%s): %s",
+                    attempt,
+                    attempts,
+                    e,
+                )
+                try:
+                    engine.dispose()
+                except Exception:
+                    pass
+                time.sleep(0.6 * attempt)
+                continue
+            raise
+    if last:
+        raise last
 
 
 def _safe_add_column(ddl_sql: str) -> None:
     try:
-        with engine.begin() as conn:
-            conn.execute(text(ddl_sql))
+        _execute_ddl(ddl_sql)
     except DBAPIError as e:
-        code = getattr(e.orig, "args", (None,))[0]
+        code = _db_error_code(e)
         if code == _DUP_COLUMN_ERRNO:
             return
         raise
@@ -29,13 +87,10 @@ def _safe_add_column(ddl_sql: str) -> None:
 
 def ensure_mentors_banner_image_column() -> None:
     """Matches `models/mentor.py` — migration 011 sometimes not applied on prod DBs."""
-    ddl = text("ALTER TABLE mentors ADD COLUMN banner_image VARCHAR(512) NULL")
     try:
-        with engine.begin() as conn:
-            conn.execute(ddl)
+        _execute_ddl("ALTER TABLE mentors ADD COLUMN banner_image VARCHAR(512) NULL")
     except DBAPIError as e:
-        code = getattr(e.orig, "args", (None,))[0]
-        if code == _DUP_COLUMN_ERRNO:
+        if _db_error_code(e) == _DUP_COLUMN_ERRNO:
             return
         raise
 
@@ -546,9 +601,10 @@ def ensure_marketplace_ledger_tables() -> None:
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """,
     ]
-    with engine.begin() as conn:
-        for ddl in ddls:
-            conn.execute(text(ddl))
+    # One short transaction per statement — a single long begin() often loses the
+    # remote MySQL connection mid-batch (2013 Lost connection during query).
+    for ddl in ddls:
+        _execute_ddl(ddl)
     _safe_add_column("ALTER TABLE coach_connect_accounts ADD COLUMN provider_account_label VARCHAR(255) NULL")
     _safe_add_column("ALTER TABLE coach_connect_accounts ADD COLUMN provider_account_masked VARCHAR(32) NULL")
     _safe_add_column("ALTER TABLE coach_connect_accounts ADD COLUMN connect_access_token TEXT NULL")
@@ -716,5 +772,22 @@ def ensure_admin_announcements_table() -> None:
         CONSTRAINT fk_admin_announcements_admin FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE SET NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """
-    with engine.begin() as conn:
-        conn.execute(text(ddl))
+    _execute_ddl(ddl)
+
+
+def ensure_mentor_availability_windows_table() -> None:
+    """Informational coach platform presence windows (not bookable slots)."""
+    ddl = """
+    CREATE TABLE IF NOT EXISTS mentor_availability_windows (
+        id CHAR(36) NOT NULL PRIMARY KEY,
+        mentor_id CHAR(36) NOT NULL,
+        start_at_utc DATETIME(6) NOT NULL,
+        end_at_utc DATETIME(6) NOT NULL,
+        timezone VARCHAR(64) NOT NULL DEFAULT 'UTC',
+        created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+        KEY ix_mentor_availability_windows_mentor_id (mentor_id),
+        KEY idx_mentor_availability_windows_mentor_start (mentor_id, start_at_utc),
+        CONSTRAINT fk_mentor_availability_windows_mentor FOREIGN KEY (mentor_id) REFERENCES mentors(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    """
+    _execute_ddl(ddl)

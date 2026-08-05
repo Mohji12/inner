@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 from sqlalchemy import CHAR, DateTime, Numeric, String, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, backref
 
 from db.session import Base
 
@@ -14,7 +14,11 @@ class Wallet(Base):
     currency: Mapped[str] = mapped_column(String(3), default="EUR")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    user = relationship("User", backref="wallet")
+    # DB ON DELETE CASCADE — do not null user_id on User delete (that fails NOT NULL + FK).
+    user = relationship(
+        "User",
+        backref=backref("wallet", uselist=False, cascade="all, delete-orphan", passive_deletes=True),
+    )
     transactions = relationship("WalletTransaction", back_populates="wallet", cascade="all, delete-orphan")
 
 class WalletTransaction(Base):

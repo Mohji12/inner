@@ -91,6 +91,8 @@ export interface MentorPublic {
   chat_available: boolean;
   is_online: boolean;
   last_seen_at: string | null;
+  /** Next planned platform window start (UTC ISO), if coach posted one */
+  next_availability_at?: string | null;
   status: string;
   created_at: string;
   badges?: string[];
@@ -162,6 +164,16 @@ export interface AvailabilitySlot {
   is_booked: boolean;
   is_recurring: boolean;
   created_at: string;
+}
+
+/** Informational platform presence window (not a bookable session slot). */
+export interface AvailabilityWindow {
+  id: string;
+  mentor_id?: string;
+  start_at_utc: string;
+  end_at_utc: string;
+  timezone: string;
+  created_at?: string;
 }
 
 export interface Booking {

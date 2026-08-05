@@ -24,6 +24,7 @@ import PrivacyPolicyPage from "./pages/PrivacyPolicyPage.tsx";
 import TermsAndConditionsPage from "./pages/TermsAndConditionsPage.tsx";
 import CoachAgreementPage from "./pages/CoachAgreementPage.tsx";
 import BecomeCoachPage from "./pages/BecomeCoachPage.tsx";
+import ContactPage from "./pages/ContactPage.tsx";
 import MentorRegisterThankYouPage from "./pages/MentorRegisterThankYouPage.tsx";
 import UserRegisterThankYouPage from "./pages/UserRegisterThankYouPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -33,14 +34,18 @@ import UserNotificationsPage from "./pages/user/UserNotificationsPage.tsx";
 import UserAppointmentsPage from "./pages/user/UserAppointmentsPage.tsx";
 import UserMentorsBrowsePage from "./pages/user/UserMentorsBrowsePage.tsx";
 import UserTransactionsPage from "./pages/user/UserTransactionsPage.tsx";
+import UserSupportPage from "./pages/user/UserSupportPage.tsx";
 import WalletPage from "./pages/user/WalletPage.tsx";
 import MentorProfilePage from "./pages/mentor/MentorProfilePage.tsx";
+import MentorAvailabilityPage from "./pages/mentor/MentorAvailabilityPage.tsx";
+import MentorPlatformTimePage from "./pages/mentor/MentorPlatformTimePage.tsx";
 import MentorAppointmentsPage from "./pages/mentor/MentorAppointmentsPage.tsx";
 import MentorEarningsPage from "./pages/mentor/MentorEarningsPage.tsx";
 import MentorMonthlyFeesPage from "./pages/mentor/MentorMonthlyFeesPage.tsx";
 import MentorDashboardHomePage from "./pages/mentor/MentorDashboardHomePage.tsx";
 import MentorPayoutsPage from "./pages/mentor/MentorPayoutsPage.tsx";
 import MentorSettlementsPage from "./pages/mentor/MentorSettlementsPage.tsx";
+import MentorSupportPage from "./pages/mentor/MentorSupportPage.tsx";
 import ChatSessionPage from "./pages/chat/ChatSessionPage.tsx";
 import ChatInboxPage from "./pages/chat/ChatInboxPage.tsx";
 import { AdminDashboardLayout } from "@/components/dashboard/AdminDashboardLayout";
@@ -114,6 +119,7 @@ const App = () => (
                 <Route path="/terms-and-conditions" element={<TermsAndConditionsPage />} />
                 <Route path="/coach-agreement" element={<CoachAgreementPage />} />
                 <Route path="/become-a-coach" element={<BecomeCoachPage />} />
+                <Route path="/contact" element={<ContactPage />} />
 
                 <Route
                   path="/user"
@@ -134,6 +140,7 @@ const App = () => (
                   <Route path="messages" element={<ChatInboxPage />} />
                   <Route path="chat/:sessionId" element={<ChatSessionPage />} />
                   <Route path="security" element={<SecuritySettingsPage />} />
+                  <Route path="support" element={<UserSupportPage />} />
                 </Route>
 
                 <Route
@@ -147,7 +154,8 @@ const App = () => (
                   <Route index element={<Navigate to="dashboard" replace />} />
                   <Route path="dashboard" element={<MentorDashboardHomePage />} />
                   <Route path="profile" element={<MentorProfilePage />} />
-                  <Route path="availability" element={<Navigate to="/mentor/dashboard" replace />} />
+                  <Route path="availability" element={<MentorAvailabilityPage />} />
+                  <Route path="platform-time" element={<MentorPlatformTimePage />} />
                   <Route path="appointments" element={<MentorAppointmentsPage />} />
                   <Route path="earnings" element={<MentorEarningsPage />} />
                   <Route path="payouts" element={<MentorPayoutsPage />} />
@@ -156,6 +164,7 @@ const App = () => (
                   <Route path="messages" element={<ChatInboxPage />} />
                   <Route path="chat/:sessionId" element={<ChatSessionPage />} />
                   <Route path="security" element={<SecuritySettingsPage />} />
+                  <Route path="support" element={<MentorSupportPage />} />
                 </Route>
 
                 <Route

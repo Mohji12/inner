@@ -63,6 +63,9 @@ const MentorRegisterPage = () => {
       spokenLanguages: [] as string[],
       companyName: "",
       kvkNumber: "",
+      accountHolderName: "",
+      iban: "",
+      bic: "",
       educationCsv: "",
       certificationsCsv: "",
       skillsCsv: "",
@@ -78,6 +81,10 @@ const MentorRegisterPage = () => {
         ...empty,
         ...parsed,
         password: "",
+        // Never restore bank details from draft storage.
+        accountHolderName: "",
+        iban: "",
+        bic: "",
         spokenLanguages: Array.isArray(parsed.spokenLanguages) ? parsed.spokenLanguages : [],
       };
     } catch {
@@ -136,7 +143,13 @@ const MentorRegisterPage = () => {
   }, []);
 
   useEffect(() => {
-    const { password: _password, ...rest } = formData;
+    const {
+      password: _password,
+      accountHolderName: _holder,
+      iban: _iban,
+      bic: _bic,
+      ...rest
+    } = formData;
     sessionStorage.setItem(
       "ipd_mentor_register_draft",
       JSON.stringify({ ...rest, cardVisibility, agreementAccepted }),
@@ -198,6 +211,11 @@ const MentorRegisterPage = () => {
       onTabChange("background");
       return;
     }
+    if (!formData.accountHolderName.trim() || formData.iban.replace(/\s/g, "").length < 15) {
+      setError(m.errBankRequired);
+      onTabChange("background");
+      return;
+    }
     if (formData.password.length < 8) {
       setError(m.errPassword);
       return;
@@ -243,6 +261,9 @@ const MentorRegisterPage = () => {
         agreement_accepted: true,
         agreement_version: COACH_AGREEMENT_VERSION,
         agreement_text_snapshot: COACH_AGREEMENT_TEXT,
+        account_holder_name: formData.accountHolderName.trim(),
+        iban: formData.iban.trim(),
+        bic: formData.bic.trim() || null,
       });
       pendingAvatarFileRef.current = null;
 
@@ -655,6 +676,46 @@ const MentorRegisterPage = () => {
                         value={formData.kvkNumber}
                         onChange={(event) => setFormData((prev) => ({ ...prev, kvkNumber: event.target.value }))}
                       />
+                    </div>
+                    <div className="md:col-span-2 space-y-3 rounded-lg border border-border/60 bg-muted/20 p-4">
+                      <div>
+                        <p className="font-medium">{m.payoutBankTitle}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{m.payoutBankHint}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="account-holder">{m.accountHolderName}</Label>
+                        <Input
+                          id="account-holder"
+                          required
+                          autoComplete="name"
+                          placeholder={m.phAccountHolder}
+                          value={formData.accountHolderName}
+                          onChange={(event) =>
+                            setFormData((prev) => ({ ...prev, accountHolderName: event.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="iban">{m.iban}</Label>
+                        <Input
+                          id="iban"
+                          required
+                          autoComplete="off"
+                          placeholder={m.phIban}
+                          value={formData.iban}
+                          onChange={(event) => setFormData((prev) => ({ ...prev, iban: event.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="bic">{m.bic}</Label>
+                        <Input
+                          id="bic"
+                          autoComplete="off"
+                          placeholder={m.phBic}
+                          value={formData.bic}
+                          onChange={(event) => setFormData((prev) => ({ ...prev, bic: event.target.value }))}
+                        />
+                      </div>
                     </div>
                     <div className="space-y-2 md:col-span-2">
                       <Label htmlFor="edu">{m.education}</Label>

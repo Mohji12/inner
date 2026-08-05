@@ -62,9 +62,10 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
         ? "Packages are hidden until this coach account is approved and active."
         : null;
 
-  const bannerSrc =
-    cardVis.banner_photo && (mediaUrlFromApi(mentor.banner_image) ?? (cardVis.profile_photo ? mediaUrlFromApi(mentor.profile_image) : null));
   const profileSrc = cardVis.profile_photo ? mediaUrlFromApi(mentor.profile_image) : null;
+  // Banner slot may already include a portrait fallback from the API when no banner file exists.
+  const bannerSrc = cardVis.banner_photo ? mediaUrlFromApi(mentor.banner_image) ?? profileSrc ?? null : null;
+  const heroSrc = bannerSrc ?? profileSrc ?? null;
 
   const roundedStars = Math.min(5, Math.max(0, Math.round(Number(mentor.average_rating) || 0)));
   const tags = combinedTags.slice(0, 2);
@@ -226,9 +227,16 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
       </div>
 
       <div className="relative h-56 w-full shrink-0 overflow-hidden bg-muted md:h-auto md:w-[42%] md:min-h-[220px]">
-        {bannerSrc ? (
+        {heroSrc ? (
           <>
-            <img src={bannerSrc} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <img
+              src={heroSrc}
+              alt={mentor.full_name}
+              className={cn(
+                "absolute inset-0 h-full w-full object-cover",
+                !bannerSrc && profileSrc ? "object-top" : null,
+              )}
+            />
             <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-black/35 md:to-black/55" />
           </>
         ) : (
@@ -236,8 +244,8 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
             Photo coming soon
           </div>
         )}
-        {/* overlay avatar when we have banner + profile */}
-        {mentor.banner_image && cardVis.banner_photo && profileSrc && cardVis.profile_photo ? (
+        {/* overlay avatar when banner is shown and a separate profile photo is available */}
+        {bannerSrc && mediaUrlFromApi(mentor.banner_image) && profileSrc ? (
           <div className="absolute bottom-3 right-3 md:right-4">
             <img
               src={profileSrc}

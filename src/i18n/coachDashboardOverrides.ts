@@ -155,6 +155,7 @@ Vous reconnaissez et acceptez ces conditions au moment de l'inscription.
     dashboardMentor: {
       dashboard: "Dashboard",
       activeChat: "Actieve chat",
+      platformTime: "Platformtijd",
       payouts: "Uitbetalingen",
       monthlyFees: "Maandelijkse kosten",
       messages: "Berichten",

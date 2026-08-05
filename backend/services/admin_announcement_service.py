@@ -18,6 +18,35 @@ ANNOUNCEMENT_TYPE = "admin_announcement"
 DASHBOARD_LINK = "/mentor/dashboard"
 
 
+def _email_coach(*, coach: Mentor, title: str, body: str) -> bool:
+    mail_body = "\n".join(
+        [
+            f"Hello {coach.full_name},",
+            "",
+            "You have a new message from the Mijn Levenspad admin team:",
+            "",
+            title,
+            "",
+            body,
+            "",
+            "Please open your coach dashboard to view it:",
+            "https://mijnlevenspad.com/mentor/dashboard",
+            "",
+            "— Mijn Levenspad",
+        ]
+    )
+    try:
+        send_plain_email(
+            to_email=coach.email,
+            subject=f"Admin message: {title}",
+            body=mail_body,
+        )
+        return True
+    except Exception:
+        logger.exception("Failed to email admin announcement to mentor_id=%s", coach.id)
+        return False
+
+
 def broadcast_admin_announcement(
     db: Session,
     *,
@@ -25,21 +54,28 @@ def broadcast_admin_announcement(
     title: str,
     body: str,
     send_email: bool = True,
+    mentor_id: str | None = None,
 ) -> AdminAnnouncement:
     title_clean = title.strip()
     body_clean = body.strip()
     if not title_clean or not body_clean:
         raise ValueError("Title and message body are required")
 
-    coaches = (
-        db.query(Mentor)
-        .filter(
-            Mentor.is_approved.is_(True),
-            Mentor.status == "active",
-            Mentor.email_verified.is_(True),
+    if mentor_id:
+        coach = db.query(Mentor).filter(Mentor.id == mentor_id.strip()).first()
+        if not coach:
+            raise ValueError("Coach not found")
+        coaches = [coach]
+    else:
+        coaches = (
+            db.query(Mentor)
+            .filter(
+                Mentor.is_approved.is_(True),
+                Mentor.status == "active",
+                Mentor.email_verified.is_(True),
+            )
+            .all()
         )
-        .all()
-    )
 
     now = datetime.now(timezone.utc)
     announcement = AdminAnnouncement(
@@ -66,34 +102,8 @@ def broadcast_admin_announcement(
             commit=False,
         )
         if send_email:
-            mail_body = "\n".join(
-                [
-                    f"Hello {coach.full_name},",
-                    "",
-                    "You have a new message from the Mijn Levenspad admin team:",
-                    "",
-                    title_clean,
-                    "",
-                    body_clean,
-                    "",
-                    "Please open your coach dashboard to view it:",
-                    "https://mijnlevenspad.com/mentor/dashboard",
-                    "",
-                    "— Mijn Levenspad",
-                ]
-            )
-            try:
-                send_plain_email(
-                    to_email=coach.email,
-                    subject=f"Admin message: {title_clean}",
-                    body=mail_body,
-                )
+            if _email_coach(coach=coach, title=title_clean, body=body_clean):
                 emails_sent += 1
-            except Exception:
-                logger.exception(
-                    "Failed to email admin announcement to mentor_id=%s",
-                    coach.id,
-                )
 
     announcement.recipient_count = len(coaches)
     announcement.emails_sent = emails_sent

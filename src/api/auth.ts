@@ -47,6 +47,9 @@ export interface MentorRegisterBody {
   agreement_accepted: boolean;
   agreement_version: string;
   agreement_text_snapshot: string;
+  account_holder_name: string;
+  iban: string;
+  bic?: string | null;
 }
 
 export interface MentorLoginBody {

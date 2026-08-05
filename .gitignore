@@ -41,3 +41,8 @@ backend/venv/
 dist/
 *.tsbuildinfo
 backend.zip
+
+# Local full DB dumps
+therapy_dump.sql
+*.dump.sql
+

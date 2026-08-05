@@ -91,6 +91,17 @@ class MentorApprovalUpdateRequest(BaseModel):
     reason: str | None = None
 
 
+class AdminMentorCardVisibilityUpdate(BaseModel):
+    """Partial public card visibility overrides (admin can force-show photos, etc.)."""
+    headline: bool | None = None
+    expertise_tags: bool | None = None
+    years_experience: bool | None = None
+    rating: bool | None = None
+    session_packages: bool | None = None
+    profile_photo: bool | None = None
+    banner_photo: bool | None = None
+
+
 class AdminBookingRow(BaseModel):
     id: str
     user_id: str
@@ -192,6 +203,17 @@ class AnalyticsResponse(BaseModel):
     reviews_by_day: list[DateCountPoint]
     users_by_day: list[DateCountPoint]
     mentors_by_day: list[DateCountPoint]
+
+
+class AdminFilterPersonOption(BaseModel):
+    id: str
+    full_name: str
+    email: str = ""
+
+
+class AdminFilterOptionsResponse(BaseModel):
+    coaches: list[AdminFilterPersonOption]
+    users: list[AdminFilterPersonOption]
 
 
 class AdminSettlementCandidateRow(BaseModel):
@@ -470,6 +492,8 @@ class AdminAnnouncementCreate(BaseModel):
     title: str
     body: str
     send_email: bool = True
+    #: If set, message goes only to this coach (in-app + optional email).
+    mentor_id: str | None = None
 
 
 class AdminAnnouncementRow(BaseModel):

@@ -398,26 +398,146 @@ export function updateMentorApproval(mentorId: string, payload: MentorApprovalUp
   });
 }
 
+export type AdminMentorCardVisibilityUpdate = {
+  headline?: boolean;
+  expertise_tags?: boolean;
+  years_experience?: boolean;
+  rating?: boolean;
+  session_packages?: boolean;
+  profile_photo?: boolean;
+  banner_photo?: boolean;
+};
+
+export function updateAdminMentorCardVisibility(
+  mentorId: string,
+  payload: AdminMentorCardVisibilityUpdate,
+) {
+  return apiFetch<AdminMentorRow>(`/admin/mentors/${mentorId}/card-visibility`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function deleteAdminMentor(mentorId: string) {
   return apiFetch<{ ok: boolean; deleted_id: string }>(`/admin/mentors/${mentorId}`, {
     method: "DELETE",
   });
 }
 
-export function fetchAdminBookings(skip = 0, limit = 50) {
-  return apiFetch<Paginated<AdminBookingRow>>(`/admin/bookings${qs({ skip, limit })}`);
+export function fetchAdminBookings(
+  skip = 0,
+  limit = 50,
+  filters?: {
+    coach_id?: string;
+    user_id?: string;
+    coach_name?: string;
+    user_name?: string;
+    date_from?: string;
+    date_to?: string;
+  },
+) {
+  return apiFetch<Paginated<AdminBookingRow>>(
+    `/admin/bookings${qs({
+      skip,
+      limit,
+      coach_id: filters?.coach_id,
+      user_id: filters?.user_id,
+      coach_name: filters?.coach_name,
+      user_name: filters?.user_name,
+      date_from: filters?.date_from,
+      date_to: filters?.date_to,
+    })}`,
+  );
 }
 
-export function fetchAdminPayments(skip = 0, limit = 50) {
-  return apiFetch<Paginated<AdminPaymentRow>>(`/admin/payments${qs({ skip, limit })}`);
+export function fetchAdminPayments(
+  skip = 0,
+  limit = 50,
+  filters?: {
+    coach_id?: string;
+    user_id?: string;
+    coach_name?: string;
+    user_name?: string;
+    date_from?: string;
+    date_to?: string;
+  },
+) {
+  return apiFetch<Paginated<AdminPaymentRow>>(
+    `/admin/payments${qs({
+      skip,
+      limit,
+      coach_id: filters?.coach_id,
+      user_id: filters?.user_id,
+      coach_name: filters?.coach_name,
+      user_name: filters?.user_name,
+      date_from: filters?.date_from,
+      date_to: filters?.date_to,
+    })}`,
+  );
 }
 
-export function fetchAdminReviews(skip = 0, limit = 50) {
-  return apiFetch<Paginated<AdminReviewRow>>(`/admin/reviews${qs({ skip, limit })}`);
+export function fetchAdminReviews(
+  skip = 0,
+  limit = 50,
+  filters?: {
+    coach_id?: string;
+    user_id?: string;
+    coach_name?: string;
+    user_name?: string;
+    date_from?: string;
+    date_to?: string;
+  },
+) {
+  return apiFetch<Paginated<AdminReviewRow>>(
+    `/admin/reviews${qs({
+      skip,
+      limit,
+      coach_id: filters?.coach_id,
+      user_id: filters?.user_id,
+      coach_name: filters?.coach_name,
+      user_name: filters?.user_name,
+      date_from: filters?.date_from,
+      date_to: filters?.date_to,
+    })}`,
+  );
 }
 
-export function fetchAdminAnalytics(period: AdminPeriod) {
-  return apiFetch<AnalyticsResponse>(`/admin/analytics${qs({ period })}`);
+export type AdminAnalyticsFilters = {
+  coach_id?: string;
+  user_id?: string;
+  coach_name?: string;
+  user_name?: string;
+  date_from?: string;
+  date_to?: string;
+};
+
+export function fetchAdminAnalytics(period: AdminPeriod, filters?: AdminAnalyticsFilters) {
+  return apiFetch<AnalyticsResponse>(
+    `/admin/analytics${qs({
+      period,
+      coach_id: filters?.coach_id,
+      user_id: filters?.user_id,
+      coach_name: filters?.coach_name,
+      user_name: filters?.user_name,
+      date_from: filters?.date_from,
+      date_to: filters?.date_to,
+    })}`,
+  );
+}
+
+export interface AdminFilterPersonOption {
+  id: string;
+  full_name: string;
+  email: string;
+}
+
+export interface AdminFilterOptionsResponse {
+  coaches: AdminFilterPersonOption[];
+  users: AdminFilterPersonOption[];
+}
+
+export function fetchAdminFilterOptions() {
+  return apiFetch<AdminFilterOptionsResponse>("/admin/filter-options");
 }
 
 export function fetchAdminChatInvoices() {
@@ -704,6 +824,7 @@ export interface AdminMentorPresenceDetail {
 export function fetchAdminMentorPresence(opts?: {
   week_start?: string;
   q?: string;
+  mentor_id?: string;
   skip?: number;
   limit?: number;
 }) {
@@ -712,6 +833,7 @@ export function fetchAdminMentorPresence(opts?: {
   params.set("limit", String(opts?.limit ?? 50));
   if (opts?.week_start) params.set("week_start", opts.week_start);
   if (opts?.q?.trim()) params.set("q", opts.q.trim());
+  if (opts?.mentor_id?.trim()) params.set("mentor_id", opts.mentor_id.trim());
   return apiFetch<AdminMentorPresenceList>(`/admin/mentor-presence?${params.toString()}`);
 }
 
@@ -745,6 +867,7 @@ export function createAdminAnnouncement(body: {
   title: string;
   body: string;
   send_email?: boolean;
+  mentor_id?: string | null;
 }) {
   return apiFetch<AdminAnnouncementRow>(`/admin/announcements`, {
     method: "POST",
@@ -752,6 +875,7 @@ export function createAdminAnnouncement(body: {
       title: body.title,
       body: body.body,
       send_email: body.send_email ?? true,
+      mentor_id: body.mentor_id || null,
     }),
   });
 }

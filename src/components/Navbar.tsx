@@ -29,11 +29,11 @@ const Navbar = () => {
   const sectionTo = (hash: string) => homeSectionTo(location.pathname, hash);
 
   const links = [
-    { label: t.nav.home, to: sectionTo("#hero") },
-    { label: t.nav.about, to: sectionTo("#about") },
-    { label: t.nav.services, to: sectionTo("#services") },
-    { label: t.nav.pricing, to: sectionTo("#pricing") },
-    { label: t.nav.contact, to: sectionTo("#footer") },
+    { label: t.nav.home, to: sectionTo("#hero"), section: true },
+    { label: t.nav.about, to: sectionTo("#about"), section: true },
+    { label: t.nav.services, to: sectionTo("#services"), section: true },
+    { label: t.nav.pricing, to: sectionTo("#pricing"), section: true },
+    { label: t.nav.contact, to: "/contact", section: false },
   ];
 
   const langs = Object.entries(languageLabels) as [Language, string][];
@@ -64,7 +64,10 @@ const Navbar = () => {
               key={typeof l.to === "string" ? l.to : l.to.hash}
               to={l.to}
               onClick={() => {
-                if (onHome) scrollToHomeSection(typeof l.to === "string" ? l.to : l.to.hash ?? "#hero");
+                if (l.section && onHome) {
+                  scrollToHomeSection(typeof l.to === "string" ? l.to : l.to.hash ?? "#hero");
+                }
+                setMenuOpen(false);
               }}
               className="text-lg font-semibold text-zinc-950 transition-colors duration-200 hover:text-black"
             >
@@ -174,7 +177,9 @@ const Navbar = () => {
               to={l.to}
               onClick={() => {
                 setMenuOpen(false);
-                if (onHome) scrollToHomeSection(typeof l.to === "string" ? l.to : l.to.hash ?? "#hero");
+                if (l.section && onHome) {
+                  scrollToHomeSection(typeof l.to === "string" ? l.to : l.to.hash ?? "#hero");
+                }
               }}
               className="text-lg font-semibold text-zinc-950 transition-colors hover:text-black"
             >

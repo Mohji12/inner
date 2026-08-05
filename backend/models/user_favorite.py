@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy import CHAR, Column, DateTime, ForeignKey, String, UniqueConstraint
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 
 from db.session import Base
 
@@ -16,5 +16,8 @@ class UserFavorite(Base):
         UniqueConstraint("user_id", "mentor_id", name="uq_user_mentor_favorite"),
     )
 
-    user = relationship("User", backref="favorites")
+    user = relationship(
+        "User",
+        backref=backref("favorites", cascade="all, delete-orphan", passive_deletes=True),
+    )
     mentor = relationship("Mentor", backref="favorited_by")

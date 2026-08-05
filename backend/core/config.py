@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     # Comma-separated admin emails notified when a coach verifies email (pending approval).
     coach_registration_notify_emails: str = "Mohan@mijnlevenspad.com,info@mijnlevenspad.com"
 
+    # Contact / support form recipients (comma-separated).
+    support_contact_emails: str = "Mohan@mijnlevenspad.com,info@mijnlevenspad.com"
+
     # Coach weekly platform presence (hours from dashboard heartbeats).
     mentor_weekly_min_hours: float = 20.0
     mentor_presence_timezone: str = "Europe/Amsterdam"

@@ -100,6 +100,11 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
+                <Link to="/contact" className="text-sm text-primary-foreground/50 hover:text-primary-foreground transition-colors">
+                  {t.footer.contactTitle}
+                </Link>
+              </li>
+              <li>
                 <Link to="/privacy-policy" className="text-sm text-primary-foreground/50 hover:text-primary-foreground transition-colors">
                   Privacy Policy
                 </Link>
@@ -121,7 +126,7 @@ const Footer = () => {
               <li className="flex items-center gap-3 text-sm text-primary-foreground/50">
                 <Mail className="w-4 h-4 shrink-0" />
                 <a
-                  href="mailto:pdamahabiersing@outlook.com"
+                  href="mailto:info@mijnlevenspad.com"
                   className="transition-colors hover:text-primary-foreground"
                 >
                   info@mijnlevenspad.com

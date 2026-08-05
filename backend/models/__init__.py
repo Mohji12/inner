@@ -10,6 +10,7 @@ from models.chat_session import ChatSession
 from models.coach_application import CoachApplication
 from models.email_otp import EmailOtpCode
 from models.mentor import Mentor
+from models.mentor_availability_window import MentorAvailabilityWindow
 from models.mentor_monthly_invoice import MentorMonthlyInvoice
 from models.mentor_onboarding_payment import MentorOnboardingPayment
 from models.mentor_payout_account import MentorPayoutAccount
@@ -48,6 +49,7 @@ __all__ = [
     "AdminAnnouncement",
     "User",
     "Mentor",
+    "MentorAvailabilityWindow",
     "MentorOnboardingPayment",
     "MentorMonthlyInvoice",
     "MentorPayoutAccount",

@@ -8,6 +8,7 @@ import type {
   MentorDetail,
   MentorPublic,
   PlatformPricing,
+  AvailabilityWindow,
 } from "./types";
 
 export type MentorPatchBody = Partial<{
@@ -122,6 +123,35 @@ export function getMentorPresenceStatus(): Promise<MentorPresenceStatus> {
   return apiFetch<MentorPresenceStatus>("/mentors/me/presence-status");
 }
 
+export interface MentorPresenceWeekStat {
+  week_start: string;
+  seconds_online: number;
+  hours_online: number;
+  meets_minimum: boolean;
+  warning_sent_at: string | null;
+}
+
+export interface MentorPresenceMonthStat {
+  month_start: string;
+  seconds_online: number;
+  hours_online: number;
+}
+
+export interface MentorPresenceSelfStats {
+  min_hours: number;
+  timezone: string;
+  this_week: MentorPresenceWeekStat;
+  this_month: MentorPresenceMonthStat;
+  weeks: MentorPresenceWeekStat[];
+  months: MentorPresenceMonthStat[];
+}
+
+export function getMentorPresenceTime(weeks = 12, months = 6): Promise<MentorPresenceSelfStats> {
+  return apiFetch<MentorPresenceSelfStats>(
+    `/mentors/me/presence-time?weeks=${weeks}&months=${months}`,
+  );
+}
+
 export function patchMentorMe(body: MentorPatchBody): Promise<MentorAccount> {
   return apiFetch<MentorAccount>("/mentors/me", {
     method: "PATCH",
@@ -160,6 +190,42 @@ export function patchMySlot(slotId: string, body: SlotPatchBody): Promise<Availa
 
 export function deleteMySlot(slotId: string): Promise<void> {
   return apiFetch<void>(`/mentors/me/slots/${slotId}`, { method: "DELETE" });
+}
+
+export interface AvailabilityWindowCreateBody {
+  window_date: string;
+  start_time: string;
+  end_time: string;
+  timezone?: string | null;
+}
+
+export function listMyAvailabilityWindows(): Promise<AvailabilityWindow[]> {
+  return apiFetch<AvailabilityWindow[]>("/mentors/me/availability-windows");
+}
+
+export function createMyAvailabilityWindow(
+  body: AvailabilityWindowCreateBody,
+): Promise<AvailabilityWindow> {
+  return apiFetch<AvailabilityWindow>("/mentors/me/availability-windows", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function deleteMyAvailabilityWindow(windowId: string): Promise<void> {
+  return apiFetch<void>(`/mentors/me/availability-windows/${windowId}`, {
+    method: "DELETE",
+  });
+}
+
+export function listMentorAvailabilityWindows(
+  mentorId: string,
+  limit = 5,
+): Promise<AvailabilityWindow[]> {
+  return apiFetch<AvailabilityWindow[]>(
+    `/mentors/${mentorId}/availability-windows?limit=${limit}`,
+    { skipAuth: true },
+  );
 }
 
 export interface EarningsSummary {
