@@ -414,7 +414,6 @@ export default function AdminMentorsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="font-serif">{d.bankDetailsTitle}</DialogTitle>
-            <DialogDescription>{d.bankDetailsDesc}</DialogDescription>
           </DialogHeader>
           {bankLoading ? (
             <p className="text-sm text-muted-foreground">{d.tableLoading}</p>

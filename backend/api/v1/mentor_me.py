@@ -178,6 +178,7 @@ def submit_mentor_support(
     request: Request,
     me: CurrentMentor,
     payload: AuthenticatedSupportCreate,
+    db: DbSession,
 ) -> SupportContactMessage:
     send_support_inquiry(
         source="coach_dashboard",
@@ -188,6 +189,7 @@ def submit_mentor_support(
         phone=payload.phone or me.phone_number,
         role="coach",
         account_id=me.id,
+        db=db,
     )
     return SupportContactMessage(
         message="Thank you! Your message was sent. Our team will get back to you by email."

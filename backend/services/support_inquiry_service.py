@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import Literal
 
 from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
 
 from core.config import settings
+from core.security import new_uuid
+from models.support_inquiry import SupportInquiry
 from services.email_service import send_plain_email
 
 logger = logging.getLogger(__name__)
@@ -88,7 +92,27 @@ def send_support_inquiry(
     phone: str | None = None,
     role: str | None = None,
     account_id: str | None = None,
-) -> None:
+    db: Session | None = None,
+) -> str:
+    """Persist inquiry (when db given) and email support recipients. Returns inquiry id."""
+    inquiry_id = new_uuid()
+    if db is not None:
+        row = SupportInquiry(
+            id=inquiry_id,
+            source=source,
+            full_name=full_name.strip(),
+            email=email.strip(),
+            phone=(phone or "").strip() or None,
+            role=role,
+            account_id=account_id,
+            subject=subject.strip(),
+            message=message.strip(),
+            status="new",
+            created_at=datetime.now(timezone.utc),
+        )
+        db.add(row)
+        db.commit()
+
     recipients = support_recipients()
     if not recipients:
         raise HTTPException(
@@ -120,3 +144,4 @@ def send_support_inquiry(
             status.HTTP_502_BAD_GATEWAY,
             "Could not send your message right now. Please try again or email info@mijnlevenspad.com.",
         )
+    return inquiry_id

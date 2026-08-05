@@ -27,6 +27,7 @@ from models.user_favorite import UserFavorite
 from models.waitlist import WaitlistEntry
 from models.wallet import Wallet, WalletTransaction
 from models.promo_code import PromoCode
+from models.support_inquiry import SupportInquiry
 from models.marketplace import (
     AuditLog,
     CapabilityMatrix,
@@ -75,6 +76,7 @@ __all__ = [
     "Wallet",
     "WalletTransaction",
     "PromoCode",
+    "SupportInquiry",
     "CapabilityMatrix",
     "CommissionConfig",
     "WalletAccount",

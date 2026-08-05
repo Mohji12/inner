@@ -791,3 +791,28 @@ def ensure_mentor_availability_windows_table() -> None:
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """
     _execute_ddl(ddl)
+
+
+def ensure_support_inquiries_table() -> None:
+    """Contact / user / coach support query form submissions."""
+    ddl = """
+    CREATE TABLE IF NOT EXISTS support_inquiries (
+        id CHAR(36) NOT NULL PRIMARY KEY,
+        source VARCHAR(32) NOT NULL,
+        full_name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        phone VARCHAR(64) NULL,
+        role VARCHAR(32) NULL,
+        account_id CHAR(36) NULL,
+        subject VARCHAR(200) NOT NULL,
+        message TEXT NOT NULL,
+        status VARCHAR(32) NOT NULL DEFAULT 'new',
+        created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+        KEY ix_support_inquiries_source (source),
+        KEY ix_support_inquiries_email (email),
+        KEY ix_support_inquiries_account_id (account_id),
+        KEY ix_support_inquiries_status (status),
+        KEY ix_support_inquiries_created_at (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    """
+    _execute_ddl(ddl)

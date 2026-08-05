@@ -216,7 +216,7 @@ export function AdminDashboardLayout() {
       </Sidebar>
       <SidebarInset>
         <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_20%_0%,hsl(var(--primary)/0.18),transparent_60%),radial-gradient(circle_at_80%_10%,hsl(var(--accent)/0.14),transparent_55%)]" />
-        <header className="relative z-10 flex h-16 items-center gap-2 border-b border-border/60 bg-background/80 backdrop-blur transition-colors duration-200 px-6">
+        <header className="relative z-30 flex h-16 items-center gap-2 border-b border-border/60 bg-background/80 backdrop-blur transition-colors duration-200 px-6">
           <SidebarTrigger className="transition-transform duration-200 hover:scale-105 active:scale-95" />
           <Separator orientation="vertical" className="h-6" />
           <span className="text-sm text-muted-foreground">{d.hub}</span>
@@ -224,7 +224,7 @@ export function AdminDashboardLayout() {
             <LanguageSwitcher compact />
           </div>
         </header>
-        <div className="relative z-10 flex-1 overflow-auto p-6">
+        <div className="relative z-0 flex-1 overflow-auto p-6">
           <DashboardContentArea />
         </div>
       </SidebarInset>

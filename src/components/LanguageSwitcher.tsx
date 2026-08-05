@@ -34,9 +34,9 @@ export function LanguageSwitcher({ compact }: Props) {
       </button>
       {open ? (
         <>
-          <div className="fixed inset-0 z-40" aria-hidden onClick={() => setOpen(false)} />
+          <div className="fixed inset-0 z-[90]" aria-hidden onClick={() => setOpen(false)} />
           <div
-            className="absolute right-0 top-full z-50 mt-2 min-w-[200px] animate-in rounded-xl border border-border bg-popover py-2 text-popover-foreground shadow-lg fade-in slide-in-from-top-2"
+            className="absolute right-0 top-full z-[100] mt-2 min-w-[200px] animate-in rounded-xl border border-border bg-popover py-2 text-popover-foreground shadow-lg fade-in slide-in-from-top-2"
             role="listbox"
           >
             <p className="px-3 pb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">

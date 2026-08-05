@@ -68,6 +68,7 @@ def submit_user_support(
     request: Request,
     user: CurrentUser,
     payload: AuthenticatedSupportCreate,
+    db: DbSession,
 ) -> SupportContactMessage:
     send_support_inquiry(
         source="user_dashboard",
@@ -78,6 +79,7 @@ def submit_user_support(
         phone=payload.phone or user.phone_number,
         role="user",
         account_id=user.id,
+        db=db,
     )
     return SupportContactMessage(
         message="Thank you! Your message was sent. Our team will get back to you by email."

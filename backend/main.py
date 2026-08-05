@@ -27,6 +27,7 @@ from db.startup_schema import (
     ensure_localization_i18n_columns,
     ensure_marketplace_ledger_tables,
     ensure_mentor_availability_windows_table,
+    ensure_support_inquiries_table,
     ensure_mentor_mollie_fee_tables,
     ensure_mentor_payout_bank_columns,
     ensure_onboarding_installment_columns,
@@ -119,6 +120,7 @@ async def lifespan(app: FastAPI):
     _run_startup_step("ensure_universal_promo_codes", ensure_universal_promo_codes)
     _run_startup_step("ensure_coach_applications_table", ensure_coach_applications_table)
     _run_startup_step("ensure_mentor_availability_windows_table", ensure_mentor_availability_windows_table)
+    _run_startup_step("ensure_support_inquiries_table", ensure_support_inquiries_table)
     start_scheduler()
     yield
     shutdown_scheduler()
