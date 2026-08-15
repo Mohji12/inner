@@ -47,18 +47,22 @@ const Navbar = () => {
           : "bg-transparent py-4 backdrop-blur-none backdrop-saturate-100",
       )}
     >
-      <div className="container mx-auto flex items-center justify-between px-6">
+      <div className="container mx-auto flex min-w-0 items-center justify-between">
         <Link
           to={sectionTo("#hero")}
           onClick={() => {
             if (onHome) scrollToHomeSection("#hero");
           }}
-          className="flex items-center transition-opacity hover:opacity-80"
+          className="flex min-w-0 items-center transition-opacity hover:opacity-80"
         >
-          <img src="/lifepath%20logo.png" alt="Mijn Levenspad Logo" className="h-20 w-auto object-contain drop-shadow-sm md:h-24" />
+          <img
+            src="/lifepath%20logo.png"
+            alt="Mijn Levenspad Logo"
+            className="h-10 w-auto max-w-[9rem] object-contain drop-shadow-sm sm:h-12 sm:max-w-[11rem] md:h-16 md:max-w-[14rem] lg:h-20 lg:max-w-[16rem]"
+          />
         </Link>
 
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden lg:flex items-center gap-4 xl:gap-8">
           {links.map((l) => (
             <Link
               key={typeof l.to === "string" ? l.to : l.to.hash}
@@ -162,7 +166,7 @@ const Navbar = () => {
         </div>
 
         <button
-          className="text-zinc-950 transition-transform duration-300 hover:text-black md:hidden active:scale-95"
+          className="text-zinc-950 transition-transform duration-300 hover:text-black lg:hidden active:scale-95"
           onClick={() => setMenuOpen(!menuOpen)}
         >
           {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -170,7 +174,7 @@ const Navbar = () => {
       </div>
 
       {menuOpen && (
-        <div className="mx-4 mt-2 flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-6 shadow-xl md:hidden">
+        <div className="mx-4 mt-2 flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-6 shadow-xl lg:hidden">
           {links.map((l) => (
             <Link
               key={typeof l.to === "string" ? l.to : l.to.hash}

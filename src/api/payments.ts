@@ -22,3 +22,44 @@ export function syncMolliePaymentAfterCheckout(mollie_payment_id: string): Promi
     body: JSON.stringify({ mollie_payment_id }),
   });
 }
+
+export type WalletTopupIntent = {
+  checkout_url: string;
+  mollie_payment_id: string;
+  amount: number | string;
+  currency: string;
+};
+
+export function createWalletTopupIntent(body: {
+  amount: number;
+  currency?: "EUR";
+}): Promise<WalletTopupIntent> {
+  return apiFetch("/payments/wallet/topup-intent", {
+    method: "POST",
+    body: JSON.stringify({
+      amount: body.amount,
+      currency: body.currency ?? "EUR",
+    }),
+  });
+}
+
+export type PayBookingWithWalletResult = {
+  checkout_url: string;
+  payment_id: string;
+  amount: number;
+  currency: string;
+  paid_from: "wallet";
+};
+
+export function payBookingWithWallet(body: {
+  booking_id: string;
+  promo_code?: string | null;
+}): Promise<PayBookingWithWalletResult> {
+  return apiFetch("/payments/pay-with-wallet", {
+    method: "POST",
+    body: JSON.stringify({
+      booking_id: body.booking_id,
+      promo_code: body.promo_code ?? null,
+    }),
+  });
+}

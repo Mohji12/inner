@@ -62,7 +62,7 @@ export function OnlineStatusBadge() {
     return (
       <div
         className={cn(
-          "inline-flex max-w-[min(100%,280px)] items-center gap-2 rounded-full border px-3 py-1.5",
+          "inline-flex min-w-0 max-w-[9.5rem] items-center gap-2 rounded-full border px-2 py-1 sm:max-w-[16rem] sm:px-3 sm:py-1.5",
           status === "online" && "border-emerald-500/40 bg-emerald-500/10",
           status === "busy" && "border-amber-500/40 bg-amber-500/10",
           status === "offline" && "border-border/60 bg-muted/40",
@@ -83,7 +83,7 @@ export function OnlineStatusBadge() {
           >
             {label}
           </p>
-          <p className="truncate text-[10px] text-muted-foreground">{hint}</p>
+          <p className="hidden truncate text-[10px] text-muted-foreground sm:block">{hint}</p>
         </div>
       </div>
     );

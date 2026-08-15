@@ -290,6 +290,50 @@ def credit_user_wallet_topup(
     return txn
 
 
+def spend_user_available_for_booking(
+    db: Session,
+    *,
+    user_id: str,
+    amount: Decimal,
+    currency: str,
+    booking_id: str,
+) -> LedgerTransaction:
+    """Move user_available to platform_cash (reverse of wallet top-up). Idempotent per booking."""
+    amt = q2(amount)
+    if amt <= 0:
+        raise LedgerError("Amount must be greater than zero")
+    idempotency_key = f"booking_wallet_pay:{booking_id}"
+    existing = db.query(LedgerTransaction).filter(LedgerTransaction.idempotency_key == idempotency_key).first()
+    if existing:
+        return existing
+    revenue, cash = ensure_platform_accounts(db, currency=currency)
+    _ = revenue
+    user_available = get_or_create_wallet_account(
+        db,
+        owner_type=OWNER_USER,
+        owner_id=user_id,
+        account_kind=ACCOUNT_USER_AVAILABLE,
+        currency=currency,
+    )
+    balance = get_account_balance(db, user_available.id)
+    if balance < amt:
+        raise LedgerError("Insufficient wallet balance")
+    return post_double_entry(
+        db,
+        txn_type="booking_wallet_pay",
+        amount=amt,
+        currency=currency,
+        debit_account=user_available,
+        credit_account=cash,
+        reference_type="booking",
+        reference_id=booking_id,
+        idempotency_key=idempotency_key,
+        metadata={"user_id": user_id, "booking_id": booking_id},
+        debit_memo="Booking paid from wallet",
+        credit_memo="Platform cash from wallet booking",
+    )
+
+
 def reserve_user_hold_for_session(
     db: Session,
     *,

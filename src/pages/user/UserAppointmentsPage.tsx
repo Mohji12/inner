@@ -1,6 +1,6 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   createBookingReview,
   createPaymentIntent,
@@ -10,7 +10,8 @@ import {
 } from "@/api/bookings";
 import { saveUserBookingInvoicePdf } from "@/api/invoices";
 import { getChatSession, listChatSessions } from "@/api/chat";
-import { getCheckoutCurrencies, syncMolliePaymentAfterCheckout } from "@/api/payments";
+import { getBookingCheckoutPreview, getCheckoutCurrencies, payBookingWithWallet, syncMolliePaymentAfterCheckout } from "@/api/payments";
+import { getMyWallet } from "@/api/wallets";
 import { useAuth } from "@/auth/AuthContext";
 import { getMentor, getPlatformPricing } from "@/api/mentors";
 import type { Booking, MentorDetail, ChatInboxSession } from "@/api/types";
@@ -60,6 +61,7 @@ const UserAppointmentsPage = () => {
     ap.statusLabels[key as keyof typeof ap.statusLabels] ?? key.replaceAll("_", " ");
   const { role, userAccessToken } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   /** User asked for browser-local viewing when picking / reading appointment times */
   const displayTimeZone = useEffectiveTimeZone();
@@ -105,6 +107,29 @@ const UserAppointmentsPage = () => {
     queryKey: ["checkout-currencies"],
     queryFn: getCheckoutCurrencies,
   });
+  const walletQuery = useQuery({
+    queryKey: ["wallet", "me"],
+    queryFn: () => getMyWallet(),
+  });
+  const unpaidBookings = useMemo(
+    () => bookings.filter((b) => b.status === "pending_payment" && b.payment_status === "unpaid"),
+    [bookings],
+  );
+  const unpaidPreviewQueries = useQueries({
+    queries: unpaidBookings.map((b) => ({
+      queryKey: ["booking-checkout-preview", b.id],
+      queryFn: () => getBookingCheckoutPreview(b.id),
+      staleTime: 30_000,
+    })),
+  });
+  const unpaidPreviewById = useMemo(() => {
+    const map = new Map<string, number>();
+    unpaidBookings.forEach((b, i) => {
+      const total = unpaidPreviewQueries[i]?.data?.total_eur;
+      if (typeof total === "number") map.set(b.id, total);
+    });
+    return map;
+  }, [unpaidBookings, unpaidPreviewQueries]);
   const [checkoutCurrency, setCheckoutCurrency] = useState("EUR");
   const chatInboxQuery = useQuery({
     queryKey: ["chat", "sessions", "appointments"],
@@ -176,6 +201,19 @@ const UserAppointmentsPage = () => {
     onSuccess: (out) => {
       stashPendingMolliePaymentId(out.payment_id);
       window.location.href = out.checkout_url;
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const walletPayMut = useMutation({
+    mutationFn: (bookingId: string) => payBookingWithWallet({ booking_id: bookingId }),
+    onSuccess: (out, bookingId) => {
+      void queryClient.invalidateQueries({ queryKey: ["wallet", "me"] });
+      void queryClient.invalidateQueries({ queryKey: ["bookings", "me"] });
+      const path = out.checkout_url.startsWith("/")
+        ? out.checkout_url
+        : `/booking/thank-you?bookingId=${bookingId}`;
+      navigate(path);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -450,6 +488,13 @@ const UserAppointmentsPage = () => {
           const canDownloadInvoice = canDownloadBookingInvoice(b, linkedChat, now);
           const isLiveSession = canStartSession;
           const isHighlightedBooking = Boolean(highlightedBookingId) && b.id === highlightedBookingId;
+          const previewTotal = unpaidPreviewById.get(b.id);
+          const canWalletPay =
+            b.status === "pending_payment" &&
+            b.payment_status === "unpaid" &&
+            previewTotal != null &&
+            previewTotal > 0 &&
+            Number(walletQuery.data?.balance ?? 0) >= previewTotal - 1e-9;
           return (
             <Card
               key={b.id}
@@ -527,13 +572,24 @@ const UserAppointmentsPage = () => {
                     </Button>
                   ) : null}
                   {b.status === "pending_payment" && b.payment_status === "unpaid" ? (
-                    <Button
-                      size="sm"
-                      className="gradient-cta text-white"
-                      onClick={() => payMut.mutate({ bookingId: b.id, checkoutCurrency })}
-                    >
-                      Pay with Mollie
-                    </Button>
+                    canWalletPay ? (
+                      <Button
+                        size="sm"
+                        className="gradient-cta text-white"
+                        disabled={walletPayMut.isPending || payMut.isPending}
+                        onClick={() => walletPayMut.mutate(b.id)}
+                      >
+                        {t.app.payment.payFromWallet}
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        className="gradient-cta text-white"
+                        onClick={() => payMut.mutate({ bookingId: b.id, checkoutCurrency })}
+                      >
+                        Pay with Mollie
+                      </Button>
+                    )
                   ) : null}
                   {b.status === "pending_payment" ? (
                     <Button

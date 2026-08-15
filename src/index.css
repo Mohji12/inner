@@ -65,11 +65,30 @@
     font-size: calc(100% * var(--a11y-font-scale));
     filter: var(--a11y-filter-contrast) var(--a11y-filter-colorblind);
     font-family: "Cormorant Garamond", Georgia, serif;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
     line-height: var(--a11y-line-height);
     letter-spacing: var(--a11y-letter-spacing);
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: clip;
+  }
+  #root {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: clip;
+  }
+  img,
+  video,
+  canvas {
+    max-width: 100%;
+    height: auto;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-serif text-heading;

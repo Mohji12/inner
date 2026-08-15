@@ -576,6 +576,16 @@ def process_mollie_webhook_by_payment_id(db: Session, mollie_payment_id: str) ->
         db.commit()
         return {"status": status_str, "type": "chat_purchase"}
 
+    metadata = payment_data.get("metadata") or {}
+    if str(metadata.get("kind") or "") == "wallet_topup":
+        from services.wallet_topup_service import settle_wallet_topup
+
+        return settle_wallet_topup(
+            db,
+            mollie_payment_id=mollie_payment_id,
+            payment_data=payment_data,
+        )
+
     return {"status": status_str, "type": "unmatched"}
 
 

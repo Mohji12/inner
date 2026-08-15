@@ -58,7 +58,7 @@ const Footer = () => {
               <img
                 src="/lifepath%20logo.png"
                 alt="Mijn Levenspad Logo"
-                className="mb-4 h-36 w-auto object-contain md:h-44"
+                className="mb-4 h-20 w-auto max-w-full object-contain sm:h-28 md:h-36"
               />
             </Link>
             <p className="text-primary-foreground/60 text-sm leading-relaxed max-w-xs">

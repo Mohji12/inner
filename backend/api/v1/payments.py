@@ -1,5 +1,5 @@
 from decimal import Decimal
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, Request, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 import logging
@@ -24,7 +24,13 @@ from services.mollie_service import (
     resolve_mollie_webhook_url,
     verify_mollie_webhook_signature,
 )
-from services.ledger_service import credit_user_wallet_topup, q2
+from services.ledger_service import q2
+from services.wallet_topup_service import (
+    WALLET_TOPUP_CURRENCY,
+    WALLET_TOPUP_MAX_EUR,
+    WALLET_TOPUP_MIN_EUR,
+)
+from services.wallet_payment_service import WalletPaymentError, pay_booking_with_wallet
 from services.marketplace_service import (
     audit_log,
     record_webhook_event,
@@ -84,6 +90,19 @@ class WalletTopupIntentOut(BaseModel):
     currency: str
 
 
+class PayWithWalletIn(BaseModel):
+    booking_id: str
+    promo_code: str | None = None
+
+
+class PayWithWalletOut(BaseModel):
+    checkout_url: str
+    payment_id: str
+    amount: float
+    currency: str
+    paid_from: str = "wallet"
+
+
 def _ensure_actor_can_sync_mollie_payment(db: Session, actor: AnyActor, payment_id: str) -> None:
     if actor.role == "admin":
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Admin cannot sync via this endpoint")
@@ -107,6 +126,15 @@ def _ensure_actor_can_sync_mollie_payment(db: Session, actor: AnyActor, payment_
         if actor.role != "mentor" or inv.mentor_id != actor.subject_id:
             raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Not your invoice payment")
         return
+    try:
+        payment_data = get_mollie_payment(payment_id)
+    except MollieServiceError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Payment not tied to your account") from None
+    metadata = payment_data.get("metadata") or {}
+    if str(metadata.get("kind") or "") == "wallet_topup":
+        if actor.role != "user" or str(metadata.get("user_id") or "") != actor.subject_id:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Not your payment")
+        return
     raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Payment not tied to your account")
 
 
@@ -120,9 +148,19 @@ def create_wallet_topup_intent(
     if actor.role != "user":
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Only users can top up wallet")
     amount = q2(body.amount)
-    if amount <= 0:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Amount must be positive")
-    currency = (body.currency or "EUR").strip().upper()
+    if amount < WALLET_TOPUP_MIN_EUR:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail=f"Amount must be at least {WALLET_TOPUP_MIN_EUR} EUR",
+        )
+    if amount > WALLET_TOPUP_MAX_EUR:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail=f"Amount must be at most {WALLET_TOPUP_MAX_EUR} EUR",
+        )
+    currency = (body.currency or WALLET_TOPUP_CURRENCY).strip().upper()
+    if currency != WALLET_TOPUP_CURRENCY:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Wallet top-up currency must be EUR")
     redirect_url = f"{settings.mollie_redirect_base_url.rstrip('/')}/user/wallet?topup=success"
     webhook_url = resolve_mollie_webhook_url(request)
     try:
@@ -353,6 +391,36 @@ def create_intent(
             detail="Unable to start checkout. Please try again.",
         ) from e
 
+
+@router.post("/pay-with-wallet", response_model=PayWithWalletOut)
+def pay_with_wallet(
+    req: PayWithWalletIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        result = pay_booking_with_wallet(
+            db,
+            user_id=current_user.id,
+            booking_id=req.booking_id,
+            promo_code=req.promo_code,
+        )
+        db.commit()
+    except WalletPaymentError as e:
+        db.rollback()
+        raise HTTPException(status_code=e.status_code, detail=str(e)) from e
+    except Exception:
+        db.rollback()
+        raise
+    return PayWithWalletOut(
+        checkout_url=f"/booking/thank-you?bookingId={result.booking_id}",
+        payment_id=result.payment.transaction_id or result.payment.id,
+        amount=float(result.amount),
+        currency=result.currency,
+        paid_from="wallet",
+    )
+
+
 @router.post("/webhook")
 async def mollie_webhook(request: Request, db: Session = Depends(get_db)):
     payload = await request.body()
@@ -377,29 +445,6 @@ async def mollie_webhook(request: Request, db: Session = Depends(get_db)):
     if event.processing_status == "processed":
         return {"status": "duplicate", "payment_id": payment_id}
     out = process_mollie_webhook_by_payment_id(db, payment_id)
-    payment_data = get_mollie_payment(payment_id)
-    metadata = payment_data.get("metadata") or {}
-    if metadata.get("kind") == "wallet_topup" and out.get("status") == "paid":
-        user_id = str(metadata.get("user_id") or "")
-        amount_raw = metadata.get("amount")
-        currency = str(metadata.get("currency") or "EUR").upper()
-        if user_id and amount_raw:
-            credit_user_wallet_topup(
-                db,
-                user_id=user_id,
-                amount=q2(Decimal(str(amount_raw))),
-                currency=currency,
-                external_payment_id=payment_id,
-            )
-            audit_log(
-                db,
-                actor_role="system",
-                actor_id="system",
-                action="wallet.topup.settled",
-                entity_type="mollie_payment",
-                entity_id=payment_id,
-                details={"user_id": user_id, "amount": str(amount_raw), "currency": currency},
-            )
     event.processing_status = "processed"
     event.processed_at = datetime.now(timezone.utc)
     db.commit()

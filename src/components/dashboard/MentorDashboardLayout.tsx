@@ -1,4 +1,4 @@
-import { NavLink, useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, Clock, Coins, LayoutDashboard, LogOut, MessageSquare, UserRound, FileText, Landmark, Home, Shield, LifeBuoy, Timer } from "lucide-react";
 import { getMentorActiveChatSession } from "@/api/chat";
@@ -19,23 +19,23 @@ import {
   SidebarProvider,
   SidebarRail,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { NotificationBell } from "@/components/NotificationBell";
 import { OnlineStatusBadge } from "@/components/OnlineStatusBadge";
 import { DashboardContentArea } from "@/components/dashboard/DashboardContentArea";
-import {
-  dashboardLogoutButtonClass,
-  dashboardNavLinkClass,
-} from "@/components/dashboard/dashboardNav";
+import { DashboardNavLink } from "@/components/dashboard/DashboardNavLink";
+import { dashboardLogoutButtonClass, dashboardChromeHeaderClass, dashboardChromeBodyClass } from "@/components/dashboard/dashboardNav";
 import { DashboardBrandHeader } from "@/components/dashboard/DashboardBrandHeader";
 
-export function MentorDashboardLayout() {
+function MentorDashboardSidebar() {
   const navigate = useNavigate();
   const { logoutMentorSession } = useAuth();
   const { t } = useLanguage();
   const d = t.app.dashboardMentor;
+  const { isMobile, setOpenMobile } = useSidebar();
 
   const { data: activeChat } = useQuery({
     queryKey: ["chat", "mentor-active"],
@@ -44,12 +44,17 @@ export function MentorDashboardLayout() {
   });
 
   const onLogout = async () => {
+    if (isMobile) setOpenMobile(false);
     await logoutMentorSession();
     navigate("/login?role=mentor", { replace: true });
   };
 
+  const closeMobile = () => {
+    if (isMobile) setOpenMobile(false);
+  };
+
   return (
-    <SidebarProvider>
+    <>
       <Sidebar collapsible="icon" variant="floating">
         <SidebarHeader className="border-b border-sidebar-border/60 px-4 py-4">
           <DashboardBrandHeader roleLabel={d.role} />
@@ -61,108 +66,108 @@ export function MentorDashboardLayout() {
               <SidebarMenu>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.dashboard}>
-                    <NavLink to="/mentor/dashboard" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/mentor/dashboard">
                       <LayoutDashboard />
                       <span>{d.dashboard}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.profile}>
-                    <NavLink to="/mentor/profile" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/mentor/profile">
                       <UserRound />
                       <span>{d.profile}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.availability}>
-                    <NavLink to="/mentor/availability" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/mentor/availability">
                       <Clock />
                       <span>{d.availability}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.platformTime}>
-                    <NavLink to="/mentor/platform-time" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/mentor/platform-time">
                       <Timer />
                       <span>{d.platformTime}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.security}>
-                    <NavLink to="/mentor/security" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/mentor/security">
                       <Shield />
                       <span>{d.security}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.support}>
-                    <NavLink to="/mentor/support" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/mentor/support">
                       <LifeBuoy />
                       <span>{d.support}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.appointments}>
-                    <NavLink to="/mentor/appointments" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/mentor/appointments">
                       <CalendarDays />
                       <span>{d.appointments}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 {activeChat?.id ? (
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild tooltip={d.activeChat}>
-                      <NavLink to={`/mentor/chat/${activeChat.id}`} className={dashboardNavLinkClass}>
+                      <DashboardNavLink to={`/mentor/chat/${activeChat.id}`}>
                         <MessageSquare />
                         <span>{d.activeChat}</span>
-                      </NavLink>
+                      </DashboardNavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ) : null}
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.earnings}>
-                    <NavLink to="/mentor/earnings" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/mentor/earnings">
                       <Coins />
                       <span>{d.earnings}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.payouts}>
-                    <NavLink to="/mentor/payouts" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/mentor/payouts">
                       <Landmark />
                       <span>{d.payouts}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.settlements}>
-                    <NavLink to="/mentor/settlements" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/mentor/settlements">
                       <FileText />
                       <span>{d.settlements}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.monthlyFees}>
-                    <NavLink to="/mentor/invoices" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/mentor/invoices">
                       <FileText />
                       <span>{d.monthlyFees}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.messages}>
-                    <NavLink to="/mentor/messages" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/mentor/messages">
                       <MessageSquare />
                       <span>{d.messages}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
@@ -171,7 +176,7 @@ export function MentorDashboardLayout() {
         </SidebarContent>
         <SidebarFooter className="border-t border-sidebar-border/60 p-2 space-y-1">
           <Button variant="ghost" className={dashboardLogoutButtonClass} asChild>
-            <Link to="/" title={d.viewWebsiteHint}>
+            <Link to="/" title={d.viewWebsiteHint} onClick={closeMobile}>
               <Home className="h-4 w-4" />
               {d.viewWebsite}
             </Link>
@@ -185,11 +190,11 @@ export function MentorDashboardLayout() {
       </Sidebar>
       <SidebarInset>
         <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_20%_0%,hsl(var(--primary)/0.18),transparent_60%),radial-gradient(circle_at_80%_10%,hsl(var(--accent)/0.14),transparent_55%)]" />
-        <header className="relative z-10 flex h-16 items-center gap-2 border-b border-border/60 bg-background/80 backdrop-blur transition-colors duration-200 px-6">
-          <SidebarTrigger className="transition-transform duration-200 hover:scale-105 active:scale-95" />
-          <Separator orientation="vertical" className="h-6" />
-          <span className="text-sm text-muted-foreground hidden sm:inline flex-1">{d.hub}</span>
-          <div className="ml-auto flex items-center gap-2 sm:ml-0">
+        <header className={dashboardChromeHeaderClass}>
+          <SidebarTrigger className="shrink-0 transition-transform duration-200 hover:scale-105 active:scale-95" />
+          <Separator orientation="vertical" className="hidden h-6 sm:block" />
+          <span className="hidden min-w-0 flex-1 truncate text-sm text-muted-foreground sm:inline">{d.hub}</span>
+          <div className="ml-auto flex min-w-0 shrink items-center gap-1 sm:gap-2">
             <Button variant="outline" size="sm" className="hidden sm:inline-flex gap-1.5" asChild>
               <Link to="/" title={d.viewWebsiteHint}>
                 <Home className="h-3.5 w-3.5" />
@@ -200,10 +205,18 @@ export function MentorDashboardLayout() {
             <NotificationBell />
           </div>
         </header>
-        <div className="relative z-10 flex-1 overflow-auto p-6">
+        <div className={dashboardChromeBodyClass}>
           <DashboardContentArea />
         </div>
       </SidebarInset>
+    </>
+  );
+}
+
+export function MentorDashboardLayout() {
+  return (
+    <SidebarProvider>
+      <MentorDashboardSidebar />
     </SidebarProvider>
   );
 }

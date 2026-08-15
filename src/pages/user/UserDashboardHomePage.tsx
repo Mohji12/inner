@@ -33,6 +33,7 @@ const UserDashboardHomePage = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
   const du = t.app.dashboardUser;
+  const w = t.app.userWallet;
   const effectiveTimeZone = useEffectiveTimeZone();
 
   const { data: stats, isLoading } = useQuery({
@@ -218,18 +219,18 @@ const UserDashboardHomePage = () => {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card className="min-w-0 lg:col-span-2">
           <CardHeader>
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
+            <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+              <div className="min-w-0">
                 <CardTitle>Spending over time</CardTitle>
-                <CardDescription>
+                <CardDescription className="break-words">
                   Bookings + text chat purchases · {spendingQ.data ? new Date(spendingQ.data.range_start).toLocaleString() : ""}{" "}
                   {spendingQ.data ? `→ ${new Date(spendingQ.data.range_end).toLocaleString()}` : ""}
                 </CardDescription>
               </div>
               <Tabs value={period} onValueChange={(v) => setPeriod(v as AnalyticsPeriod)}>
-                <TabsList>
+                <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
                   <TabsTrigger value="day">Day</TabsTrigger>
                   <TabsTrigger value="week">Week</TabsTrigger>
                   <TabsTrigger value="month">Month</TabsTrigger>
@@ -338,9 +339,14 @@ const UserDashboardHomePage = () => {
                     ))}
                   </div>
                 )}
-                <Button asChild variant="outline" className="w-full">
-                  <Link to="/user/wallet">Open wallet</Link>
-                </Button>
+                <div className="flex gap-2">
+                  <Button asChild variant="outline" className="flex-1">
+                    <Link to="/user/wallet">Open wallet</Link>
+                  </Button>
+                  <Button asChild className="flex-1">
+                    <Link to="/user/wallet">{w.addMoney}</Link>
+                  </Button>
+                </div>
               </>
             ) : (
               <p className="text-sm text-destructive">Failed to load wallet.</p>

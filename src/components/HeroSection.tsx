@@ -7,7 +7,7 @@ const HeroSection = () => {
   return (
     <section
       id="hero"
-      className="relative flex min-h-screen items-start justify-center overflow-hidden bg-transparent pt-28 sm:pt-32 md:pt-36 lg:pt-40"
+      className="relative flex min-h-[100svh] items-start justify-center overflow-hidden bg-transparent pt-24 sm:pt-28 md:pt-32 lg:pt-36"
     >
       <div className="pointer-events-none absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-gold/20 blur-3xl animate-float" />
       <div
@@ -24,7 +24,7 @@ const HeroSection = () => {
             {t.hero.subtext}
           </p>
         </div>
-        <div className="mt-36 flex w-full max-w-xl flex-col flex-wrap justify-center gap-4 sm:mt-44 sm:flex-row sm:justify-center md:mt-52 lg:mt-60 xl:mt-64">
+        <div className="mt-10 flex w-full max-w-xl flex-col flex-wrap justify-center gap-4 sm:mt-16 sm:flex-row sm:justify-center md:mt-24 lg:mt-28">
           <a
             href="#services"
             className="px-8 py-3.5 rounded-xl gradient-cta text-white font-medium text-sm tracking-wide shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"

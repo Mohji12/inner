@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Mail } from "lucide-react";
 import AppPageHeader from "@/components/AppPageHeader";
 import { useAuth } from "@/auth/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
@@ -16,6 +17,8 @@ import { toast } from "sonner";
 import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
 import PhoneWithDialCode from "@/components/PhoneWithDialCode";
 import { composeE164Phone, DEFAULT_DIAL_ISO, dialCodeForIso } from "@/lib/countryDialCodes";
+
+const SUPPORT_EMAIL = "info@mijnlevenspad.com";
 
 const LANGUAGE_OPTIONS = Object.keys(languageLabels) as Language[];
 
@@ -134,16 +137,20 @@ const UserRegisterPage = () => {
     }
   };
 
+  const helpSteps = [a.helpStep1, a.helpStep2, a.helpStep3, a.helpStep4, a.helpStep5];
+  const supportMailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(a.supportMailSubject)}`;
+
   return (
     <div className="min-h-screen bg-background text-foreground" lang={htmlLang}>
       <AppPageHeader />
       <main className="container mx-auto px-6 py-10">
-        <Card className="mx-auto max-w-3xl border-border/60">
+        <Card className="mx-auto max-w-6xl border-border/60">
           <CardHeader>
             <CardTitle className="font-serif text-3xl">{a.title}</CardTitle>
             <CardDescription>{a.description}</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="grid gap-8 lg:grid-cols-5 lg:items-start">
+            <div className="min-w-0 lg:col-span-3">
             {phase === "verify" ? (
               <div className="grid grid-cols-1 gap-6">
                 <div>
@@ -311,6 +318,40 @@ const UserRegisterPage = () => {
                 </p>
               </form>
             )}
+            </div>
+            <aside className="space-y-6 rounded-xl border border-border/50 bg-muted/20 p-5 lg:col-span-2 lg:sticky lg:top-24">
+              <div>
+                <h3 className="font-serif text-xl">{a.helpTitle}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{a.helpIntro}</p>
+                <ol className="mt-4 space-y-3">
+                  {helpSteps.map((step, index) => (
+                    <li key={index} className="flex gap-3 text-sm leading-relaxed">
+                      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+                        {index + 1}
+                      </span>
+                      <span>{step}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+              <div className="border-t border-border/50 pt-5">
+                <h3 className="font-serif text-xl">{a.supportTitle}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{a.supportBody}</p>
+                <a
+                  href={supportMailto}
+                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+                >
+                  <Mail className="h-4 w-4" />
+                  {a.supportEmailCta}
+                </a>
+                <a
+                  href={supportMailto}
+                  className="mt-2 block text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                >
+                  {SUPPORT_EMAIL}
+                </a>
+              </div>
+            </aside>
           </CardContent>
         </Card>
       </main>

@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   BarChart3,
   CalendarDays,
@@ -33,30 +33,31 @@ import {
   SidebarProvider,
   SidebarRail,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { DashboardContentArea } from "@/components/dashboard/DashboardContentArea";
-import {
-  dashboardLogoutButtonClass,
-  dashboardNavLinkClass,
-} from "@/components/dashboard/dashboardNav";
+import { DashboardNavLink } from "@/components/dashboard/DashboardNavLink";
+import { dashboardLogoutButtonClass, dashboardChromeHeaderClass, dashboardChromeBodyClass } from "@/components/dashboard/dashboardNav";
 import { DashboardBrandHeader } from "@/components/dashboard/DashboardBrandHeader";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
-export function AdminDashboardLayout() {
+function AdminDashboardSidebar() {
   const navigate = useNavigate();
   const { logoutAdminSession } = useAuth();
   const { t } = useLanguage();
   const d = t.app.dashboardAdmin;
+  const { isMobile, setOpenMobile } = useSidebar();
 
   const onLogout = async () => {
+    if (isMobile) setOpenMobile(false);
     await logoutAdminSession();
     navigate("/login?role=admin", { replace: true });
   };
 
   return (
-    <SidebarProvider>
+    <>
       <Sidebar collapsible="icon" variant="floating">
         <SidebarHeader className="border-b border-sidebar-border/60 px-4 py-4">
           <DashboardBrandHeader roleLabel={d.role} />
@@ -68,138 +69,138 @@ export function AdminDashboardLayout() {
               <SidebarMenu>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.overview}>
-                    <NavLink to="/admin" end className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/admin" end>
                       <LayoutDashboard />
                       <span>{d.overview}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.bookings}>
-                    <NavLink to="/admin/bookings" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/admin/bookings">
                       <CalendarDays />
                       <span>{d.bookings}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.users}>
-                    <NavLink to="/admin/users" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/admin/users">
                       <UserRound />
                       <span>{d.users}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.mentors}>
-                    <NavLink to="/admin/mentors" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/admin/mentors">
                       <Users />
                       <span>{d.mentors}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.mentorPresence}>
-                    <NavLink to="/admin/mentor-presence" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/admin/mentor-presence">
                       <Clock />
                       <span>{d.mentorPresence}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.announcements}>
-                    <NavLink to="/admin/announcements" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/admin/announcements">
                       <Megaphone />
                       <span>{d.announcements}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.coachApplications}>
-                    <NavLink to="/admin/coach-applications" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/admin/coach-applications">
                       <FileUser />
                       <span>{d.coachApplications}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.payments}>
-                    <NavLink to="/admin/payments" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/admin/payments">
                       <CreditCard />
                       <span>{d.payments}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.allInvoices}>
-                    <NavLink to="/admin/invoices" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/admin/invoices">
                       <FileText />
                       <span>{d.allInvoices}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.allTransactions}>
-                    <NavLink to="/admin/transactions" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/admin/transactions">
                       <Receipt />
                       <span>{d.allTransactions}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.chatInvoices}>
-                    <NavLink to="/admin/chat-invoices" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/admin/chat-invoices">
                       <FileText />
                       <span>{d.chatInvoices}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.mentorInvoices}>
-                    <NavLink to="/admin/mentor-invoices" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/admin/mentor-invoices">
                       <FileText />
                       <span>{d.mentorInvoices}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.settlements}>
-                    <NavLink to="/admin/settlements" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/admin/settlements">
                       <Landmark />
                       <span>{d.settlements}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.walletOps}>
-                    <NavLink to="/admin/wallet-ops" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/admin/wallet-ops">
                       <CreditCard />
                       <span>{d.walletOps}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.marketplace}>
-                    <NavLink to="/admin/marketplace" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/admin/marketplace">
                       <ShieldCheck />
                       <span>{d.marketplace}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.reviews}>
-                    <NavLink to="/admin/reviews" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/admin/reviews">
                       <Star />
                       <span>{d.reviews}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={d.analytics}>
-                    <NavLink to="/admin/analytics" className={dashboardNavLinkClass}>
+                    <DashboardNavLink to="/admin/analytics">
                       <BarChart3 />
                       <span>{d.analytics}</span>
-                    </NavLink>
+                    </DashboardNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
@@ -216,18 +217,26 @@ export function AdminDashboardLayout() {
       </Sidebar>
       <SidebarInset>
         <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_20%_0%,hsl(var(--primary)/0.18),transparent_60%),radial-gradient(circle_at_80%_10%,hsl(var(--accent)/0.14),transparent_55%)]" />
-        <header className="relative z-30 flex h-16 items-center gap-2 border-b border-border/60 bg-background/80 backdrop-blur transition-colors duration-200 px-6">
-          <SidebarTrigger className="transition-transform duration-200 hover:scale-105 active:scale-95" />
-          <Separator orientation="vertical" className="h-6" />
-          <span className="text-sm text-muted-foreground">{d.hub}</span>
-          <div className="ml-auto">
+        <header className={`${dashboardChromeHeaderClass} z-30`}>
+          <SidebarTrigger className="shrink-0 transition-transform duration-200 hover:scale-105 active:scale-95" />
+          <Separator orientation="vertical" className="hidden h-6 sm:block" />
+          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{d.hub}</span>
+          <div className="ml-auto flex min-w-0 shrink items-center">
             <LanguageSwitcher compact />
           </div>
         </header>
-        <div className="relative z-0 flex-1 overflow-auto p-6">
+        <div className={dashboardChromeBodyClass}>
           <DashboardContentArea />
         </div>
       </SidebarInset>
+    </>
+  );
+}
+
+export function AdminDashboardLayout() {
+  return (
+    <SidebarProvider>
+      <AdminDashboardSidebar />
     </SidebarProvider>
   );
 }

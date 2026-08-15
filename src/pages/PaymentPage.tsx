@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import AppPageHeader from "@/components/AppPageHeader";
 import { createPaymentIntent, getUserBooking, validatePromoCode } from "@/api/bookings";
-import { getBookingCheckoutPreview, getCheckoutCurrencies } from "@/api/payments";
+import { getBookingCheckoutPreview, getCheckoutCurrencies, payBookingWithWallet } from "@/api/payments";
+import { getMyWallet } from "@/api/wallets";
 import { getMentor, getPlatformPricing } from "@/api/mentors";
 import type { Booking, MentorDetail, PlatformPricing } from "@/api/types";
 import { sessionPackageEur } from "@/api/types";
@@ -50,6 +51,10 @@ const PaymentPage = () => {
     queryKey: ["booking-checkout-preview", bookingId],
     queryFn: () => getBookingCheckoutPreview(bookingId),
     enabled: Boolean(bookingId),
+  });
+  const walletQuery = useQuery({
+    queryKey: ["wallet", "me"],
+    queryFn: () => getMyWallet(),
   });
   const [checkoutCurrency, setCheckoutCurrency] = useState("EUR");
 
@@ -111,9 +116,12 @@ const PaymentPage = () => {
     );
   }
 
-  const baseAmount = sessionPackageEur(mentor, pricing, booking.duration);
+  const baseAmount = checkoutPreviewQuery.data?.session_amount_eur ?? sessionPackageEur(mentor, pricing, booking.duration);
   const subtotalBeforeDiscount = baseAmount + transactionFee;
   const totalDue = finalTotalDue ?? subtotalBeforeDiscount;
+  const walletBalance = Number(walletQuery.data?.balance ?? 0);
+  const canPayFromWallet = totalDue > 0 && walletBalance >= totalDue - 1e-9;
+  const walletShortfall = Math.max(0, totalDue - walletBalance);
 
   const handleApplyPromo = async () => {
     if (!promoCodeInput.trim()) return;
@@ -139,6 +147,22 @@ const PaymentPage = () => {
       setFinalTotalDue(null);
     } finally {
       setValidatingPromo(false);
+    }
+  };
+
+  const onPayWithWallet = async () => {
+    setPaying(true);
+    setError("");
+    try {
+      const out = await payBookingWithWallet({
+        booking_id: booking.id,
+        promo_code: promoCode || undefined,
+      });
+      const path = out.checkout_url.startsWith("/") ? out.checkout_url : `/booking/thank-you?bookingId=${booking.id}`;
+      navigate(path);
+    } catch (e) {
+      setError(humanizeApiError(e, p.payFailed));
+      setPaying(false);
     }
   };
 
@@ -177,6 +201,16 @@ const PaymentPage = () => {
               <p className="text-sm text-muted-foreground">
                 {p.feeHint.replace("{fee}", transactionFee.toFixed(2))}
               </p>
+              {totalDue > 0 ? (
+                <div className="rounded-md border border-border/70 bg-muted/30 px-3 py-2 text-sm">
+                  <p>{p.walletBalance.replace("{balance}", walletBalance.toFixed(2))}</p>
+                  {!canPayFromWallet ? (
+                    <p className="mt-1 text-muted-foreground">
+                      {p.insufficientHint.replace("{needed}", walletShortfall.toFixed(2))}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               {totalDue > 0 && currenciesQuery.data?.length ? (
                 <CheckoutCurrencySelect
                   id="checkout-ccy"
@@ -187,11 +221,35 @@ const PaymentPage = () => {
                 />
               ) : null}
               {error ? <p className="text-sm font-medium text-destructive">{error}</p> : null}
-              <div className="flex justify-end gap-3">
-                <Button type="button" variant="outline" onClick={() => navigate(`/mentors/${mentor.id}`)}>
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => navigate(`/mentors/${mentor.id}`)}>
                   {p.back}
                 </Button>
-                <Button type="submit" className="gradient-cta text-white" disabled={paying}>
+                {totalDue > 0 && !canPayFromWallet ? (
+                  <Button type="button" variant="outline" className="w-full sm:w-auto" asChild>
+                    <Link to="/user/wallet">{p.addMoney}</Link>
+                  </Button>
+                ) : null}
+                {totalDue > 0 && canPayFromWallet ? (
+                  <Button
+                    type="button"
+                    className="gradient-cta w-full text-white sm:w-auto"
+                    disabled={paying}
+                    onClick={() => void onPayWithWallet()}
+                  >
+                    {p.payFromWallet}
+                  </Button>
+                ) : null}
+                <Button
+                  type="submit"
+                  className={
+                    totalDue > 0 && canPayFromWallet
+                      ? "w-full sm:w-auto"
+                      : "gradient-cta w-full text-white sm:w-auto"
+                  }
+                  variant={totalDue > 0 && canPayFromWallet ? "outline" : "default"}
+                  disabled={paying}
+                >
                   {totalDue > 0
                     ? p.payButton.replace("{currency}", checkoutCurrency).replace("{total}", totalDue.toFixed(2))
                     : p.confirmFree}

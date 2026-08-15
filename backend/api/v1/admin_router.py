@@ -8,6 +8,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
 from api.deps import CurrentAdmin, DbSession, RequestLang
+from core.config import settings
 from core.chat_states import CHAT_SENDER_USER
 from models.booking import Booking
 from models.chat_message import ChatMessage
