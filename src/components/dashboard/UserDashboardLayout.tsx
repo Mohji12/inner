@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { NotificationBell } from "@/components/NotificationBell";
 import { OnlineStatusBadge } from "@/components/OnlineStatusBadge";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { DashboardContentArea } from "@/components/dashboard/DashboardContentArea";
 import { DashboardNavLink } from "@/components/dashboard/DashboardNavLink";
 import { dashboardLogoutButtonClass, dashboardChromeHeaderClass, dashboardChromeBodyClass } from "@/components/dashboard/dashboardNav";
@@ -145,6 +146,7 @@ function UserDashboardSidebar() {
           <Separator orientation="vertical" className="hidden h-6 sm:block" />
           <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{d.account}</span>
           <div className="ml-auto flex min-w-0 shrink items-center gap-1 sm:gap-2">
+            <LanguageSwitcher compact />
             <OnlineStatusBadge />
             <NotificationBell />
           </div>

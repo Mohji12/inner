@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { NotificationBell } from "@/components/NotificationBell";
 import { OnlineStatusBadge } from "@/components/OnlineStatusBadge";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { DashboardContentArea } from "@/components/dashboard/DashboardContentArea";
 import { DashboardNavLink } from "@/components/dashboard/DashboardNavLink";
 import { dashboardLogoutButtonClass, dashboardChromeHeaderClass, dashboardChromeBodyClass } from "@/components/dashboard/dashboardNav";
@@ -201,6 +202,7 @@ function MentorDashboardSidebar() {
                 {d.viewWebsite}
               </Link>
             </Button>
+            <LanguageSwitcher compact />
             <OnlineStatusBadge />
             <NotificationBell />
           </div>

@@ -217,7 +217,7 @@ function AdminDashboardSidebar() {
       </Sidebar>
       <SidebarInset>
         <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_20%_0%,hsl(var(--primary)/0.18),transparent_60%),radial-gradient(circle_at_80%_10%,hsl(var(--accent)/0.14),transparent_55%)]" />
-        <header className={`${dashboardChromeHeaderClass} z-30`}>
+        <header className={dashboardChromeHeaderClass}>
           <SidebarTrigger className="shrink-0 transition-transform duration-200 hover:scale-105 active:scale-95" />
           <Separator orientation="vertical" className="hidden h-6 sm:block" />
           <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{d.hub}</span>
