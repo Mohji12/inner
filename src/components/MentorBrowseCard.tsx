@@ -63,9 +63,9 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
         : null;
 
   const profileSrc = cardVis.profile_photo ? mediaUrlFromApi(mentor.profile_image) : null;
-  // Banner slot may already include a portrait fallback from the API when no banner file exists.
-  const bannerSrc = cardVis.banner_photo ? mediaUrlFromApi(mentor.banner_image) ?? profileSrc ?? null : null;
-  const heroSrc = bannerSrc ?? profileSrc ?? null;
+  const dedicatedBannerSrc = cardVis.banner_photo ? mediaUrlFromApi(mentor.banner_image) : null;
+  // Prefer the portrait so faces stay in frame; use a wide banner only when there is no profile photo.
+  const heroSrc = profileSrc ?? dedicatedBannerSrc ?? null;
 
   const roundedStars = Math.min(5, Math.max(0, Math.round(Number(mentor.average_rating) || 0)));
   const tags = combinedTags.slice(0, 2);
@@ -80,7 +80,7 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
   };
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-md md:flex-row md:min-h-[220px]">
+    <article className="group flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-md md:min-h-[280px] md:flex-row">
       <div
         className={cn(
           "relative flex flex-1 flex-col justify-between gap-3 p-6 text-primary-foreground",
@@ -226,31 +226,27 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
         </div>
       </div>
 
-      <div className="relative h-56 w-full shrink-0 overflow-hidden bg-muted md:h-auto md:w-[42%] md:min-h-[220px]">
+      <div className="relative order-first aspect-[4/5] w-full shrink-0 overflow-hidden bg-muted md:order-last md:aspect-auto md:min-h-[280px] md:w-[42%] md:self-stretch">
         {heroSrc ? (
           <>
             <img
               src={heroSrc}
               alt={mentor.full_name}
-              className={cn(
-                "absolute inset-0 h-full w-full object-cover",
-                !bannerSrc && profileSrc ? "object-top" : null,
-              )}
+              className="absolute inset-0 h-full w-full object-cover object-[center_28%]"
             />
-            <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-black/35 md:to-black/55" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent md:bg-gradient-to-l md:from-transparent md:via-transparent md:to-black/40" />
           </>
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-accent/25 text-muted-foreground">
+          <div className="flex h-full min-h-[12rem] w-full items-center justify-center bg-gradient-to-br from-muted to-accent/25 text-muted-foreground md:min-h-0">
             Photo coming soon
           </div>
         )}
-        {/* overlay avatar when banner is shown and a separate profile photo is available */}
-        {bannerSrc && mediaUrlFromApi(mentor.banner_image) && profileSrc ? (
+        {dedicatedBannerSrc && profileSrc && heroSrc === dedicatedBannerSrc ? (
           <div className="absolute bottom-3 right-3 md:right-4">
             <img
               src={profileSrc}
               alt=""
-              className="h-16 w-16 rounded-full border-4 border-card object-cover shadow-lg md:h-20 md:w-20"
+              className="h-16 w-16 rounded-full border-4 border-card object-cover object-[center_28%] shadow-lg md:h-20 md:w-20"
             />
           </div>
         ) : null}

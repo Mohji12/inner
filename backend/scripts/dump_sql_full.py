@@ -1,6 +1,7 @@
 """Export full MySQL schema + data as a .sql file (CREATE TABLE + INSERT)."""
 from __future__ import annotations
 
+import json
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -33,7 +34,19 @@ def sql_literal(value) -> str:
     if isinstance(value, Decimal):
         return str(value)
     if isinstance(value, datetime):
-        return "'" + value.strftime("%Y-%m-%d %H:%M:%S") + "'"
+        fmt = "%Y-%m-%d %H:%M:%S.%f" if value.microsecond else "%Y-%m-%d %H:%M:%S"
+        return "'" + value.strftime(fmt) + "'"
+    if isinstance(value, (dict, list)):
+        text = json.dumps(value, ensure_ascii=False)
+        text = (
+            text.replace("\\", "\\\\")
+            .replace("\0", "\\0")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("\t", "\\t")
+            .replace("'", "\\'")
+        )
+        return f"'{text}'"
     if isinstance(value, date):
         return "'" + value.isoformat() + "'"
     if isinstance(value, timedelta):
@@ -103,7 +116,8 @@ def main() -> None:
         with conn.cursor() as cur:
             cur.execute(f"SHOW CREATE TABLE `{table}`")
             create_row = cur.fetchone()
-            create_sql = create_row["Create Table"]
+            create_sql = create_row.get("Create Table") or create_row.get("Create View")
+            is_view = "Create View" in create_row
 
             cur.execute(f"SELECT * FROM `{table}`")
             rows = cur.fetchall()
@@ -112,7 +126,8 @@ def main() -> None:
         lines.append(f"-- ------------------------------------------------------------")
         lines.append(f"-- Table: `{table}`")
         lines.append(f"-- ------------------------------------------------------------")
-        lines.append(f"DROP TABLE IF EXISTS `{table}`;")
+        drop = f"DROP VIEW IF EXISTS `{table}`;" if is_view else f"DROP TABLE IF EXISTS `{table}`;"
+        lines.append(drop)
         lines.append(create_sql + ";")
         lines.append("")
 

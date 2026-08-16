@@ -451,6 +451,16 @@ def _mark_booking_paid(db: Session, payment: Payment) -> None:
                 link=f"/user/chat/{session_id}?mode={mode}",
                 user_id=booking.user_id,
             )
+        from services.booking_notify import notify_coach_booking_confirmed
+
+        notify_coach_booking_confirmed(
+            db,
+            booking=booking,
+            session_id=session_id,
+            user_name=user_name,
+            duration_minutes=duration_minutes,
+            comm_label=comm_label,
+        )
 
 
 def _mark_monthly_invoice_paid(db: Session, invoice: MentorMonthlyInvoice) -> None:

@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { getChatWebSocketUrl } from "@/api/constants";
 import type { ChatMessage } from "@/api/types";
+import { playNotificationChime } from "@/lib/notificationSound";
 
 type ConnectionStatus = "connected" | "connecting" | "reconnecting" | "disconnected" | "auth_missing";
 
@@ -90,6 +91,13 @@ export const useChatWebSocket = ({ sessionId, token, onMessage, role }: UseChatW
             );
           }
           void queryClient.invalidateQueries({ queryKey: ["chat", "session", sessionId] });
+          if (msg.sender_role && msg.sender_role !== role) {
+            const viewingThisThread =
+              typeof document !== "undefined" && document.visibilityState === "visible";
+            if (!viewingThisThread) {
+              playNotificationChime();
+            }
+          }
         }
         if (parsed.type === "session") {
           void queryClient.invalidateQueries({ queryKey: ["chat", "session", sessionId] });

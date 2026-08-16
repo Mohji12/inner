@@ -42,6 +42,7 @@ import { DashboardNavLink } from "@/components/dashboard/DashboardNavLink";
 import { dashboardLogoutButtonClass, dashboardChromeHeaderClass, dashboardChromeBodyClass } from "@/components/dashboard/dashboardNav";
 import { DashboardBrandHeader } from "@/components/dashboard/DashboardBrandHeader";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { NotificationBell } from "@/components/NotificationBell";
 
 function AdminDashboardSidebar() {
   const navigate = useNavigate();
@@ -221,8 +222,9 @@ function AdminDashboardSidebar() {
           <SidebarTrigger className="shrink-0 transition-transform duration-200 hover:scale-105 active:scale-95" />
           <Separator orientation="vertical" className="hidden h-6 sm:block" />
           <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{d.hub}</span>
-          <div className="ml-auto flex min-w-0 shrink items-center">
+          <div className="ml-auto flex min-w-0 shrink items-center gap-1 sm:gap-2">
             <LanguageSwitcher compact />
+            <NotificationBell />
           </div>
         </header>
         <div className={dashboardChromeBodyClass}>

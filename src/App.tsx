@@ -73,6 +73,7 @@ import MentorPresenceHeartbeat from "@/components/MentorPresenceHeartbeat";
 import UserPresenceHeartbeat from "@/components/UserPresenceHeartbeat";
 import MetaPixel from "@/components/MetaPixel";
 import SessionKeepAlive from "@/components/SessionKeepAlive";
+import { NotificationAudioUnlock } from "@/components/NotificationAudioUnlock";
 
 const queryClient = new QueryClient();
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
@@ -85,6 +86,7 @@ const App = () => (
           <AccessibilityProvider>
             <TooltipProvider>
               <SessionKeepAlive />
+              <NotificationAudioUnlock />
               <MentorPresenceHeartbeat />
               <UserPresenceHeartbeat />
               <Toaster />

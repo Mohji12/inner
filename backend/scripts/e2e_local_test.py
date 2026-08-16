@@ -2,14 +2,16 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 from datetime import datetime, timedelta, timezone
 
 import requests
 
-BASE = "http://127.0.0.1:8000/api/v1"
-FRONTEND = "http://localhost:8081"
+BASE = os.getenv("E2E_API", "http://127.0.0.1:8001/api/v1").rstrip("/")
+FRONTEND = os.getenv("E2E_FRONTEND", "http://localhost:8081").rstrip("/")
+API_ORIGIN = BASE[: -len("/api/v1")] if BASE.endswith("/api/v1") else BASE.rsplit("/api", 1)[0]
 PASSWORD = "Test1234!"
 TS = int(time.time())
 MENTOR_EMAIL = f"e2e.mentor.{TS}@example.com"
@@ -99,19 +101,25 @@ def register_mentor() -> str:
             "agreement_accepted": True,
             "agreement_version": "2026-05-25",
             "agreement_text_snapshot": AGREEMENT_TEXT,
+            "account_holder_name": "E2E Test Coach",
+            "iban": "NL91ABNA0417164300",
+            "bic": "ABNANL2A",
         },
+        timeout=90,
     )
     data = ok("mentor register", r, 201)
     mentor_id = data["id"]
+    print(f"       mentor_id={mentor_id} email={MENTOR_EMAIL}")
     code = data.get("dev_verification_code")
     if code:
         r = requests.post(
             f"{BASE}/auth/mentor/verify-email",
             json={"email": MENTOR_EMAIL, "code": code},
+            timeout=30,
         )
         verify = ok("mentor verify-email", r)
         if not verify.get("account_active"):
-            raise StepError(f"mentor not active after verify: {verify}")
+            print("  ..  email verified; waiting for admin approval in DB")
     return mentor_id
 
 
@@ -125,14 +133,17 @@ def register_user() -> str:
             "password": PASSWORD,
             "preferred_language": "en",
         },
+        timeout=90,
     )
     data = ok("user register", r, 201)
     code = data.get("dev_verification_code")
     user_id = data["id"]
+    print(f"       user_id={user_id} email={USER_EMAIL}")
     if code:
         r = requests.post(
             f"{BASE}/auth/user/verify-email",
             json={"email": USER_EMAIL, "code": code},
+            timeout=30,
         )
         ok("user verify-email", r)
     return user_id
@@ -141,7 +152,7 @@ def register_user() -> str:
 def login(role: str, email: str) -> tuple[requests.Session, str]:
     s = requests.Session()
     path = f"/auth/{role}/login"
-    r = s.post(f"{BASE}{path}", json={"email": email, "password": PASSWORD})
+    r = s.post(f"{BASE}{path}", json={"email": email, "password": PASSWORD}, timeout=30)
     data = ok(f"{role} login", r)
     token = data.get("access_token")
     if not token:
@@ -187,12 +198,14 @@ def dev_mark_booking_paid(booking_id: str, user_id: str) -> None:
 
 
 def main() -> int:
-    print("=== Mijn Levenspad local E2E ===\n")
+    print("=== Mijn Levenspad local E2E ===")
+    print(f"API={BASE}")
+    print(f"FRONTEND={FRONTEND}\n")
 
     # Frontend + API reachability
     fr = requests.get(FRONTEND, timeout=10)
     ok("frontend home", fr)
-    hr = requests.get("http://127.0.0.1:8000/health", timeout=10)
+    hr = requests.get(f"{API_ORIGIN}/health", timeout=30)
     ok("backend health", hr)
 
     print("\n-- Mentor flow --")
@@ -200,6 +213,22 @@ def main() -> int:
     user_id = register_user()
     verify_accounts_in_dev(mentor_id, user_id)
     mentor_sess, mentor_token = login("mentor", MENTOR_EMAIL)
+    user_sess, user_token = login("user", USER_EMAIL)
+    print("\n=== LOGIN DETAILS ===")
+    print(json.dumps({
+        "coach": {
+            "email": MENTOR_EMAIL,
+            "password": PASSWORD,
+            "login_url": f"{FRONTEND}/login?role=mentor",
+            "id": mentor_id,
+        },
+        "user": {
+            "email": USER_EMAIL,
+            "password": PASSWORD,
+            "login_url": f"{FRONTEND}/login?role=user",
+            "id": user_id,
+        },
+    }, indent=2))
     h = auth_headers(mentor_token)
 
     r = mentor_sess.post(f"{BASE}/mentors/me/presence", headers=h)
@@ -227,7 +256,6 @@ def main() -> int:
         raise StepError("created slot not in mentor slot list")
 
     print("\n-- User flow --")
-    user_sess, user_token = login("user", USER_EMAIL)
     uh = auth_headers(user_token)
 
     r = requests.get(f"{BASE}/mentors")
