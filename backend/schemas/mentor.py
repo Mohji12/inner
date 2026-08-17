@@ -4,6 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from schemas.unavailability import UnavailabilityPublicBlock
+
 
 class MentorLogin(BaseModel):
     email: EmailStr
@@ -96,6 +98,8 @@ class MentorPublicOut(BaseModel):
     # Global session pricing active and mentor approved + active — show 10/20/30 packages
     session_packages_available: bool = False
     public_card_visibility: dict[str, bool] | None = None
+    unavailable_now: bool = False
+    unavailability: UnavailabilityPublicBlock | None = None
 
 
 class MentorDetailOut(MentorPublicOut):
@@ -121,6 +125,10 @@ class MentorAccountOut(MentorDetailOut):
     agreement_version: str | None = None
     updated_at: datetime
     is_totp_enabled: bool = False
+    profile_image_original: str | None = None
+    profile_image_crop: dict[str, Any] | None = None
+    banner_image_original: str | None = None
+    banner_image_crop: dict[str, Any] | None = None
 
 
 class CoachAgreementAcceptIn(BaseModel):

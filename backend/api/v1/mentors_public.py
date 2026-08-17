@@ -14,6 +14,7 @@ from models.mentor import Mentor
 from models.mentor_availability_window import MentorAvailabilityWindow
 from schemas.mentor import MentorDetailOut, MentorPublicOut, PlatformPricingPublicOut
 from schemas.availability_window import AvailabilityWindowPublicOut
+from schemas.unavailability import UnavailabilityPublicBlock
 from schemas.slot import SlotOut
 from services.mentor_card_visibility import apply_card_visibility_to_public, normalize_card_visibility
 from services.chat_service import mentor_ids_with_live_chat, mentor_chat_busy
@@ -22,6 +23,8 @@ from services.presence_service import presence_service
 from services.pricing_service import effective_chat_price_per_minute_eur, get_platform_pricing
 from services.mentor_ranking_service import availability_tier, rank_public_mentors
 from services.booking_slot_service import SLOT_BLOCKING_STATUSES
+from models.mentor_unavailability import MentorUnavailability
+from services.mentor_unavailability_service import is_unavailable_now, load_unavailability_by_mentor, public_block_for_rows
 
 
 router = APIRouter(prefix="/mentors", tags=["mentors-public"])
@@ -61,17 +64,33 @@ def _dedupe_public_rows(rows: list[MentorPublicOut]) -> list[MentorPublicOut]:
     return list(chosen.values())
 
 
+def _unavailability_block(snap) -> UnavailabilityPublicBlock | None:
+    if snap is None:
+        return None
+    return UnavailabilityPublicBlock(
+        kind=snap.kind,  # type: ignore[arg-type]
+        all_day=snap.all_day,
+        weekday=snap.weekday,
+        start_at=snap.start_at,
+        end_at=snap.end_at,
+        start_time=snap.start_time,
+        end_time=snap.end_time,
+    )
+
+
 def _mentor_public_out(
     mentor: Mentor,
     busy_mentor_ids: set[str],
     *,
     session_pricing_active: bool,
-    lang: str,
+    lang: str = "en",
+    unavailability_rows: list[MentorUnavailability] | None = None,
 ) -> MentorPublicOut:
     base = MentorPublicOut.model_validate(mentor)
     is_online = presence_service.is_online(mentor.id, "mentor")
     chat_rate = effective_chat_price_per_minute_eur(mentor)
-    available = is_online and chat_rate > 0 and mentor.id not in busy_mentor_ids
+    unavailable_now, unavail_snap = public_block_for_rows(unavailability_rows or [])
+    available = is_online and chat_rate > 0 and mentor.id not in busy_mentor_ids and not unavailable_now
 
     packages_ok = session_pricing_active and mentor.is_approved and mentor.status == "active"
 
@@ -92,6 +111,8 @@ def _mentor_public_out(
         "last_seen_at": mentor.last_seen_at,
         "badges": badges,
         "session_packages_available": packages_ok,
+        "unavailable_now": unavailable_now,
+        "unavailability": _unavailability_block(unavail_snap),
     })
     visibility = normalize_card_visibility(getattr(mentor, "public_card_visibility", None))
     return apply_card_visibility_to_public(out, visibility)
@@ -166,7 +187,17 @@ def list_mentors(
     busy = mentor_ids_with_live_chat(db)
     rows = query.all()
     active_pricing = bool(pricing.is_active)
-    public_rows = [_mentor_public_out(m, busy, session_pricing_active=active_pricing, lang=lang) for m in rows]
+    umap = load_unavailability_by_mentor(db, [m.id for m in rows])
+    public_rows = [
+        _mentor_public_out(
+            m,
+            busy,
+            session_pricing_active=active_pricing,
+            lang=lang,
+            unavailability_rows=umap.get(m.id, []),
+        )
+        for m in rows
+    ]
     deduped = _dedupe_public_rows(public_rows)
     if sort_by in (None, "relevance", ""):
         return rank_public_mentors(deduped)
@@ -217,7 +248,14 @@ def get_mentor(mentor_id: str, db: DbSession, lang: RequestLang) -> MentorDetail
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Coach not found")
     busy = mentor_ids_with_live_chat(db)
     pricing = get_platform_pricing(db)
-    out = _mentor_public_out(mentor, busy, session_pricing_active=bool(pricing.is_active), lang=lang)
+    umap = load_unavailability_by_mentor(db, [mentor.id])
+    out = _mentor_public_out(
+        mentor,
+        busy,
+        session_pricing_active=bool(pricing.is_active),
+        lang=lang,
+        unavailability_rows=umap.get(mentor.id, []),
+    )
 
     base_detail = MentorDetailOut.model_validate(mentor)
     detail = {**base_detail.model_dump(), **out.model_dump()}
@@ -248,10 +286,14 @@ def mentor_chat_availability(mentor_id: str, db: DbSession) -> ChatAvailabilityO
     enabled = effective_chat_price_per_minute_eur(mentor) > 0
     busy = mentor_chat_busy(db, mentor_id)
     online = presence_service.is_online(mentor.id, "mentor")
-    available = enabled and online and not busy
+    umap = load_unavailability_by_mentor(db, [mentor_id])
+    unavailable = is_unavailable_now(umap.get(mentor_id, []))
+    available = enabled and online and not busy and not unavailable
     reason: str | None = None
     if not enabled:
         reason = "chat_disabled"
+    elif unavailable:
+        reason = "mentor_unavailable"
     elif not online:
         reason = "mentor_offline"
     elif busy:
@@ -350,5 +392,15 @@ def get_similar_mentors(mentor_id: str, db: DbSession, lang: RequestLang, limit:
         ).order_by(Mentor.average_rating.desc()).limit(needed).all()
         rows.extend(more_rows)
 
-    public_rows = [_mentor_public_out(m, busy, session_pricing_active=active_pricing, lang=lang) for m in rows]
+    umap = load_unavailability_by_mentor(db, [m.id for m in rows])
+    public_rows = [
+        _mentor_public_out(
+            m,
+            busy,
+            session_pricing_active=active_pricing,
+            lang=lang,
+            unavailability_rows=umap.get(m.id, []),
+        )
+        for m in rows
+    ]
     return rank_public_mentors(_dedupe_public_rows(public_rows))[: max(1, min(limit, 12))]

@@ -51,7 +51,11 @@ class AdminMentorRow(BaseModel):
     session_modes: list | None = None
     previous_companies: list | None = None
     profile_image: str | None = None
+    profile_image_original: str | None = None
+    profile_image_crop: dict | None = None
     banner_image: str | None = None
+    banner_image_original: str | None = None
+    banner_image_crop: dict | None = None
     country_code: str | None = None
     timezone: str | None = None
     average_rating: Decimal | None = None

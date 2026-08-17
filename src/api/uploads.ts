@@ -1,8 +1,40 @@
 import { getApiV1BaseUrl } from "./constants";
+import { apiFetch } from "./client";
+import type { ImageCropKind, ImageCropState } from "@/lib/cropImage";
 
 function uploadsUrl(suffix: string): string {
   const base = getApiV1BaseUrl().replace(/\/$/, "");
   return `${base}/upload/${suffix}`;
+}
+
+export type MentorPhotoUploadResult = {
+  url: string;
+  original_url?: string | null;
+};
+
+function appendPhotoForm(params: {
+  cropped: File;
+  original?: File | null;
+  crop?: ImageCropState | null;
+}): FormData {
+  const body = new FormData();
+  body.append("file", params.cropped);
+  if (params.original) body.append("original", params.original);
+  if (params.crop) body.append("crop", JSON.stringify(params.crop));
+  return body;
+}
+
+export async function uploadMentorPhoto(params: {
+  kind: ImageCropKind;
+  cropped: File;
+  original?: File | null;
+  crop?: ImageCropState | null;
+}): Promise<MentorPhotoUploadResult> {
+  const path = params.kind === "banner" ? "/upload/banner" : "/upload/avatar";
+  return apiFetch<MentorPhotoUploadResult>(path, {
+    method: "POST",
+    body: appendPhotoForm(params),
+  });
 }
 
 /** Pending mentors (no login yet): email + password prove identity. Saves to Cloudinary when configured. */
@@ -10,9 +42,14 @@ export async function uploadRegistrationMentorAvatar(params: {
   email: string;
   password: string;
   file: File;
+  original?: File | null;
+  crop?: ImageCropState | null;
 }): Promise<string> {
-  const body = new FormData();
-  body.append("file", params.file);
+  const body = appendPhotoForm({
+    cropped: params.file,
+    original: params.original,
+    crop: params.crop,
+  });
   body.append("email", params.email.trim().toLowerCase());
   body.append("password", params.password);
   const res = await fetch(uploadsUrl("mentor-register-avatar"), {

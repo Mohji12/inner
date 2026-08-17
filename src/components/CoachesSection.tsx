@@ -31,7 +31,7 @@ const CoachesSection = () => {
 
   return (
     <section id="coaches" className="bg-background/95 py-24 backdrop-blur-sm md:py-32">
-      <div ref={ref} className="section-reveal container mx-auto px-6">
+      <div ref={ref} className="section-reveal container mx-auto px-4 sm:px-6">
         <div className="mb-12 flex flex-wrap items-end justify-between gap-4 md:mb-16">
           <div className="max-w-2xl">
             <span className="text-sm font-medium uppercase tracking-widest text-accent">{t.coaches.label}</span>

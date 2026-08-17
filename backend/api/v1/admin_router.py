@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
@@ -29,6 +29,7 @@ from models.refresh_token import RefreshToken
 from models.email_otp import EmailOtpCode
 from schemas.chat import ChatInvoiceConversationLineOut, ChatInvoiceDetailOut, ChatInvoiceLineOut, ChatInvoiceSummaryOut
 from services.mentor_card_visibility import normalize_card_visibility
+from services.mentor_photo_service import apply_mentor_display_photo, parse_crop_json
 from services.onboarding_payment_service import activate_coach_after_email_verification
 from services.mentor_presence_tracking_service import (
     hours_from_seconds,
@@ -260,7 +261,11 @@ def _admin_mentor_row(m: Mentor, lang: str = "en") -> AdminMentorRow:
         session_modes=m.session_modes,
         previous_companies=m.previous_companies,
         profile_image=m.profile_image,
+        profile_image_original=getattr(m, "profile_image_original", None),
+        profile_image_crop=getattr(m, "profile_image_crop", None),
         banner_image=getattr(m, "banner_image", None),
+        banner_image_original=getattr(m, "banner_image_original", None),
+        banner_image_crop=getattr(m, "banner_image_crop", None),
         country_code=m.country_code,
         timezone=m.timezone,
         average_rating=m.average_rating,
@@ -493,6 +498,58 @@ def admin_update_mentor_card_visibility(
     vis.update(updates)
     mentor.public_card_visibility = vis
     mentor.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(mentor)
+    return _admin_mentor_row(mentor, lang)
+
+
+@router.post("/mentors/{mentor_id}/photo", response_model=AdminMentorRow)
+async def admin_upload_mentor_photo(
+    mentor_id: str,
+    db: DbSession,
+    _admin: CurrentAdmin,
+    lang: RequestLang,
+    kind: Literal["avatar", "banner"] = Form("avatar"),
+    file: UploadFile = File(...),
+    original: UploadFile | None = File(None),
+    crop: str | None = Form(None),
+) -> AdminMentorRow:
+    """Reframe or replace a coach profile/banner photo. Stores the cropped public image and keeps the original."""
+    from api.v1.file_upload import _read_image_upload, _read_optional_image_upload, _store_image
+
+    mentor = db.query(Mentor).filter(Mentor.id == mentor_id).first()
+    if not mentor:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Coach not found")
+    if kind not in ("avatar", "banner"):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "kind must be avatar or banner")
+
+    original_bytes = await _read_optional_image_upload(original)
+    contents = await _read_image_upload(file)
+    store_kind: Literal["avatar", "banner"] = "banner" if kind == "banner" else "avatar"
+    original_url = None
+    if original_bytes:
+        original_url = _store_image(
+            original_bytes,
+            kind=store_kind,
+            original_name=original.filename if original else "original.jpg",
+        )
+    file_url = _store_image(
+        contents,
+        kind=store_kind,
+        original_name=file.filename or ("banner.png" if kind == "banner" else "avatar.png"),
+    )
+    apply_mentor_display_photo(
+        mentor,
+        kind=store_kind,
+        cropped_url=file_url,
+        original_url=original_url,
+        crop=parse_crop_json(crop),
+    )
+    vis = normalize_card_visibility(getattr(mentor, "public_card_visibility", None))
+    vis_key = "banner_photo" if kind == "banner" else "profile_photo"
+    if not vis.get(vis_key, True):
+        vis[vis_key] = True
+        mentor.public_card_visibility = vis
     db.commit()
     db.refresh(mentor)
     return _admin_mentor_row(mentor, lang)

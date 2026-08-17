@@ -123,6 +123,10 @@ def start_session_checkout(
         raise ChatError("Mentor is currently in another chat session", "mentor_busy")
     if not presence_service.is_online(mentor_id, "mentor"):
         raise ChatError("Mentor is currently offline", "mentor_offline")
+    from services.mentor_unavailability_service import mentor_unavailable_now
+
+    if mentor_unavailable_now(db, mentor_id):
+        raise ChatError("Mentor is marked as unavailable at this time", "mentor_unavailable")
 
     now = _utcnow()
     # Session starts as paused and gets activated when Mollie webhook confirms payment.

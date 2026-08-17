@@ -33,6 +33,7 @@ import {
 import { toast } from "sonner";
 import { Phone, Video } from "lucide-react";
 import { formatDateLocal, formatTimeLocal, isSameCalendarDayLocal } from "@/lib/timeZone";
+import { formatUnavailabilityLine } from "@/lib/mentorUnavailability";
 import { useEffectiveTimeZone } from "@/hooks/useEffectiveTimeZone";
 import { LiveSessionWindowPreview } from "@/components/LiveSessionWindowPreview";
 import { humanizeApiError } from "@/lib/humanizeApiError";
@@ -68,6 +69,7 @@ const MentorDetailPage = () => {
   const { role, userAccessToken } = useAuth();
   const { t } = useLanguage();
   const md = t.app.mentorDetail;
+  const u = t.app.mentorUnavailability;
   const [selectedDuration, setSelectedDuration] = useState<(typeof SESSION_PACKAGES)[number]>(5);
   const [availabilityOpen, setAvailabilityOpen] = useState(false);
   const effectiveTimeZone = useEffectiveTimeZone();
@@ -83,12 +85,19 @@ const MentorDetailPage = () => {
   const availability = mentor ? getMentorAvailabilityStatus(mentor) : "offline";
   const mentorBusy = availability === "busy";
   const mentorOffline = availability === "offline";
+  const mentorUnavailable = availability === "unavailable";
   const canBookLive = availability === "available";
+  const unavailabilityLine = mentor
+    ? formatUnavailabilityLine(mentor.unavailability, u, {
+        unavailableNow: mentorUnavailable,
+        timeZone: effectiveTimeZone,
+      })
+    : "";
 
   const { data: upcomingWindows = [] } = useQuery({
     queryKey: ["mentor", mentorId, "availability-windows"],
     queryFn: () => listMentorAvailabilityWindows(mentorId!, 5),
-    enabled: Boolean(mentorId) && (mentorOffline || mentorBusy || availabilityOpen),
+    enabled: Boolean(mentorId) && (mentorOffline || mentorBusy || mentorUnavailable || availabilityOpen),
   });
 
   const { data: pricing } = useQuery({
@@ -122,7 +131,7 @@ const MentorDetailPage = () => {
 
   const handleBookingError = (e: Error) => {
     const lower = e.message.toLowerCase();
-    if (lower.includes("offline") || lower.includes("mentor_in_chat") || lower.includes("currently in a chat")) {
+    if (lower.includes("offline") || lower.includes("mentor_in_chat") || lower.includes("currently in a chat") || lower.includes("mentor_unavailable") || lower.includes("unavailable")) {
       setAvailabilityOpen(true);
       return;
     }
@@ -207,7 +216,7 @@ const MentorDetailPage = () => {
       navigate("/login?role=user", { state: { from: `/mentors/${mentorId}` } });
       return;
     }
-    if (mentorOffline || mentorBusy) {
+    if (!canBookLive) {
       setAvailabilityOpen(true);
       return;
     }
@@ -215,7 +224,7 @@ const MentorDetailPage = () => {
   };
 
   const userLoggedIn = role === "user" && Boolean(userAccessToken);
-  const bookSessionDisabled = userLoggedIn && (mentorBusy || mentorOffline);
+  const bookSessionDisabled = userLoggedIn && (mentorBusy || mentorOffline || mentorUnavailable);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -270,6 +279,9 @@ const MentorDetailPage = () => {
                       </span>
                     </div>
                     <p className="text-[10px] text-muted-foreground">{md.onlineHint}</p>
+                    {unavailabilityLine ? (
+                      <p className="text-[10px] text-muted-foreground">{unavailabilityLine}</p>
+                    ) : null}
                   </div>
                 ) : availability === "busy" ? (
                   <div className="flex flex-col items-start gap-1 sm:items-end">
@@ -280,13 +292,33 @@ const MentorDetailPage = () => {
                       </span>
                     </div>
                     <p className="text-[10px] text-muted-foreground">{md.inSessionHint}</p>
+                    {unavailabilityLine ? (
+                      <p className="text-[10px] text-muted-foreground">{unavailabilityLine}</p>
+                    ) : null}
+                  </div>
+                ) : availability === "unavailable" ? (
+                  <div className="flex flex-col items-start gap-1 sm:items-end">
+                    <div className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 dark:border-amber-900/50 dark:bg-amber-950/30">
+                      <span className="h-2 w-2 rounded-full bg-amber-500" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                        {u.badge}
+                      </span>
+                    </div>
+                    {unavailabilityLine ? (
+                      <p className="text-[10px] text-muted-foreground">{unavailabilityLine}</p>
+                    ) : null}
                   </div>
                 ) : mentor.last_seen_at ? (
-                  <div className="rounded border border-border/50 bg-muted/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                    {md.lastSeen}{" "}
-                    {isSameCalendarDayLocal(mentor.last_seen_at, new Date(), effectiveTimeZone)
-                      ? formatTimeLocal(mentor.last_seen_at, undefined, effectiveTimeZone)
-                      : formatDateLocal(mentor.last_seen_at, { month: "short", day: "numeric" }, effectiveTimeZone)}
+                  <div className="flex flex-col items-start gap-1 sm:items-end">
+                    <div className="rounded border border-border/50 bg-muted/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                      {md.lastSeen}{" "}
+                      {isSameCalendarDayLocal(mentor.last_seen_at, new Date(), effectiveTimeZone)
+                        ? formatTimeLocal(mentor.last_seen_at, undefined, effectiveTimeZone)
+                        : formatDateLocal(mentor.last_seen_at, { month: "short", day: "numeric" }, effectiveTimeZone)}
+                    </div>
+                    {unavailabilityLine ? (
+                      <p className="text-[10px] text-muted-foreground">{unavailabilityLine}</p>
+                    ) : null}
                   </div>
                 ) : mentorOffline ? (
                   <div className="flex flex-col items-start gap-1 sm:items-end">
@@ -297,7 +329,12 @@ const MentorDetailPage = () => {
                       </span>
                     </div>
                     <p className="text-[10px] text-muted-foreground">{md.offlineHint}</p>
+                    {unavailabilityLine ? (
+                      <p className="text-[10px] text-muted-foreground">{unavailabilityLine}</p>
+                    ) : null}
                   </div>
+                ) : unavailabilityLine ? (
+                  <p className="text-[10px] text-muted-foreground">{unavailabilityLine}</p>
                 ) : null}
               </div>
             </div>
@@ -466,7 +503,9 @@ const MentorDetailPage = () => {
                 className={`w-full gradient-cta text-white disabled:opacity-60 sm:w-auto ${bookSessionDisabled ? "opacity-80" : ""}`}
                 disabled={liveBookMut.isPending || (!bookSessionDisabled && !pricing?.is_active)}
                 title={
-                  mentorOffline
+                  mentorUnavailable
+                    ? u.badge
+                    : mentorOffline
                     ? md.offline
                     : mentorBusy
                       ? md.inSession
@@ -483,7 +522,9 @@ const MentorDetailPage = () => {
                 className={`w-full disabled:opacity-60 sm:w-auto ${bookSessionDisabled ? "opacity-80" : ""}`}
                 disabled={liveBookMut.isPending || (!bookSessionDisabled && !pricing?.is_active)}
                 title={
-                  mentorOffline
+                  mentorUnavailable
+                    ? u.badge
+                    : mentorOffline
                     ? md.offline
                     : mentorBusy
                       ? md.inSession
@@ -508,7 +549,11 @@ const MentorDetailPage = () => {
             <DialogHeader>
               <DialogTitle>{md.notAvailableTitle}</DialogTitle>
               <DialogDescription>
-                {mentorBusy ? md.notAvailableBusyBody : md.notAvailableOfflineBody}{" "}
+                {mentorBusy
+                  ? md.notAvailableBusyBody
+                  : mentorUnavailable
+                    ? md.notAvailableUnavailableBody
+                    : md.notAvailableOfflineBody}{" "}
                 {md.bookWhenOnline}
               </DialogDescription>
             </DialogHeader>
@@ -593,7 +638,9 @@ function SimilarCoaches({ mentorId }: { mentorId: string }) {
                           ? "mt-1.5 h-2 w-2 shrink-0 rounded-full bg-emerald-500"
                           : getMentorAvailabilityStatus(m) === "busy"
                             ? "mt-1.5 h-2 w-2 shrink-0 rounded-full bg-rose-500"
-                            : "mt-1.5 h-2 w-2 shrink-0 rounded-full bg-slate-400"
+                            : getMentorAvailabilityStatus(m) === "unavailable"
+                              ? "mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amber-500"
+                              : "mt-1.5 h-2 w-2 shrink-0 rounded-full bg-slate-400"
                       }
                     />
                   </div>

@@ -8,6 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { unknownListToStrings } from "@/lib/dbJsonFields";
 import { normalizeCoachCardVisibility } from "@/lib/coachCardVisibility";
+import { formatUnavailabilityLine } from "@/lib/mentorUnavailability";
+import { useEffectiveTimeZone } from "@/hooks/useEffectiveTimeZone";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 export type MentorBrowseCardProps = {
   mentor: MentorPublic;
@@ -43,9 +46,16 @@ function RatingStars({ value }: { value: number }) {
 export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNowLabel }: MentorBrowseCardProps) {
   const navigate = useNavigate();
   const auth = useAuthOptional();
+  const { t } = useLanguage();
+  const u = t.app.mentorUnavailability;
+  const effectiveTimeZone = useEffectiveTimeZone();
   const role = auth?.role ?? null;
   const userAccessToken = auth?.userAccessToken ?? null;
   const availability = getMentorAvailabilityStatus(mentor);
+  const unavailabilityLine = formatUnavailabilityLine(mentor.unavailability, u, {
+    unavailableNow: availability === "unavailable",
+    timeZone: effectiveTimeZone,
+  });
   const cardVis = normalizeCoachCardVisibility(mentor.public_card_visibility);
 
   const expertise = unknownListToStrings(mentor.expertise_areas);
@@ -84,7 +94,7 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
 
   return (
     <article
-      className="group flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-md md:min-h-[280px] md:flex-row"
+      className="group flex w-full max-w-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-md md:min-h-[280px] md:flex-row"
       onClick={goToProfile}
     >
       <div
@@ -101,19 +111,41 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
             <h2 className="min-w-0 break-words font-serif text-xl font-bold leading-tight tracking-tight text-primary-foreground sm:text-2xl">
               {mentor.full_name}
             </h2>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-foreground/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ring-1 ring-primary-foreground/25">
+            <div className="flex max-w-[12rem] flex-col items-end gap-0.5">
               <span
                 className={cn(
-                  "h-2 w-2 rounded-full",
-                  availability === "available"
-                    ? "bg-emerald-400"
-                    : availability === "busy"
-                      ? "bg-rose-400"
-                      : "bg-slate-300",
+                  "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ring-1",
+                  availability === "unavailable"
+                    ? "bg-amber-400/25 ring-amber-200/50"
+                    : "bg-primary-foreground/15 ring-primary-foreground/25",
                 )}
-              />
-              {availability === "available" ? "Available" : availability === "busy" ? "In session" : "Offline"}
-            </span>
+              >
+                <span
+                  className={cn(
+                    "h-2 w-2 rounded-full",
+                    availability === "available"
+                      ? "bg-emerald-400"
+                      : availability === "busy"
+                        ? "bg-rose-400"
+                        : availability === "unavailable"
+                          ? "bg-amber-300"
+                          : "bg-slate-300",
+                  )}
+                />
+                {availability === "available"
+                  ? "Available"
+                  : availability === "busy"
+                    ? "In session"
+                    : availability === "unavailable"
+                      ? u.badge
+                      : "Offline"}
+              </span>
+              {unavailabilityLine ? (
+                <p className="text-right text-[10px] font-medium leading-tight text-primary-foreground/85">
+                  {unavailabilityLine}
+                </p>
+              ) : null}
+            </div>
           </div>
 
           {cardVis.headline && mentor.headline ? (
@@ -249,18 +281,18 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
         </div>
       </div>
 
-      <div className="relative order-first h-48 w-full shrink-0 overflow-hidden bg-muted sm:h-56 md:order-last md:h-auto md:min-h-[280px] md:w-[40%] md:self-stretch lg:w-[38%]">
+      <div className="relative order-first h-[min(88vw,28rem)] w-full shrink-0 overflow-hidden bg-muted md:order-last md:h-auto md:min-h-[280px] md:w-[40%] md:self-stretch lg:w-[38%]">
         {heroSrc ? (
           <>
             <img
               src={heroSrc}
               alt={mentor.full_name}
-              className="absolute inset-0 h-full w-full object-cover object-[center_28%]"
+              className="absolute inset-0 h-full w-full object-cover object-[center_40%] md:object-[center_28%]"
             />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent md:bg-gradient-to-l md:from-transparent md:via-transparent md:to-black/40" />
           </>
         ) : (
-          <div className="flex h-full min-h-[12rem] w-full items-center justify-center bg-gradient-to-br from-muted to-accent/25 text-muted-foreground md:min-h-0">
+          <div className="flex h-full min-h-[13.75rem] w-full items-center justify-center bg-gradient-to-br from-muted to-accent/25 text-muted-foreground md:min-h-0">
             Photo coming soon
           </div>
         )}

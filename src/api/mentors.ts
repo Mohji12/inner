@@ -9,6 +9,7 @@ import type {
   MentorPublic,
   PlatformPricing,
   AvailabilityWindow,
+  UnavailabilityOut,
 } from "./types";
 
 export type MentorPatchBody = Partial<{
@@ -214,6 +215,33 @@ export function createMyAvailabilityWindow(
 
 export function deleteMyAvailabilityWindow(windowId: string): Promise<void> {
   return apiFetch<void>(`/mentors/me/availability-windows/${windowId}`, {
+    method: "DELETE",
+  });
+}
+
+export interface UnavailabilityCreateBody {
+  kind: "one_off" | "weekly";
+  all_day?: boolean;
+  date?: string | null;
+  weekday?: number | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  timezone?: string | null;
+}
+
+export function listMyUnavailability(): Promise<UnavailabilityOut[]> {
+  return apiFetch<UnavailabilityOut[]>("/mentors/me/unavailability");
+}
+
+export function createMyUnavailability(body: UnavailabilityCreateBody): Promise<UnavailabilityOut> {
+  return apiFetch<UnavailabilityOut>("/mentors/me/unavailability", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function deleteMyUnavailability(blockId: string): Promise<void> {
+  return apiFetch<void>(`/mentors/me/unavailability/${blockId}`, {
     method: "DELETE",
   });
 }

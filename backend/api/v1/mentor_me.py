@@ -15,6 +15,7 @@ from models.availability_slot import AvailabilitySlot
 from models.booking import Booking
 from models.mentor import Mentor
 from models.mentor_availability_window import MentorAvailabilityWindow
+from models.mentor_unavailability import MentorUnavailability
 from models.mentor_monthly_invoice import MentorMonthlyInvoice
 from models.mentor_payout_account import MentorPayoutAccount
 from models.mentor_onboarding_payment import MentorOnboardingPayment
@@ -31,6 +32,7 @@ from schemas.mentor import (
 )
 from schemas.platform_invoice import MentorMonthlyFeeStatementOut, MentorOnboardingInvoiceOut
 from schemas.availability_window import AvailabilityWindowCreate, AvailabilityWindowOut
+from schemas.unavailability import UnavailabilityCreate, UnavailabilityOut
 from schemas.contact import AuthenticatedSupportCreate, SupportContactMessage
 from schemas.slot import SlotCreate, SlotOut, SlotUpdate
 from core.limiter import limiter
@@ -853,6 +855,108 @@ def delete_availability_window(window_id: str, db: DbSession, me: CurrentMentor)
     )
     if not row:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Availability window not found")
+    db.delete(row)
+    db.commit()
+
+
+@router.get("/unavailability", response_model=list[UnavailabilityOut])
+def list_my_unavailability(db: DbSession, me: CurrentMentor) -> list[MentorUnavailability]:
+    from services.mentor_unavailability_service import list_active_for_mentor
+
+    return list_active_for_mentor(db, me.id)
+
+
+@router.post("/unavailability", response_model=UnavailabilityOut, status_code=status.HTTP_201_CREATED)
+def create_my_unavailability(
+    db: DbSession,
+    me: CurrentMentor,
+    payload: UnavailabilityCreate,
+) -> MentorUnavailability:
+    from services.mentor_unavailability_service import KIND_ONE_OFF, KIND_WEEKLY, one_off_bounds
+
+    now = datetime.now(timezone.utc)
+    tz_name = payload.timezone or me.timezone or "UTC"
+    try:
+        tz_name = validate_timezone_name(tz_name)
+    except TimezoneConversionError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
+
+    if payload.kind == KIND_ONE_OFF:
+        if payload.date is None:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Date is required")
+        if not payload.all_day and (payload.start_time is None or payload.end_time is None):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Start and end times are required")
+        try:
+            start_at_utc, end_at_utc = one_off_bounds(
+                off_date=payload.date,
+                all_day=payload.all_day,
+                start_time=payload.start_time,
+                end_time=payload.end_time,
+                tz_name=tz_name,
+            )
+        except ValueError as e:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
+        if end_at_utc <= start_at_utc:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "End time must be after start time")
+        if end_at_utc <= now:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Time off must be in the future")
+        row = MentorUnavailability(
+            id=new_uuid(),
+            mentor_id=me.id,
+            kind=KIND_ONE_OFF,
+            all_day=payload.all_day,
+            start_at_utc=start_at_utc,
+            end_at_utc=end_at_utc,
+            weekday=None,
+            start_time=None if payload.all_day else payload.start_time,
+            end_time=None if payload.all_day else payload.end_time,
+            timezone=tz_name,
+            created_at=now,
+        )
+    elif payload.kind == KIND_WEEKLY:
+        if payload.weekday is None:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Weekday is required")
+        start_t = payload.start_time
+        end_t = payload.end_time
+        if not payload.all_day:
+            if start_t is None or end_t is None:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, "Start and end times are required")
+            if end_t <= start_t:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, "End time must be after start time")
+        else:
+            start_t = None
+            end_t = None
+        row = MentorUnavailability(
+            id=new_uuid(),
+            mentor_id=me.id,
+            kind=KIND_WEEKLY,
+            all_day=payload.all_day,
+            start_at_utc=None,
+            end_at_utc=None,
+            weekday=payload.weekday,
+            start_time=start_t,
+            end_time=end_t,
+            timezone=tz_name,
+            created_at=now,
+        )
+    else:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "kind must be one_off or weekly")
+
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+@router.delete("/unavailability/{block_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_my_unavailability(block_id: str, db: DbSession, me: CurrentMentor) -> None:
+    row = (
+        db.query(MentorUnavailability)
+        .filter(MentorUnavailability.id == block_id, MentorUnavailability.mentor_id == me.id)
+        .first()
+    )
+    if not row:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unavailability not found")
     db.delete(row)
     db.commit()
 

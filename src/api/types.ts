@@ -75,7 +75,11 @@ export interface MentorPublic {
   headline: string | null;
   current_company?: string | null;
   profile_image: string | null;
+  profile_image_original?: string | null;
+  profile_image_crop?: Record<string, unknown> | null;
   banner_image?: string | null;
+  banner_image_original?: string | null;
+  banner_image_crop?: Record<string, unknown> | null;
   /** DB JSON — usually string labels */
   languages_spoken: unknown[] | null;
   years_of_experience: number;
@@ -93,6 +97,10 @@ export interface MentorPublic {
   last_seen_at: string | null;
   /** Next planned platform window start (UTC ISO), if coach posted one */
   next_availability_at?: string | null;
+  /** True while a posted time-off block covers now */
+  unavailable_now?: boolean;
+  /** Current time-off if active, otherwise the next upcoming block */
+  unavailability?: UnavailabilityPublicBlock | null;
   status: string;
   created_at: string;
   badges?: string[];
@@ -102,11 +110,36 @@ export interface MentorPublic {
   public_card_visibility?: Partial<Record<string, boolean>> | null;
 }
 
-export type MentorAvailabilityStatus = "available" | "busy" | "offline";
+export type MentorAvailabilityStatus = "available" | "busy" | "offline" | "unavailable";
+
+export interface UnavailabilityPublicBlock {
+  kind: "one_off" | "weekly";
+  all_day: boolean;
+  weekday?: number | null;
+  start_at?: string | null;
+  end_at?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+}
+
+export interface UnavailabilityOut {
+  id: string;
+  mentor_id: string;
+  kind: "one_off" | "weekly";
+  all_day: boolean;
+  start_at_utc: string | null;
+  end_at_utc: string | null;
+  weekday: number | null;
+  start_time: string | null;
+  end_time: string | null;
+  timezone: string;
+  created_at: string;
+}
 
 export function getMentorAvailabilityStatus(
-  mentor: Pick<MentorPublic, "is_online" | "chat_available" | "chat_price_per_minute">,
+  mentor: Pick<MentorPublic, "is_online" | "chat_available" | "chat_price_per_minute" | "unavailable_now">,
 ): MentorAvailabilityStatus {
+  if (mentor.unavailable_now) return "unavailable";
   if (!mentor.is_online) return "offline";
   const chatEnabled = Number(mentor.chat_price_per_minute) > 0;
   if (!chatEnabled) return "available";

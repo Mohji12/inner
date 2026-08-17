@@ -9,6 +9,8 @@ from core.security import verify_password
 from models.user import User
 from models.mentor import Mentor
 from services.cloudinary_service import upload_image_bytes
+from services.mentor_card_visibility import normalize_card_visibility
+from services.mentor_photo_service import apply_mentor_display_photo, parse_crop_json
 
 router = APIRouter(prefix="/upload", tags=["upload"])
 
@@ -112,12 +114,23 @@ async def _read_image_upload(file: UploadFile) -> bytes:
 _ensure_upload_dir()
 
 
+async def _read_optional_image_upload(file: UploadFile | None) -> bytes | None:
+    if file is None:
+        return None
+    filename = (file.filename or "").strip()
+    if not filename:
+        return None
+    return await _read_image_upload(file)
+
+
 @router.post("/mentor-register-avatar", response_model=dict)
 async def upload_mentor_register_avatar(
     db: DbSession,
     email: str = Form(...),
     password: str = Form(...),
     file: UploadFile = File(...),
+    original: UploadFile | None = File(None),
+    crop: str | None = Form(None),
 ):
     """
     For mentors who are pending approval (cannot use Bearer login yet).
@@ -127,59 +140,91 @@ async def upload_mentor_register_avatar(
     mentor = db.query(Mentor).filter(Mentor.email == email_lc).first()
     if not mentor or not verify_password(password, mentor.password_hash):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
+    original_bytes = await _read_optional_image_upload(original)
     contents = await _read_image_upload(file)
+    original_url = None
+    if original_bytes:
+        original_url = _store_image(
+            original_bytes, kind="avatar", original_name=original.filename if original else "original.jpg"
+        )
     file_url = _store_image(contents, kind="avatar", original_name=file.filename or "avatar.png")
-    mentor.profile_image = file_url
-    from services.mentor_card_visibility import normalize_card_visibility
-
+    apply_mentor_display_photo(
+        mentor,
+        kind="avatar",
+        cropped_url=file_url,
+        original_url=original_url,
+        crop=parse_crop_json(crop),
+    )
     vis = normalize_card_visibility(getattr(mentor, "public_card_visibility", None))
     if not vis.get("profile_photo", True):
         vis["profile_photo"] = True
         mentor.public_card_visibility = vis
     db.commit()
-    return {"url": file_url}
+    return {"url": file_url, "original_url": mentor.profile_image_original}
 
 
-def _persist_avatar(actor: AnyActor, db: DbSession, *, file_url: str) -> dict[str, str]:
+def _persist_avatar(
+    actor: AnyActor,
+    db: DbSession,
+    *,
+    file_url: str,
+    original_url: str | None = None,
+    crop: dict | None = None,
+) -> dict[str, str | None]:
     if actor.role == "user":
         user = db.query(User).filter(User.id == actor.subject_id).first()
         if user:
             user.profile_image = file_url
         db.commit()
-        return {"url": file_url}
+        return {"url": file_url, "original_url": None}
     if actor.role == "mentor":
         mentor = db.query(Mentor).filter(Mentor.id == actor.subject_id).first()
-        if mentor:
-            mentor.profile_image = file_url
-            # Ensure uploaded photos are not hidden by card-visibility toggles.
-            from services.mentor_card_visibility import normalize_card_visibility
-
-            vis = normalize_card_visibility(getattr(mentor, "public_card_visibility", None))
-            if not vis.get("profile_photo", True):
-                vis["profile_photo"] = True
-                mentor.public_card_visibility = vis
+        if not mentor:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Mentor not found")
+        result = apply_mentor_display_photo(
+            mentor,
+            kind="avatar",
+            cropped_url=file_url,
+            original_url=original_url,
+            crop=crop,
+        )
+        vis = normalize_card_visibility(getattr(mentor, "public_card_visibility", None))
+        if not vis.get("profile_photo", True):
+            vis["profile_photo"] = True
+            mentor.public_card_visibility = vis
         db.commit()
-        return {"url": file_url}
+        return result
     if actor.role == "admin":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Admins cannot upload profile images via this endpoint")
     raise HTTPException(status.HTTP_403_FORBIDDEN, "Unsupported role")
 
 
-def _persist_banner(actor: AnyActor, db: DbSession, *, file_url: str) -> dict[str, str]:
+def _persist_banner(
+    actor: AnyActor,
+    db: DbSession,
+    *,
+    file_url: str,
+    original_url: str | None = None,
+    crop: dict | None = None,
+) -> dict[str, str | None]:
     if actor.role != "mentor":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only mentors can upload a banner image")
     mentor = db.query(Mentor).filter(Mentor.id == actor.subject_id).first()
     if not mentor:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Mentor not found")
-    mentor.banner_image = file_url
-    from services.mentor_card_visibility import normalize_card_visibility
-
+    result = apply_mentor_display_photo(
+        mentor,
+        kind="banner",
+        cropped_url=file_url,
+        original_url=original_url,
+        crop=crop,
+    )
     vis = normalize_card_visibility(getattr(mentor, "public_card_visibility", None))
     if not vis.get("banner_photo", True):
         vis["banner_photo"] = True
         mentor.public_card_visibility = vis
     db.commit()
-    return {"url": file_url}
+    return result
 
 
 @router.post("/avatar", response_model=dict)
@@ -187,11 +232,25 @@ async def upload_avatar(
     actor: AnyActorDep,
     db: DbSession,
     file: UploadFile = File(...),
+    original: UploadFile | None = File(None),
+    crop: str | None = Form(None),
 ):
     """Profile picture for authenticated user or mentor (Bearer token role)."""
+    original_bytes = await _read_optional_image_upload(original)
     contents = await _read_image_upload(file)
+    original_url = None
+    if original_bytes:
+        original_url = _store_image(
+            original_bytes, kind="avatar", original_name=original.filename if original else "original.jpg"
+        )
     file_url = _store_image(contents, kind="avatar", original_name=file.filename or "image.png")
-    return _persist_avatar(actor, db, file_url=file_url)
+    return _persist_avatar(
+        actor,
+        db,
+        file_url=file_url,
+        original_url=original_url,
+        crop=parse_crop_json(crop),
+    )
 
 
 @router.post("/banner", response_model=dict)
@@ -199,11 +258,25 @@ async def upload_banner(
     actor: AnyActorDep,
     db: DbSession,
     file: UploadFile = File(...),
+    original: UploadFile | None = File(None),
+    crop: str | None = Form(None),
 ):
     """Wide banner/card image — mentors only."""
+    original_bytes = await _read_optional_image_upload(original)
     contents = await _read_image_upload(file)
+    original_url = None
+    if original_bytes:
+        original_url = _store_image(
+            original_bytes, kind="banner", original_name=original.filename if original else "original.jpg"
+        )
     file_url = _store_image(contents, kind="banner", original_name=file.filename or "banner.png")
-    return _persist_banner(actor, db, file_url=file_url)
+    return _persist_banner(
+        actor,
+        db,
+        file_url=file_url,
+        original_url=original_url,
+        crop=parse_crop_json(crop),
+    )
 
 
 @router.post("/image", response_model=dict)
@@ -212,15 +285,27 @@ async def upload_image(
     db: DbSession,
     kind: Literal["avatar", "banner"] = Query(default="avatar"),
     file: UploadFile = File(...),
+    original: UploadFile | None = File(None),
+    crop: str | None = Form(None),
 ):
     """Unified upload: `avatar` for user/mentor; `banner` for mentors only."""
+    original_bytes = await _read_optional_image_upload(original)
     contents = await _read_image_upload(file)
     suffix = "banner.png" if kind == "banner" else "image.png"
+    original_url = None
+    store_kind: Literal["avatar", "banner"] = "banner" if kind == "banner" else "avatar"
+    if original_bytes:
+        original_url = _store_image(
+            original_bytes,
+            kind=store_kind,
+            original_name=original.filename if original else "original.jpg",
+        )
     file_url = _store_image(
         contents,
-        kind="banner" if kind == "banner" else "avatar",
+        kind=store_kind,
         original_name=file.filename or suffix,
     )
+    parsed_crop = parse_crop_json(crop)
     if kind == "banner":
-        return _persist_banner(actor, db, file_url=file_url)
-    return _persist_avatar(actor, db, file_url=file_url)
+        return _persist_banner(actor, db, file_url=file_url, original_url=original_url, crop=parsed_crop)
+    return _persist_avatar(actor, db, file_url=file_url, original_url=original_url, crop=parsed_crop)

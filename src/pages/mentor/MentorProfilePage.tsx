@@ -1,15 +1,16 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { apiFetch } from "@/api/client";
 import { getMentorMe, patchMentorMe } from "@/api/mentors";
+import { uploadMentorPhoto } from "@/api/uploads";
 import type { MentorAccount } from "@/api/types";
 import { commaSeparatedToStringList, stringListToCommaSeparated, unknownListToStrings } from "@/lib/dbJsonFields";
 import { normalizeSpokenLanguagesFromApi } from "@/lib/spokenLanguageOptions";
 import CoachCardVisibilityPicker from "@/components/CoachCardVisibilityPicker";
 import SpokenLanguageCheckboxGroup from "@/components/SpokenLanguageCheckboxGroup";
+import { PhotoCropField } from "@/components/PhotoCropField";
 import { DEFAULT_COACH_CARD_VISIBILITY, normalizeCoachCardVisibility, type CoachCardVisibility } from "@/lib/coachCardVisibility";
-import { formatUploadError, validateImageFile } from "@/lib/imageUpload";
-import { mediaUrlFromApi } from "@/lib/mediaUrl";
+import { formatUploadError } from "@/lib/imageUpload";
+import { parseStoredCrop, type ImageCropKind, type ImageCropState } from "@/lib/cropImage";
 import { resolveBrowserTimeZone } from "@/lib/timeZone";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { Button } from "@/components/ui/button";
@@ -19,14 +20,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-
-async function postMentorImage(kind: "avatar" | "banner", file: File): Promise<string> {
-  const formData = new FormData();
-  formData.append("file", file);
-  const path = kind === "banner" ? "/upload/banner" : "/upload/avatar";
-  const data = await apiFetch<{ url: string }>(path, { method: "POST", body: formData });
-  return data.url;
-}
 
 const MentorProfilePage = () => {
   const { t } = useLanguage();
@@ -39,7 +32,11 @@ const MentorProfilePage = () => {
   const [countryCode, setCountryCode] = useState("");
   const [timezone, setTimezone] = useState("");
   const [profileImage, setProfileImage] = useState("");
+  const [profileImageOriginal, setProfileImageOriginal] = useState("");
+  const [profileImageCrop, setProfileImageCrop] = useState<ImageCropState | null>(null);
   const [bannerImage, setBannerImage] = useState("");
+  const [bannerImageOriginal, setBannerImageOriginal] = useState("");
+  const [bannerImageCrop, setBannerImageCrop] = useState<ImageCropState | null>(null);
   const [headline, setHeadline] = useState("");
   const [bio, setBio] = useState("");
   const [years, setYears] = useState("0");
@@ -65,7 +62,11 @@ const MentorProfilePage = () => {
         setCountryCode(m.country_code ?? "");
         setTimezone(m.timezone?.trim() || resolveBrowserTimeZone());
         setProfileImage(m.profile_image ?? "");
+        setProfileImageOriginal(m.profile_image_original ?? m.profile_image ?? "");
+        setProfileImageCrop(parseStoredCrop(m.profile_image_crop));
         setBannerImage(m.banner_image ?? "");
+        setBannerImageOriginal(m.banner_image_original ?? m.banner_image ?? "");
+        setBannerImageCrop(parseStoredCrop(m.banner_image_crop));
         setHeadline(m.headline ?? "");
         setBio(m.bio ?? "");
         setYears(String(m.years_of_experience));
@@ -119,9 +120,54 @@ const MentorProfilePage = () => {
         public_card_visibility: cardVisibility,
       });
       setMe(next);
+      setProfileImage(next.profile_image ?? "");
+      setProfileImageOriginal(next.profile_image_original ?? next.profile_image ?? "");
+      setProfileImageCrop(parseStoredCrop(next.profile_image_crop));
+      setBannerImage(next.banner_image ?? "");
+      setBannerImageOriginal(next.banner_image_original ?? next.banner_image ?? "");
+      setBannerImageCrop(parseStoredCrop(next.banner_image_crop));
       toast.success(mpf.toastOk);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : mpf.toastUpdateErr);
+    }
+  };
+
+  const cropLabels = (kind: ImageCropKind) => ({
+    editPhoto: mpf.editPhoto,
+    orPasteUrl: mpf.orPasteImageUrl,
+    cropTitle: kind === "banner" ? mpf.cropTitleBanner : mpf.cropTitle,
+    cropDescription: kind === "banner" ? mpf.cropDescriptionBanner : mpf.cropDescription,
+    build: mpf.build,
+    cancel: mpf.cropCancel,
+    zoomHint: mpf.zoomHint,
+    emptyPreview: kind === "banner" ? mpf.bannerEmpty : mpf.photoEmpty,
+    sizeLimit: mpf.imageSizeLimit,
+  });
+
+  const commitPhoto = async (
+    kind: ImageCropKind,
+    payload: { cropped: File; original: File | null; crop: ImageCropState },
+  ) => {
+    try {
+      const result = await uploadMentorPhoto({
+        kind,
+        cropped: payload.cropped,
+        original: payload.original,
+        crop: payload.crop,
+      });
+      if (kind === "banner") {
+        setBannerImage(result.url);
+        setBannerImageOriginal(result.original_url ?? (bannerImageOriginal || result.url));
+        setBannerImageCrop(payload.crop);
+      } else {
+        setProfileImage(result.url);
+        setProfileImageOriginal(result.original_url ?? (profileImageOriginal || result.url));
+        setProfileImageCrop(payload.crop);
+      }
+      toast.success(mpf.toastPhotoOk);
+    } catch (err) {
+      toast.error(formatUploadError(err, mpf.toastPhotoFail));
+      throw err;
     }
   };
 
@@ -194,103 +240,31 @@ const MentorProfilePage = () => {
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="pimg">{mr.profileImage}</Label>
-              <p className="text-xs text-muted-foreground">{mpf.imageSizeLimit}</p>
-              <div className="flex items-center gap-4">
-                {profileImage ? (
-                  <img
-                    src={mediaUrlFromApi(profileImage) ?? profileImage}
-                    alt="Profile"
-                    className="h-16 w-16 rounded-full border object-cover"
-                  />
-                ) : (
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full border bg-muted text-xs text-muted-foreground">
-                    No image
-                  </div>
-                )}
-                <div className="flex flex-1 flex-col space-y-2">
-                  <Input
-                    id="pimg"
-                    type="url"
-                    placeholder="Or enter image URL"
-                    value={profileImage}
-                    onChange={(ev) => setProfileImage(ev.target.value)}
-                  />
-                  <Input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
-                    onChange={(e) => {
-                      void (async () => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        const validation = validateImageFile(file, mpf.imageSizeLimit);
-                        if (validation) {
-                          toast.error(validation);
-                          return;
-                        }
-                        try {
-                          const url = await postMentorImage("avatar", file);
-                          setProfileImage(url);
-                          toast.success("Profile image uploaded");
-                        } catch (err) {
-                          toast.error(formatUploadError(err, "Failed to upload image"));
-                        }
-                      })();
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
+            <PhotoCropField
+              kind="avatar"
+              label={mr.profileImage}
+              hint={mpf.imageSizeLimit}
+              displayUrl={profileImage || null}
+              originalUrl={profileImageOriginal || null}
+              crop={profileImageCrop}
+              labels={cropLabels("avatar")}
+              urlValue={profileImage}
+              onUrlChange={setProfileImage}
+              onCommit={(payload) => commitPhoto("avatar", payload)}
+            />
 
-            <div className="space-y-2">
-              <Label htmlFor="banner">Banner / card image</Label>
-              <p className="text-xs text-muted-foreground">
-                Wide photo shown on the coach directory cards. Separate from profile picture. {mpf.imageSizeLimit}
-              </p>
-              {bannerImage ? (
-                <div className="overflow-hidden rounded-lg border">
-                  <img
-                    src={mediaUrlFromApi(bannerImage) ?? bannerImage}
-                    alt=""
-                    className="h-32 w-full object-cover md:h-40"
-                  />
-                </div>
-              ) : (
-                <div className="flex h-32 items-center justify-center rounded-lg border border-dashed bg-muted/40 text-xs text-muted-foreground md:h-40">
-                  No banner yet
-                </div>
-              )}
-              <Input
-                id="banner"
-                type="url"
-                placeholder="Banner image URL"
-                value={bannerImage}
-                onChange={(ev) => setBannerImage(ev.target.value)}
-              />
-              <Input
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
-                onChange={(e) => {
-                  void (async () => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const validation = validateImageFile(file, mpf.imageSizeLimit);
-                    if (validation) {
-                      toast.error(validation);
-                      return;
-                    }
-                    try {
-                      const url = await postMentorImage("banner", file);
-                      setBannerImage(url);
-                      toast.success("Banner uploaded");
-                    } catch (err) {
-                      toast.error(formatUploadError(err, "Failed to upload banner"));
-                    }
-                  })();
-                }}
-              />
-            </div>
+            <PhotoCropField
+              kind="banner"
+              label="Banner / card image"
+              hint={`Wide photo shown on the coach directory cards. Separate from profile picture. ${mpf.imageSizeLimit}`}
+              displayUrl={bannerImage || null}
+              originalUrl={bannerImageOriginal || null}
+              crop={bannerImageCrop}
+              labels={cropLabels("banner")}
+              urlValue={bannerImage}
+              onUrlChange={setBannerImage}
+              onCommit={(payload) => commitPhoto("banner", payload)}
+            />
           </div>
 
           <div className="space-y-4">

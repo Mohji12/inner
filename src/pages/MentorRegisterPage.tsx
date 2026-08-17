@@ -16,6 +16,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
 import { uploadRegistrationMentorAvatar } from "@/api/uploads";
+import { PhotoCropField } from "@/components/PhotoCropField";
+import { type ImageCropState } from "@/lib/cropImage";
 import { commaSeparatedToStringList } from "@/lib/dbJsonFields";
 import CoachCardVisibilityPicker from "@/components/CoachCardVisibilityPicker";
 import { DEFAULT_COACH_CARD_VISIBILITY, type CoachCardVisibility } from "@/lib/coachCardVisibility";
@@ -38,6 +40,7 @@ const MentorRegisterPage = () => {
   const { loginMentorSession } = useAuth();
   const { t, htmlLang } = useLanguage();
   const m = t.app.mentorRegister;
+  const mpf = t.app.mentorProfile;
   const [error, setError] = useState("");
   const [phase, setPhase] = useState<Phase>("form");
   const [otp, setOtp] = useState("");
@@ -47,7 +50,10 @@ const MentorRegisterPage = () => {
   const [agreementAccepted, setAgreementAccepted] = useState(false);
   const [agreementAcceptedBeforeVerify, setAgreementAcceptedBeforeVerify] = useState(false);
   const pendingAvatarFileRef = useRef<File | null>(null);
+  const pendingAvatarOriginalRef = useRef<File | null>(null);
+  const pendingAvatarCropRef = useRef<ImageCropState | null>(null);
   const [localAvatarPreview, setLocalAvatarPreview] = useState<string | null>(null);
+  const [originalAvatarPreview, setOriginalAvatarPreview] = useState<string | null>(null);
   const [cardVisibility, setCardVisibility] = useState<CoachCardVisibility>(DEFAULT_COACH_CARD_VISIBILITY);
   const [formData, setFormData] = useState(() => {
     const empty = {
@@ -237,6 +243,8 @@ const MentorRegisterPage = () => {
     try {
       const email = formData.email.trim();
       const pendingFile = pendingAvatarFileRef.current;
+      const pendingOriginal = pendingAvatarOriginalRef.current;
+      const pendingCrop = pendingAvatarCropRef.current;
       const urlOnly = formData.profileImage.trim();
       const reg = await registerMentor({
         full_name: formData.name.trim(),
@@ -246,7 +254,7 @@ const MentorRegisterPage = () => {
         country_code: formData.phoneDialIso,
         headline: formData.headline.trim(),
         bio: formData.bio.trim() || null,
-        profile_image: pendingFile ? null : urlOnly ? urlOnly : null,
+        profile_image: pendingOriginal ? null : urlOnly ? urlOnly : null,
         current_company: formData.companyName.trim() || null,
         kvk_number: formData.kvkNumber.trim(),
         languages_spoken: formData.spokenLanguages.length ? formData.spokenLanguages : null,
@@ -266,6 +274,8 @@ const MentorRegisterPage = () => {
         bic: formData.bic.trim() || null,
       });
       pendingAvatarFileRef.current = null;
+      pendingAvatarOriginalRef.current = null;
+      pendingAvatarCropRef.current = null;
 
       if (pendingFile) {
         try {
@@ -273,6 +283,8 @@ const MentorRegisterPage = () => {
             email,
             password: formData.password,
             file: pendingFile,
+            original: pendingOriginal,
+            crop: pendingCrop,
           });
           setFormData((prev) => ({ ...prev, profileImage: uploadedUrl }));
           if (localAvatarPreview?.startsWith("blob:")) {
@@ -497,72 +509,57 @@ const MentorRegisterPage = () => {
                 <TabsContent value="profile" className="mt-6 space-y-4">
                   <p className="text-sm text-muted-foreground">{m.profileHint}</p>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="pimg-upload">{m.profileImage}</Label>
-                      {m.profileImageHint ? (
-                        <p className="text-xs text-muted-foreground">{m.profileImageHint}</p>
-                      ) : null}
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-                        {formData.profileImage || localAvatarPreview ? (
-                          <img
-                            src={localAvatarPreview || formData.profileImage}
-                            alt=""
-                            className="h-20 w-20 shrink-0 rounded-full border border-border object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-dashed border-muted-foreground/40 bg-muted/30 text-center text-[10px] text-muted-foreground">
-                            {m.photoPreviewEmpty}
-                          </div>
-                        )}
-                        <div className="flex min-w-0 flex-1 flex-col gap-2">
-                          <Input
-                            id="pimg-upload"
-                            type="file"
-                            accept="image/*"
-                            className="cursor-pointer file:cursor-pointer file:rounded-md file:border file:border-border file:bg-muted/50 file:px-2 file:text-sm file:font-medium"
-                            onChange={(event) => {
-                              const file = event.target.files?.[0];
-                              event.target.value = "";
-                              if (!file) return;
-                              if (!formData.email.trim() || !formData.password) {
-                                toast.message(m.toastFillAccountFirst);
-                                return;
-                              }
-                              const maxBytes = 2 * 1024 * 1024;
-                              if (file.size > maxBytes) {
-                                toast.error(m.imageSizeLimit);
-                                return;
-                              }
-                              if (file.type && !file.type.startsWith("image/")) {
-                                toast.error("File must be an image");
-                                return;
-                              }
-                              pendingAvatarFileRef.current = file;
-                              if (localAvatarPreview?.startsWith("blob:")) {
-                                URL.revokeObjectURL(localAvatarPreview);
-                              }
-                              setLocalAvatarPreview(URL.createObjectURL(file));
-                            }}
-                          />
-                          <Label htmlFor="pimg-url" className="text-xs text-muted-foreground">
-                            {m.orPasteImageUrl}
-                          </Label>
-                          <Input
-                            id="pimg-url"
-                            type="url"
-                            placeholder="https://…"
-                            value={formData.profileImage}
-                            onChange={(event) => {
-                              pendingAvatarFileRef.current = null;
-                              if (localAvatarPreview?.startsWith("blob:")) {
-                                URL.revokeObjectURL(localAvatarPreview);
-                              }
-                              setLocalAvatarPreview(null);
-                              setFormData((prev) => ({ ...prev, profileImage: event.target.value }));
-                            }}
-                          />
-                        </div>
-                      </div>
+                    <div className="md:col-span-2">
+                      <PhotoCropField
+                        kind="avatar"
+                        label={m.profileImage}
+                        hint={m.profileImageHint}
+                        displayUrl={localAvatarPreview || formData.profileImage || null}
+                        originalUrl={originalAvatarPreview || formData.profileImage || null}
+                        crop={pendingAvatarCropRef.current}
+                        labels={{
+                          editPhoto: mpf.editPhoto,
+                          orPasteUrl: m.orPasteImageUrl,
+                          cropTitle: mpf.cropTitle,
+                          cropDescription: mpf.cropDescription,
+                          build: mpf.build,
+                          cancel: mpf.cropCancel,
+                          zoomHint: mpf.zoomHint,
+                          emptyPreview: m.photoPreviewEmpty,
+                          sizeLimit: m.imageSizeLimit,
+                        }}
+                        urlValue={formData.profileImage}
+                        onUrlChange={(value) => {
+                          pendingAvatarFileRef.current = null;
+                          pendingAvatarOriginalRef.current = null;
+                          pendingAvatarCropRef.current = null;
+                          if (localAvatarPreview?.startsWith("blob:")) {
+                            URL.revokeObjectURL(localAvatarPreview);
+                          }
+                          if (originalAvatarPreview?.startsWith("blob:")) {
+                            URL.revokeObjectURL(originalAvatarPreview);
+                          }
+                          setLocalAvatarPreview(null);
+                          setOriginalAvatarPreview(null);
+                          setFormData((prev) => ({ ...prev, profileImage: value }));
+                        }}
+                        onDeferBuild={(payload) => {
+                          pendingAvatarFileRef.current = payload.cropped;
+                          pendingAvatarOriginalRef.current = payload.original;
+                          pendingAvatarCropRef.current = payload.crop;
+                          if (localAvatarPreview?.startsWith("blob:")) {
+                            URL.revokeObjectURL(localAvatarPreview);
+                          }
+                          setLocalAvatarPreview(payload.previewUrl);
+                          if (payload.original) {
+                            if (originalAvatarPreview?.startsWith("blob:")) {
+                              URL.revokeObjectURL(originalAvatarPreview);
+                            }
+                            setOriginalAvatarPreview(URL.createObjectURL(payload.original));
+                            setFormData((prev) => ({ ...prev, profileImage: "" }));
+                          }
+                        }}
+                      />
                     </div>
                     <div className="space-y-2 md:col-span-2">
                       <Label htmlFor="headline">{m.headline}</Label>

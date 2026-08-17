@@ -35,7 +35,7 @@ const MentorsPage = () => {
   return (
     <div className="min-h-screen bg-cream/40 text-foreground">
       <AppPageHeader />
-      <main className="container mx-auto px-6 py-10">
+      <main className="container mx-auto px-4 py-10 sm:px-6">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-sm uppercase tracking-widest text-accent">{p.directory}</p>

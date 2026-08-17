@@ -175,6 +175,7 @@ def _chat_http(e: ChatError) -> HTTPException:
         "email_not_verified": status.HTTP_403_FORBIDDEN,
         "below_min_minutes": status.HTTP_400_BAD_REQUEST,
         "mentor_offline": status.HTTP_409_CONFLICT,
+        "mentor_unavailable": status.HTTP_409_CONFLICT,
         "livekit_not_configured": status.HTTP_503_SERVICE_UNAVAILABLE,
     }
     st = code_map.get(e.code, status.HTTP_400_BAD_REQUEST)

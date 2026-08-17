@@ -8,6 +8,7 @@ const PATTERNS: Array<[RegExp, string]> = [
   [/not found/i, "We couldn't find what you're looking for."],
   [/network|failed to fetch|load failed/i, "Connection problem. Check your internet and try again."],
   [/mollie create payment failed/i, "Payment could not be started. Please try again in a moment."],
+  [/mentor_unavailable|marked as unavailable/i, "This coach is unavailable right now. Try again when their time off ends."],
   [/offline/i, "This coach is offline. Book when they are online on the platform."],
   [/mentor is currently in a chat|mentor_in_chat/i, "This coach is in another session. Try again shortly."],
   [/an account with this email already exists/i, "This email is already registered. Sign in with your password first."],

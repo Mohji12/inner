@@ -18,7 +18,11 @@ class Mentor(Base):
     timezone: Mapped[str] = mapped_column(String(64), default="UTC")
     password_hash: Mapped[str] = mapped_column(String(255))
     profile_image: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    profile_image_original: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    profile_image_crop: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     banner_image: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    banner_image_original: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    banner_image_crop: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     headline: Mapped[str | None] = mapped_column(String(512), nullable=True)
     headline_i18n: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -70,6 +74,9 @@ class Mentor(Base):
     slots = relationship("AvailabilitySlot", back_populates="mentor", cascade="all, delete-orphan")
     availability_windows = relationship(
         "MentorAvailabilityWindow", back_populates="mentor", cascade="all, delete-orphan"
+    )
+    unavailability = relationship(
+        "MentorUnavailability", back_populates="mentor", cascade="all, delete-orphan"
     )
     bookings = relationship("Booking", back_populates="mentor")
     reviews = relationship("Review", back_populates="mentor")

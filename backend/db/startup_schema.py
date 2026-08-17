@@ -105,6 +105,14 @@ def ensure_mentor_public_card_visibility_column() -> None:
     _safe_add_column("ALTER TABLE mentors ADD COLUMN public_card_visibility JSON NULL")
 
 
+def ensure_mentor_image_crop_columns() -> None:
+    """Original photo + crop JSON so coaches/admins can reframe profile and banner."""
+    _safe_add_column("ALTER TABLE mentors ADD COLUMN profile_image_original VARCHAR(512) NULL")
+    _safe_add_column("ALTER TABLE mentors ADD COLUMN profile_image_crop JSON NULL")
+    _safe_add_column("ALTER TABLE mentors ADD COLUMN banner_image_original VARCHAR(512) NULL")
+    _safe_add_column("ALTER TABLE mentors ADD COLUMN banner_image_crop JSON NULL")
+
+
 def ensure_localization_i18n_columns() -> None:
     """Safety net for migration 015 (DB-backed localization columns)."""
     _safe_add_column("ALTER TABLE mentors ADD COLUMN headline_i18n JSON NULL")
@@ -788,6 +796,29 @@ def ensure_mentor_availability_windows_table() -> None:
         KEY ix_mentor_availability_windows_mentor_id (mentor_id),
         KEY idx_mentor_availability_windows_mentor_start (mentor_id, start_at_utc),
         CONSTRAINT fk_mentor_availability_windows_mentor FOREIGN KEY (mentor_id) REFERENCES mentors(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    """
+    _execute_ddl(ddl)
+
+
+def ensure_mentor_unavailability_table() -> None:
+    """Coach-posted time off (one-off dates and repeating weekdays)."""
+    ddl = """
+    CREATE TABLE IF NOT EXISTS mentor_unavailability (
+        id CHAR(36) NOT NULL PRIMARY KEY,
+        mentor_id CHAR(36) NOT NULL,
+        kind VARCHAR(16) NOT NULL,
+        all_day TINYINT(1) NOT NULL DEFAULT 0,
+        start_at_utc DATETIME(6) NULL,
+        end_at_utc DATETIME(6) NULL,
+        weekday INT NULL,
+        start_time TIME NULL,
+        end_time TIME NULL,
+        timezone VARCHAR(64) NOT NULL DEFAULT 'UTC',
+        created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+        KEY ix_mentor_unavailability_mentor_id (mentor_id),
+        KEY idx_mentor_unavailability_mentor (mentor_id),
+        CONSTRAINT fk_mentor_unavailability_mentor FOREIGN KEY (mentor_id) REFERENCES mentors(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """
     _execute_ddl(ddl)

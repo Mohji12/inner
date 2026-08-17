@@ -78,6 +78,13 @@ def create_live_booking_request(db: Session, user_id: str, payload: BookingCreat
             "Coach is offline. You can book a live session only while they are online on the platform.",
             "mentor_offline",
         )
+    from services.mentor_unavailability_service import mentor_unavailable_now
+
+    if mentor_unavailable_now(db, mentor.id):
+        raise BookingError(
+            "Coach is marked as unavailable at this time.",
+            "mentor_unavailable",
+        )
 
     try:
         _amount = booking_base_eur_amount(db, mentor=mentor, duration_minutes=duration)

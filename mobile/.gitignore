@@ -1,0 +1,20 @@
+node_modules
+.DS_Store
+*.log
+
+# Android
+android/app/build
+android/.gradle
+android/build
+android/local.properties
+android/app/release
+android/captures
+android/*.iml
+android/.idea
+android/app/.cxx
+
+# iOS (if added later)
+ios/App/Pods
+ios/App/App.xcworkspace
+ios/App/App/public
+ios/DerivedData

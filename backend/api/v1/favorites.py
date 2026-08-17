@@ -10,6 +10,7 @@ from models.mentor import Mentor
 from schemas.mentor import MentorPublicOut
 from services.chat_service import mentor_ids_with_live_chat
 from services.pricing_service import get_platform_pricing
+from services.mentor_unavailability_service import load_unavailability_by_mentor
 
 router = APIRouter(prefix="/favorites", tags=["favorites"])
 
@@ -66,4 +67,13 @@ def get_favorites(current_user: CurrentUser, db: DbSession):
     busy = mentor_ids_with_live_chat(db)
     pricing_row = get_platform_pricing(db)
     active_pricing = bool(pricing_row.is_active)
-    return [_mentor_public_out(m, busy, session_pricing_active=active_pricing) for m in mentors]
+    umap = load_unavailability_by_mentor(db, [m.id for m in mentors])
+    return [
+        _mentor_public_out(
+            m,
+            busy,
+            session_pricing_active=active_pricing,
+            unavailability_rows=umap.get(m.id, []),
+        )
+        for m in mentors
+    ]

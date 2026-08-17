@@ -39,7 +39,11 @@ export interface AdminMentorRow {
   session_modes?: unknown[] | null;
   previous_companies?: unknown[] | null;
   profile_image?: string | null;
+  profile_image_original?: string | null;
+  profile_image_crop?: Record<string, unknown> | null;
   banner_image?: string | null;
+  banner_image_original?: string | null;
+  banner_image_crop?: Record<string, unknown> | null;
   country_code?: string | null;
   timezone?: string | null;
   average_rating?: string | number | null;
@@ -415,6 +419,26 @@ export function updateAdminMentorCardVisibility(
   return apiFetch<AdminMentorRow>(`/admin/mentors/${mentorId}/card-visibility`, {
     method: "PATCH",
     body: JSON.stringify(payload),
+  });
+}
+
+export function uploadAdminMentorPhoto(
+  mentorId: string,
+  params: {
+    kind: "avatar" | "banner";
+    cropped: File;
+    original?: File | null;
+    crop?: Record<string, unknown> | null;
+  },
+) {
+  const body = new FormData();
+  body.append("kind", params.kind);
+  body.append("file", params.cropped);
+  if (params.original) body.append("original", params.original);
+  if (params.crop) body.append("crop", JSON.stringify(params.crop));
+  return apiFetch<AdminMentorRow>(`/admin/mentors/${mentorId}/photo`, {
+    method: "POST",
+    body,
   });
 }
 

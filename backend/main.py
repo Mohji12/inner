@@ -27,6 +27,7 @@ from db.startup_schema import (
     ensure_localization_i18n_columns,
     ensure_marketplace_ledger_tables,
     ensure_mentor_availability_windows_table,
+    ensure_mentor_unavailability_table,
     ensure_support_inquiries_table,
     ensure_mentor_mollie_fee_tables,
     ensure_mentor_payout_bank_columns,
@@ -35,6 +36,7 @@ from db.startup_schema import (
     ensure_default_onboarding_promo_code,
     ensure_universal_promo_codes,
     ensure_mentors_banner_image_column,
+    ensure_mentor_image_crop_columns,
     ensure_mentor_kvk_number_column,
     ensure_mentor_public_card_visibility_column,
     ensure_mentor_presence_tracking,
@@ -96,6 +98,7 @@ def _run_startup_step(name: str, fn, *, attempts: int = 3) -> None:
 async def lifespan(app: FastAPI):
     logger.info("CORS allow_origins: %s", settings.cors_origins_list)
     _run_startup_step("ensure_mentors_banner_image_column", ensure_mentors_banner_image_column)
+    _run_startup_step("ensure_mentor_image_crop_columns", ensure_mentor_image_crop_columns)
     _run_startup_step("ensure_mentor_kvk_number_column", ensure_mentor_kvk_number_column)
     _run_startup_step(
         "ensure_mentor_public_card_visibility_column",
@@ -120,6 +123,7 @@ async def lifespan(app: FastAPI):
     _run_startup_step("ensure_universal_promo_codes", ensure_universal_promo_codes)
     _run_startup_step("ensure_coach_applications_table", ensure_coach_applications_table)
     _run_startup_step("ensure_mentor_availability_windows_table", ensure_mentor_availability_windows_table)
+    _run_startup_step("ensure_mentor_unavailability_table", ensure_mentor_unavailability_table)
     _run_startup_step("ensure_support_inquiries_table", ensure_support_inquiries_table)
     start_scheduler()
     yield

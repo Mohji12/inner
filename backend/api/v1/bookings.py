@@ -32,6 +32,7 @@ def _booking_error_http(e: BookingError) -> HTTPException:
         "mentor_inactive": status.HTTP_400_BAD_REQUEST,
         "mentor_in_chat": status.HTTP_409_CONFLICT,
         "mentor_offline": status.HTTP_409_CONFLICT,
+        "mentor_unavailable": status.HTTP_409_CONFLICT,
         "invalid_duration": status.HTTP_400_BAD_REQUEST,
         "pricing_not_configured": status.HTTP_400_BAD_REQUEST,
         "pricing_inactive": status.HTTP_400_BAD_REQUEST,

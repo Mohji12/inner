@@ -64,7 +64,9 @@ def performance_score(
 
 
 def availability_tier(row: MentorPublicOut) -> int:
-    """Higher is better: available (2) > busy online (1) > offline (0)."""
+    """Higher is better: available (2) > busy online (1) > offline / time off (0)."""
+    if getattr(row, "unavailable_now", False):
+        return 0
     if row.chat_available:
         return 2
     if row.is_online:

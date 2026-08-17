@@ -6,6 +6,7 @@ import {
   getAdminMentorPayoutBankDetails,
   updateAdminMentorCardVisibility,
   updateMentorApproval,
+  uploadAdminMentorPhoto,
 } from "@/api/admin";
 import type { AdminMentorBankDetailsPrivate, AdminMentorRow } from "@/api/admin";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { unknownListToStrings } from "@/lib/dbJsonFields";
 import { mediaUrlFromApi } from "@/lib/mediaUrl";
 import { normalizeCoachCardVisibility } from "@/lib/coachCardVisibility";
+import { parseStoredCrop } from "@/lib/cropImage";
+import { formatUploadError } from "@/lib/imageUpload";
+import { PhotoCropField } from "@/components/PhotoCropField";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
@@ -156,7 +160,6 @@ export default function AdminMentorsPage() {
 
   const profile: AdminMentorRow | null = profileQ.data ?? null;
   const profileImg = profile?.profile_image ? mediaUrlFromApi(profile.profile_image) : null;
-  const bannerImg = profile?.banner_image ? mediaUrlFromApi(profile.banner_image) : null;
   const cardVis = normalizeCoachCardVisibility(profile?.public_card_visibility ?? null);
 
   return (
@@ -284,23 +287,88 @@ export default function AdminMentorsPage() {
             <p className="text-sm text-destructive">{d.errorGeneric}</p>
           ) : profile ? (
             <div className="space-y-4">
-              {(bannerImg || profileImg) && (
-                <div className="space-y-2">
-                  {bannerImg ? (
-                    <img src={bannerImg} alt="" className="h-28 w-full rounded-lg object-cover" />
-                  ) : null}
-                  {profileImg ? (
-                    <img
-                      src={profileImg}
-                      alt={profile.full_name}
-                      className="h-16 w-16 rounded-full object-cover ring-2 ring-border"
-                    />
-                  ) : null}
-                  {profileImg && !cardVis.profile_photo ? (
-                    <Badge variant="destructive">{d.photoHiddenBadge}</Badge>
-                  ) : null}
-                </div>
-              )}
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm font-medium">{d.photoSection}</p>
+                {profileImg && !cardVis.profile_photo ? (
+                  <Badge variant="destructive" className="mt-1">
+                    {d.photoHiddenBadge}
+                  </Badge>
+                ) : null}
+              </div>
+              <PhotoCropField
+                kind="avatar"
+                label={d.profileImage}
+                displayUrl={profile.profile_image ?? null}
+                originalUrl={profile.profile_image_original ?? profile.profile_image ?? null}
+                crop={parseStoredCrop(profile.profile_image_crop)}
+                allowUrl={false}
+                labels={{
+                  editPhoto: d.editPhoto,
+                  orPasteUrl: "",
+                  cropTitle: d.cropTitle,
+                  cropDescription: d.cropDescription,
+                  build: d.build,
+                  cancel: d.cropCancel,
+                  zoomHint: d.zoomHint,
+                  emptyPreview: d.photoEmpty,
+                  sizeLimit: t.app.mentorProfile.imageSizeLimit,
+                }}
+                busy={visibilityMut.isPending}
+                onCommit={async (payload) => {
+                  try {
+                    await uploadAdminMentorPhoto(profile.id, {
+                      kind: "avatar",
+                      cropped: payload.cropped,
+                      original: payload.original,
+                      crop: payload.crop,
+                    });
+                    toast.success(d.toastPhotoOk);
+                    void queryClient.invalidateQueries({ queryKey: ["admin", "mentor-detail", profile.id] });
+                    void queryClient.invalidateQueries({ queryKey: ["admin", "mentors"] });
+                  } catch (err) {
+                    toast.error(formatUploadError(err, d.toastPhotoFail));
+                    throw err;
+                  }
+                }}
+              />
+              <PhotoCropField
+                kind="banner"
+                label={d.bannerImage}
+                displayUrl={profile.banner_image ?? null}
+                originalUrl={profile.banner_image_original ?? profile.banner_image ?? null}
+                crop={parseStoredCrop(profile.banner_image_crop)}
+                allowUrl={false}
+                labels={{
+                  editPhoto: d.editPhoto,
+                  orPasteUrl: "",
+                  cropTitle: d.cropTitleBanner,
+                  cropDescription: d.cropDescriptionBanner,
+                  build: d.build,
+                  cancel: d.cropCancel,
+                  zoomHint: d.zoomHint,
+                  emptyPreview: d.bannerEmpty,
+                  sizeLimit: t.app.mentorProfile.imageSizeLimit,
+                }}
+                busy={visibilityMut.isPending}
+                onCommit={async (payload) => {
+                  try {
+                    await uploadAdminMentorPhoto(profile.id, {
+                      kind: "banner",
+                      cropped: payload.cropped,
+                      original: payload.original,
+                      crop: payload.crop,
+                    });
+                    toast.success(d.toastPhotoOk);
+                    void queryClient.invalidateQueries({ queryKey: ["admin", "mentor-detail", profile.id] });
+                    void queryClient.invalidateQueries({ queryKey: ["admin", "mentors"] });
+                  } catch (err) {
+                    toast.error(formatUploadError(err, d.toastPhotoFail));
+                    throw err;
+                  }
+                }}
+              />
+            </div>
 
               <div className="rounded-lg border border-border/60 bg-muted/20 p-4 space-y-3">
                 <div>
