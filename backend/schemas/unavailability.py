@@ -1,4 +1,5 @@
-from datetime import date, datetime, time
+from datetime import date as Date
+from datetime import datetime, time
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -10,7 +11,8 @@ UnavailabilityKind = Literal["one_off", "weekly"]
 class UnavailabilityCreate(BaseModel):
     kind: UnavailabilityKind
     all_day: bool = False
-    date: date | None = None
+    # Alias Date so the field name `date` does not shadow datetime.date (Python 3.14 + Pydantic).
+    date: Date | None = None
     weekday: int | None = Field(default=None, ge=0, le=6)
     start_time: time | None = None
     end_time: time | None = None

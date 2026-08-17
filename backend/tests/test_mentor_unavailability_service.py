@@ -1,7 +1,15 @@
-from datetime import datetime, time, timezone
+from datetime import date, datetime, time, timezone
 from types import SimpleNamespace
 
+from schemas.unavailability import UnavailabilityCreate
 from services.mentor_unavailability_service import KIND_ONE_OFF, KIND_WEEKLY, current_and_next, is_unavailable_now
+
+
+def test_unavailability_create_schema_builds():
+    body = UnavailabilityCreate(kind="one_off", date=date(2026, 8, 18), all_day=True)
+    assert body.date == date(2026, 8, 18)
+    weekly = UnavailabilityCreate(kind="weekly", weekday=6, all_day=True)
+    assert weekly.weekday == 6
 
 
 def _row(**kwargs):
