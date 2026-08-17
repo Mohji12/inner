@@ -75,7 +75,7 @@ class Mentor(Base):
     availability_windows = relationship(
         "MentorAvailabilityWindow", back_populates="mentor", cascade="all, delete-orphan"
     )
-    unavailability = relationship(
+    unavailability_rows = relationship(
         "MentorUnavailability", back_populates="mentor", cascade="all, delete-orphan"
     )
     bookings = relationship("Booking", back_populates="mentor")

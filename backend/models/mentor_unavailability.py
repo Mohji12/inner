@@ -26,4 +26,4 @@ class MentorUnavailability(Base):
     timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="UTC")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
-    mentor = relationship("Mentor", back_populates="unavailability")
+    mentor = relationship("Mentor", back_populates="unavailability_rows")

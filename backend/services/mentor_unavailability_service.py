@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import Session
 
 from models.mentor_unavailability import MentorUnavailability
@@ -134,12 +135,17 @@ def public_block_for_rows(rows: list[MentorUnavailability], *, now: datetime | N
 def load_unavailability_by_mentor(db: Session, mentor_ids: list[str]) -> dict[str, list[MentorUnavailability]]:
     if not mentor_ids:
         return {}
-    rows = (
-        db.query(MentorUnavailability)
-        .filter(MentorUnavailability.mentor_id.in_(mentor_ids))
-        .all()
-    )
-    grouped: dict[str, list[MentorUnavailability]] = {mid: [] for mid in mentor_ids}
+    empty: dict[str, list[MentorUnavailability]] = {mid: [] for mid in mentor_ids}
+    try:
+        rows = (
+            db.query(MentorUnavailability)
+            .filter(MentorUnavailability.mentor_id.in_(mentor_ids))
+            .all()
+        )
+    except (OperationalError, ProgrammingError):
+        db.rollback()
+        return empty
+    grouped = dict(empty)
     for row in rows:
         grouped.setdefault(row.mentor_id, []).append(row)
     return grouped

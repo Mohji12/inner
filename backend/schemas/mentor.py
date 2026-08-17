@@ -2,7 +2,7 @@ from datetime import datetime  # noqa: TC003 — used by MentorAccountOut
 from decimal import Decimal
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from schemas.unavailability import UnavailabilityPublicBlock
 
@@ -100,6 +100,14 @@ class MentorPublicOut(BaseModel):
     public_card_visibility: dict[str, bool] | None = None
     unavailable_now: bool = False
     unavailability: UnavailabilityPublicBlock | None = None
+
+    @field_validator("unavailability", mode="before")
+    @classmethod
+    def _ignore_orm_unavailability_collection(cls, value: Any) -> Any:
+        # ORM relationship is a list of rows; public cards expose one current/next block.
+        if isinstance(value, list):
+            return None
+        return value
 
 
 class MentorDetailOut(MentorPublicOut):
