@@ -45,6 +45,22 @@ function tagList(m: MentorDetail, key: keyof MentorDetail): string[] {
   return unknownListToStrings(m[key]);
 }
 
+function ChipBlock({ title, items }: { title: string; items: string[] }) {
+  if (!items.length) return null;
+  return (
+    <div className="rounded-xl border border-border/70 p-4">
+      <p className="mb-2 text-sm uppercase tracking-widest text-accent">{title}</p>
+      <div className="flex flex-wrap gap-2">
+        {items.map((item) => (
+          <Badge key={item} variant="secondary" className="max-w-full whitespace-normal break-words">
+            {item}
+          </Badge>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const MentorDetailPage = () => {
   const { mentorId } = useParams();
   const navigate = useNavigate();
@@ -166,6 +182,11 @@ const MentorDetailPage = () => {
   const skills = tagList(mentor, "skills");
   const sessionModes = tagList(mentor, "session_modes");
   const tools = tagList(mentor, "tools_technologies");
+  const education = tagList(mentor, "education");
+  const certifications = tagList(mentor, "certifications");
+  const previousCompanies = tagList(mentor, "previous_companies");
+  const profileSrc = mediaUrlFromApi(mentor.profile_image);
+  const bannerSrc = mediaUrlFromApi(mentor.banner_image);
 
   const handleDurationSelect = (minutes: (typeof SESSION_PACKAGES)[number]) => {
     if (role !== "user" || !userAccessToken) {
@@ -199,78 +220,123 @@ const MentorDetailPage = () => {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <AppPageHeader />
-      <main className="container mx-auto px-6 py-10">
-        <Card className="mx-auto max-w-4xl border-border/60">
-          <CardHeader>
-            <div className="flex items-center justify-between gap-4">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm uppercase tracking-widest text-accent">{md.profileLabel}</p>
-                <div className="flex items-center gap-4">
-                  {mediaUrlFromApi(mentor.profile_image) || mediaUrlFromApi(mentor.banner_image) ? (
-                    <img
-                      src={mediaUrlFromApi(mentor.profile_image) ?? mediaUrlFromApi(mentor.banner_image)}
-                      alt=""
-                      className="h-16 w-16 shrink-0 rounded-full border border-border object-cover"
-                    />
+      <main className="container mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
+        <Card className="overflow-hidden border-border/60">
+          <div className="relative h-36 w-full bg-gradient-to-br from-primary/80 via-primary to-accent sm:h-48 md:h-56">
+            {bannerSrc ? (
+              <img
+                src={bannerSrc}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover object-[center_30%]"
+              />
+            ) : null}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background/80 via-background/10 to-transparent" />
+          </div>
+
+          <CardHeader className="relative space-y-4 px-4 pt-0 sm:px-6">
+            <div className="-mt-12 flex flex-col gap-4 sm:-mt-14 sm:flex-row sm:items-end sm:justify-between">
+              <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-end">
+                {profileSrc || bannerSrc ? (
+                  <img
+                    src={profileSrc ?? bannerSrc ?? ""}
+                    alt=""
+                    className="h-24 w-24 shrink-0 rounded-2xl border-4 border-card object-cover object-[center_28%] shadow-md sm:h-28 sm:w-28"
+                  />
+                ) : (
+                  <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl border-4 border-card bg-muted font-serif text-2xl text-muted-foreground sm:h-28 sm:w-28">
+                    {mentor.full_name.slice(0, 1)}
+                  </div>
+                )}
+                <div className="min-w-0 space-y-1 pb-1">
+                  <p className="text-xs uppercase tracking-widest text-accent sm:text-sm">{md.profileLabel}</p>
+                  <div className="flex min-w-0 items-start gap-2">
+                    <CardTitle className="break-words font-serif text-2xl leading-tight sm:text-4xl">
+                      {mentor.full_name}
+                    </CardTitle>
+                    <FavoriteButton mentorId={mentor.id} className="mt-1 shrink-0" />
+                  </div>
+                  {mentor.headline ? (
+                    <p className="text-sm text-muted-foreground sm:text-base">{mentor.headline}</p>
                   ) : null}
-                  <CardTitle className="font-serif text-4xl">{mentor.full_name}</CardTitle>
-                  <FavoriteButton mentorId={mentor.id} className="mt-1" />
                 </div>
               </div>
-              <div className="flex flex-col items-end gap-1">
+              <div className="flex shrink-0 flex-col items-start gap-1 sm:items-end">
                 {availability === "available" ? (
-                  <div className="flex flex-col items-end gap-1">
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50">
+                  <div className="flex flex-col items-start gap-1 sm:items-end">
+                    <div className="flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 dark:border-emerald-900/50 dark:bg-emerald-950/30">
                       <PresenceIndicator status="online" />
-                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">{md.onlineBookNow}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                        {md.onlineBookNow}
+                      </span>
                     </div>
                     <p className="text-[10px] text-muted-foreground">{md.onlineHint}</p>
                   </div>
                 ) : availability === "busy" ? (
-                  <div className="flex flex-col items-end gap-1">
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/50">
+                  <div className="flex flex-col items-start gap-1 sm:items-end">
+                    <div className="flex items-center gap-1.5 rounded-full border border-rose-100 bg-rose-50 px-2.5 py-1 dark:border-rose-900/50 dark:bg-rose-950/30">
                       <PresenceIndicator status="busy" />
-                      <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">{md.inSession}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+                        {md.inSession}
+                      </span>
                     </div>
                     <p className="text-[10px] text-muted-foreground">{md.inSessionHint}</p>
                   </div>
                 ) : mentor.last_seen_at ? (
-                  <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold bg-muted/50 px-2 py-0.5 rounded border border-border/50">
+                  <div className="rounded border border-border/50 bg-muted/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                     {md.lastSeen}{" "}
                     {isSameCalendarDayLocal(mentor.last_seen_at, new Date(), effectiveTimeZone)
                       ? formatTimeLocal(mentor.last_seen_at, undefined, effectiveTimeZone)
                       : formatDateLocal(mentor.last_seen_at, { month: "short", day: "numeric" }, effectiveTimeZone)}
                   </div>
                 ) : mentorOffline ? (
-                  <div className="flex flex-col items-end gap-1">
+                  <div className="flex flex-col items-start gap-1 sm:items-end">
                     <div className="flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1">
                       <PresenceIndicator status="offline" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{md.offline}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        {md.offline}
+                      </span>
                     </div>
                     <p className="text-[10px] text-muted-foreground">{md.offlineHint}</p>
                   </div>
                 ) : null}
               </div>
             </div>
-            <p className="text-muted-foreground">{mentor.headline ?? ""}</p>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {mentor.bio ? <p>{mentor.bio}</p> : null}
+          <CardContent className="space-y-6 px-4 pb-6 sm:px-6">
+            {mentor.bio ? (
+              <section>
+                <p className="mb-2 text-sm uppercase tracking-widest text-accent">{md.about}</p>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground sm:text-base">{mentor.bio}</p>
+              </section>
+            ) : null}
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="rounded-xl border border-border/70 p-4">
-                <p className="mb-2 text-sm uppercase tracking-widest text-accent">Details</p>
-                <p className="text-sm text-muted-foreground">Experience: {mentor.years_of_experience} years</p>
+                <p className="mb-2 text-sm uppercase tracking-widest text-accent">{md.details}</p>
                 <p className="text-sm text-muted-foreground">
-                  Rating: {mentor.average_rating} · Reviews: {mentor.total_reviews}
+                  {md.experience}: {mentor.years_of_experience} {md.years}
                 </p>
+                <p className="text-sm text-muted-foreground">
+                  {md.rating}: {mentor.average_rating} · {md.reviews}: {mentor.total_reviews}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {md.sessionsCompleted}: {mentor.total_sessions_completed}
+                </p>
+                {mentor.current_company ? (
+                  <p className="text-sm text-muted-foreground">
+                    {md.company}: {mentor.current_company}
+                  </p>
+                ) : null}
+                {mentor.country_code ? (
+                  <p className="text-sm text-muted-foreground">{mentor.country_code}</p>
+                ) : null}
               </div>
               <div className="rounded-xl border border-border/70 p-4">
-                <p className="mb-2 text-sm uppercase tracking-widest text-accent">Languages</p>
+                <p className="mb-2 text-sm uppercase tracking-widest text-accent">{md.languages}</p>
                 <div className="flex flex-wrap gap-2">
                   {langs.length > 0 ? (
                     langs.map((language) => (
-                      <Badge key={language} variant="secondary">
+                      <Badge key={language} variant="secondary" className="max-w-full whitespace-normal break-words">
                         {language}
                       </Badge>
                     ))
@@ -282,62 +348,36 @@ const MentorDetailPage = () => {
             </div>
 
             {(expertise.length > 0 || skills.length > 0) && (
-              <div className="grid gap-4 md:grid-cols-2">
-                {expertise.length > 0 ? (
-                  <div className="rounded-xl border border-border/70 p-4">
-                    <p className="mb-2 text-sm uppercase tracking-widest text-accent">Expertise</p>
-                    <div className="flex flex-wrap gap-2">
-                      {expertise.map((x) => (
-                        <Badge key={x} variant="outline">
-                          {x}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-                {skills.length > 0 ? (
-                  <div className="rounded-xl border border-border/70 p-4">
-                    <p className="mb-2 text-sm uppercase tracking-widest text-accent">Skills</p>
-                    <div className="flex flex-wrap gap-2">
-                      {skills.map((x) => (
-                        <Badge key={x} variant="secondary">
-                          {x}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <ChipBlock title={md.expertise} items={expertise} />
+                <ChipBlock title={md.skills} items={skills} />
               </div>
             )}
 
-            {(sessionModes.length > 0 || tools.length > 0) && (
-              <div className="grid gap-4 md:grid-cols-2">
-                {sessionModes.length > 0 ? (
-                  <div className="rounded-xl border border-border/70 p-4">
-                    <p className="mb-2 text-sm uppercase tracking-widest text-accent">Session modes</p>
-                    <div className="flex flex-wrap gap-2">
-                      {sessionModes.map((x) => (
-                        <Badge key={x} variant="outline">
-                          {x}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-                {tools.length > 0 ? (
-                  <div className="rounded-xl border border-border/70 p-4">
-                    <p className="mb-2 text-sm uppercase tracking-widest text-accent">Tools</p>
-                    <div className="flex flex-wrap gap-2">
-                      {tools.map((x) => (
-                        <Badge key={x} variant="secondary">
-                          {x}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
+            {(education.length > 0 || certifications.length > 0) && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <ChipBlock title={md.education} items={education} />
+                <ChipBlock title={md.certifications} items={certifications} />
               </div>
             )}
+
+            {(sessionModes.length > 0 || tools.length > 0 || previousCompanies.length > 0) && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <ChipBlock title={md.sessionModes} items={sessionModes} />
+                <ChipBlock title={md.tools} items={tools} />
+                <ChipBlock title={md.previousCompanies} items={previousCompanies} />
+              </div>
+            )}
+
+            {mentor.badges && mentor.badges.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {mentor.badges.map((badge) => (
+                  <Badge key={badge} variant="outline">
+                    {badge}
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
 
             <div className="rounded-xl border border-border/70 bg-muted/30 p-4">
               <p className="mb-3 text-sm uppercase tracking-widest text-accent">{md.livePricing}</p>
@@ -417,13 +457,13 @@ const MentorDetailPage = () => {
               ) : null}
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <Button asChild variant="outline">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <Button asChild variant="outline" className="w-full sm:w-auto">
                 <Link to="/mentors">Back</Link>
               </Button>
               <Button
                 type="button"
-                className={`gradient-cta text-white disabled:opacity-60 ${bookSessionDisabled ? "opacity-80" : ""}`}
+                className={`w-full gradient-cta text-white disabled:opacity-60 sm:w-auto ${bookSessionDisabled ? "opacity-80" : ""}`}
                 disabled={liveBookMut.isPending || (!bookSessionDisabled && !pricing?.is_active)}
                 title={
                   mentorOffline
@@ -440,7 +480,7 @@ const MentorDetailPage = () => {
               <Button
                 type="button"
                 variant="secondary"
-                className={`disabled:opacity-60 ${bookSessionDisabled ? "opacity-80" : ""}`}
+                className={`w-full disabled:opacity-60 sm:w-auto ${bookSessionDisabled ? "opacity-80" : ""}`}
                 disabled={liveBookMut.isPending || (!bookSessionDisabled && !pricing?.is_active)}
                 title={
                   mentorOffline
@@ -455,7 +495,7 @@ const MentorDetailPage = () => {
                 Call
               </Button>
               {bookSessionDisabled ? (
-                <Button type="button" variant="outline" onClick={() => setAvailabilityOpen(true)}>
+                <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setAvailabilityOpen(true)}>
                   {md.seeWhenAvailable}
                 </Button>
               ) : null}
@@ -521,6 +561,8 @@ export default MentorDetailPage;
 
 function SimilarCoaches({ mentorId }: { mentorId: string }) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
+  const md = t.app.mentorDetail;
   const { data: mentors = [], isLoading } = useQuery({
     queryKey: ["mentors", "similar", mentorId],
     queryFn: () => getSimilarMentors(mentorId),
@@ -530,30 +572,38 @@ function SimilarCoaches({ mentorId }: { mentorId: string }) {
   if (isLoading || mentors.length === 0) return null;
 
   return (
-    <div className="mt-12">
-      <h3 className="text-2xl font-serif mb-6">Similar Coaches</h3>
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {mentors.map((m) => (
-          <Card key={m.id} className="cursor-pointer hover:-translate-y-1 transition-transform" onClick={() => navigate(`/mentors/${m.id}`)}>
+    <div className="mt-10 sm:mt-12">
+      <h3 className="mb-6 font-serif text-xl sm:text-2xl">{md.similarCoaches}</h3>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {mentors.map((m) => {
+          const thumb = mediaUrlFromApi(m.profile_image) ?? mediaUrlFromApi(m.banner_image);
+          return (
+          <Card key={m.id} className="cursor-pointer transition-transform hover:-translate-y-1" onClick={() => navigate(`/mentors/${m.id}`)}>
             <CardHeader className="p-4">
-              <div className="flex items-center justify-between gap-2">
-                <CardTitle className="text-lg">{m.full_name}</CardTitle>
-                <span className="inline-flex items-center gap-1">
-                  <span
-                    className={
-                      getMentorAvailabilityStatus(m) === "available"
-                        ? "h-2 w-2 rounded-full bg-emerald-500"
-                        : getMentorAvailabilityStatus(m) === "busy"
-                          ? "h-2 w-2 rounded-full bg-rose-500"
-                          : "h-2 w-2 rounded-full bg-slate-400"
-                    }
-                  />
-                </span>
+              <div className="flex items-start gap-3">
+                {thumb ? (
+                  <img src={thumb} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover object-[center_28%]" />
+                ) : null}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <CardTitle className="break-words text-lg leading-tight">{m.full_name}</CardTitle>
+                    <span
+                      className={
+                        getMentorAvailabilityStatus(m) === "available"
+                          ? "mt-1.5 h-2 w-2 shrink-0 rounded-full bg-emerald-500"
+                          : getMentorAvailabilityStatus(m) === "busy"
+                            ? "mt-1.5 h-2 w-2 shrink-0 rounded-full bg-rose-500"
+                            : "mt-1.5 h-2 w-2 shrink-0 rounded-full bg-slate-400"
+                      }
+                    />
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{m.headline}</p>
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground line-clamp-1">{m.headline}</p>
             </CardHeader>
           </Card>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

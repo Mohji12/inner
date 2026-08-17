@@ -1,4 +1,4 @@
-import { ArrowRight, Clock, Star } from "lucide-react";
+import { ArrowRight, Clock, Globe, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuthOptional } from "@/auth/AuthContext";
 import { getMentorAvailabilityStatus, type MentorPublic, type PlatformPricing } from "@/api/types";
@@ -50,6 +50,7 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
 
   const expertise = unknownListToStrings(mentor.expertise_areas);
   const skills = unknownListToStrings(mentor.skills);
+  const langs = unknownListToStrings(mentor.languages_spoken);
   const combinedTags = [...new Set([...expertise, ...skills])];
 
   const showPackages =
@@ -68,8 +69,10 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
   const heroSrc = profileSrc ?? dedicatedBannerSrc ?? null;
 
   const roundedStars = Math.min(5, Math.max(0, Math.round(Number(mentor.average_rating) || 0)));
-  const tags = combinedTags.slice(0, 2);
+  const tags = combinedTags.slice(0, 4);
   const overflow = Math.max(0, combinedTags.length - tags.length);
+
+  const goToProfile = () => navigate(`/mentors/${mentor.id}`);
 
   const onConsult = () => {
     if (role !== "user" || !userAccessToken) {
@@ -80,10 +83,13 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
   };
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-md md:min-h-[280px] md:flex-row">
+    <article
+      className="group flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-md md:min-h-[280px] md:flex-row"
+      onClick={goToProfile}
+    >
       <div
         className={cn(
-          "relative flex flex-1 flex-col justify-between gap-3 p-6 text-primary-foreground",
+          "relative flex min-w-0 flex-1 flex-col justify-between gap-3 p-4 text-primary-foreground sm:p-6",
           "bg-gradient-to-br from-primary via-primary to-accent",
         )}
       >
@@ -92,7 +98,7 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
 
         <div className="relative z-[1] space-y-2">
           <div className="flex flex-wrap items-start justify-between gap-2">
-            <h2 className="font-serif text-2xl font-bold leading-tight tracking-tight text-primary-foreground">
+            <h2 className="min-w-0 break-words font-serif text-xl font-bold leading-tight tracking-tight text-primary-foreground sm:text-2xl">
               {mentor.full_name}
             </h2>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-foreground/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ring-1 ring-primary-foreground/25">
@@ -111,7 +117,18 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
           </div>
 
           {cardVis.headline && mentor.headline ? (
-            <p className="text-sm font-semibold leading-snug text-primary-foreground/95">{truncate(mentor.headline, 90)}</p>
+            <p className="text-sm font-semibold leading-snug text-primary-foreground/95">{truncate(mentor.headline, 110)}</p>
+          ) : null}
+
+          {mentor.current_company ? (
+            <p className="text-xs font-medium text-primary-foreground/80">{mentor.current_company}</p>
+          ) : null}
+
+          {langs.length > 0 ? (
+            <p className="flex items-center gap-1.5 text-xs text-primary-foreground/80">
+              <Globe className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{langs.slice(0, 3).join(" · ")}</span>
+            </p>
           ) : null}
 
           {cardVis.expertise_tags ? (
@@ -203,21 +220,27 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
             </p>
           )}
 
-          <div className="flex flex-wrap items-center gap-2 pt-1">
+          <div className="grid grid-cols-1 gap-2 pt-1 sm:grid-cols-2">
             <Button
               variant="outline"
               size="sm"
-              className="border-primary-foreground/40 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
-              onClick={() => navigate(`/mentors/${mentor.id}`)}
+              className="w-full border-primary-foreground/40 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                goToProfile();
+              }}
             >
               {viewProfileLabel}
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              className="gap-1 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
+              className="w-full gap-1 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
               disabled={availability !== "available"}
-              onClick={onConsult}
+              onClick={(e) => {
+                e.stopPropagation();
+                onConsult();
+              }}
             >
               {consultNowLabel}
               <ArrowRight className="h-4 w-4" />
@@ -226,7 +249,7 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
         </div>
       </div>
 
-      <div className="relative order-first aspect-[4/5] w-full shrink-0 overflow-hidden bg-muted md:order-last md:aspect-auto md:min-h-[280px] md:w-[42%] md:self-stretch">
+      <div className="relative order-first h-48 w-full shrink-0 overflow-hidden bg-muted sm:h-56 md:order-last md:h-auto md:min-h-[280px] md:w-[40%] md:self-stretch lg:w-[38%]">
         {heroSrc ? (
           <>
             <img
