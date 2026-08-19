@@ -1,5 +1,6 @@
 import { getApiV1BaseUrl } from "./constants";
 import { apiFetch } from "./client";
+import { appendNamedFile } from "@/lib/imageUpload";
 import type { ImageCropKind, ImageCropState } from "@/lib/cropImage";
 
 function uploadsUrl(suffix: string): string {
@@ -18,8 +19,8 @@ function appendPhotoForm(params: {
   crop?: ImageCropState | null;
 }): FormData {
   const body = new FormData();
-  body.append("file", params.cropped);
-  if (params.original) body.append("original", params.original);
+  appendNamedFile(body, "file", params.cropped, "photo.jpg");
+  if (params.original) appendNamedFile(body, "original", params.original, "original.jpg");
   if (params.crop) body.append("crop", JSON.stringify(params.crop));
   return body;
 }

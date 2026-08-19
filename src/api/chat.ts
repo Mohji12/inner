@@ -1,4 +1,5 @@
 import { apiFetch, apiFetchBlob } from "./client";
+import { appendNamedFile } from "@/lib/imageUpload";
 import type {
   ChatCallToken,
   ChatDialOut,
@@ -116,7 +117,7 @@ export function sendChatImageMessage(
   caption?: string,
 ): Promise<ChatMessage> {
   const form = new FormData();
-  form.append("file", file);
+  appendNamedFile(form, "file", file, file.name?.trim() || "chat.jpg");
   if (caption?.trim()) form.append("body", caption.trim());
   return apiFetch<ChatMessage>(`/chat/sessions/${sessionId}/messages/image`, {
     method: "POST",

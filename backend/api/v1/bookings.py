@@ -3,9 +3,10 @@ from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 
 from api.deps import CurrentMentor, CurrentUser, DbSession, RequestLang
-from core.booking_states import STATUS_CANCELLED, STATUS_COMPLETED
+from core.booking_states import PAYMENT_RECORD_SUCCEEDED, STATUS_CANCELLED, STATUS_COMPLETED
 from models.booking import Booking
 from models.mentor import Mentor
+from models.payment import Payment
 from schemas.booking import BookingCreate, BookingOut, BookingUpdate
 from services.booking_service import BookingError, create_booking_request
 from services.booking_slot_service import release_booking_slot
@@ -14,14 +15,53 @@ from services.i18n_service import resolve_i18n_text, to_i18n_map
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
 
-def _localized_booking_out(booking: Booking, lang: str) -> BookingOut:
+def _payment_paid_fields(payment: Payment | None) -> tuple[float | None, bool]:
+    if payment is None or str(payment.status) != PAYMENT_RECORD_SUCCEEDED:
+        return None, False
+    raw = payment.amount_base_eur if payment.amount_base_eur is not None else payment.amount
+    amount = float(raw or 0)
+    gateway = str(payment.payment_gateway or "").strip().lower()
+    promo_applied = gateway == "promo" or amount <= 0
+    return amount, promo_applied
+
+
+def _localized_booking_out(booking: Booking, lang: str, *, payment: Payment | None = None) -> BookingOut:
     out = BookingOut.model_validate(booking).model_dump()
     out["session_topic"] = resolve_i18n_text(getattr(booking, "session_topic_i18n", None), booking.session_topic, lang)
     out["problem_description"] = resolve_i18n_text(getattr(booking, "problem_description_i18n", None), booking.problem_description, lang)
     out["goals_expected"] = resolve_i18n_text(getattr(booking, "goals_expected_i18n", None), booking.goals_expected, lang)
     out["notes_by_user"] = resolve_i18n_text(getattr(booking, "notes_by_user_i18n", None), booking.notes_by_user, lang)
     out["notes_by_mentor"] = resolve_i18n_text(getattr(booking, "notes_by_mentor_i18n", None), booking.notes_by_mentor, lang)
+    paid_amount, promo_applied = _payment_paid_fields(payment)
+    out["paid_amount_eur"] = paid_amount
+    out["promo_applied"] = promo_applied
     return BookingOut.model_validate(out)
+
+
+def _succeeded_payments_by_booking(db: DbSession, booking_ids: list[str]) -> dict[str, Payment]:
+    if not booking_ids:
+        return {}
+    rows = (
+        db.query(Payment)
+        .filter(Payment.booking_id.in_(booking_ids), Payment.status == PAYMENT_RECORD_SUCCEEDED)
+        .order_by(Payment.created_at.desc())
+        .all()
+    )
+    out: dict[str, Payment] = {}
+    for payment in rows:
+        if payment.booking_id not in out:
+            out[payment.booking_id] = payment
+    return out
+
+
+def _localize_bookings(db: DbSession, bookings: list[Booking], lang: str) -> list[BookingOut]:
+    paid = _succeeded_payments_by_booking(db, [b.id for b in bookings])
+    return [_localized_booking_out(b, lang, payment=paid.get(b.id)) for b in bookings]
+
+
+def _booking_out(db: DbSession, booking: Booking, lang: str) -> BookingOut:
+    paid = _succeeded_payments_by_booking(db, [booking.id]).get(booking.id)
+    return _localized_booking_out(booking, lang, payment=paid)
 
 
 def _booking_error_http(e: BookingError) -> HTTPException:
@@ -58,7 +98,7 @@ def create_booking_route(
             status.HTTP_409_CONFLICT,
             "This slot was just booked. Please choose another time.",
         ) from e
-    return _localized_booking_out(booking, lang)
+    return _booking_out(db, booking, lang)
 
 
 @router.get("/me", response_model=list[BookingOut])
@@ -69,7 +109,7 @@ def list_my_bookings_user(db: DbSession, user: CurrentUser, lang: RequestLang) -
         .order_by(Booking.start_at_utc.desc())
         .all()
     )
-    return [_localized_booking_out(b, lang) for b in rows]
+    return _localize_bookings(db, rows, lang)
 
 
 @router.get("/mentor/me", response_model=list[BookingOut])
@@ -80,7 +120,7 @@ def list_my_bookings_mentor(db: DbSession, mentor: CurrentMentor, lang: RequestL
         .order_by(Booking.start_at_utc.desc())
         .all()
     )
-    return [_localized_booking_out(b, lang) for b in rows]
+    return _localize_bookings(db, rows, lang)
 
 
 @router.get("/{booking_id}", response_model=BookingOut)
@@ -88,7 +128,7 @@ def get_booking_for_user(booking_id: str, db: DbSession, user: CurrentUser, lang
     booking = db.query(Booking).filter(Booking.id == booking_id, Booking.user_id == user.id).first()
     if not booking:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Booking not found")
-    return _localized_booking_out(booking, lang)
+    return _booking_out(db, booking, lang)
 
 
 @router.patch("/{booking_id}/as-user", response_model=BookingOut)
@@ -110,7 +150,7 @@ def update_booking_as_user(
         release_booking_slot(db, booking)
     db.commit()
     db.refresh(booking)
-    return _localized_booking_out(booking, lang)
+    return _booking_out(db, booking, lang)
 
 
 @router.patch("/{booking_id}/as-mentor", response_model=BookingOut)
@@ -141,7 +181,7 @@ def update_booking_as_mentor(
         release_booking_slot(db, booking)
     db.commit()
     db.refresh(booking)
-    return _localized_booking_out(booking, lang)
+    return _booking_out(db, booking, lang)
 
 
 @router.post("/{booking_id}/pay")

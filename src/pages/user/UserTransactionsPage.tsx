@@ -4,6 +4,7 @@ import { Download } from "lucide-react";
 import { toast } from "sonner";
 import { downloadChatInvoicePdf, getChatInvoice, listChatInvoices } from "@/api/chat";
 import type { ChatInvoiceSummary } from "@/api/types";
+import { getMyWallet, type WalletTransaction } from "@/api/wallets";
 import {
   fetchUserBookingInvoice,
   listUserBookingInvoices,
@@ -33,7 +34,13 @@ import {
 
 type ChatTransactionRow = ChatInvoiceSummary & { kind: "chat_session"; rowKey: string };
 type BookingTransactionRow = BookingInvoiceSummary & { rowKey: string };
-type TransactionRow = ChatTransactionRow | BookingTransactionRow;
+type WalletActivityRow = WalletTransaction & {
+  kind: "wallet";
+  rowKey: string;
+  issued_at: string;
+  currency: string;
+};
+type TransactionRow = ChatTransactionRow | BookingTransactionRow | WalletActivityRow;
 
 type DetailTarget =
   | { kind: "chat_session"; sessionId: string }
@@ -78,6 +85,11 @@ const UserTransactionsPage = () => {
     queryFn: listUserBookingInvoices,
   });
 
+  const { data: wallet, isLoading: walletLoading } = useQuery({
+    queryKey: ["wallet", "me"],
+    queryFn: () => getMyWallet(0, 100),
+  });
+
   const rows = useMemo<TransactionRow[]>(() => {
     const merged: TransactionRow[] = [
       ...chatRows.map(
@@ -93,13 +105,22 @@ const UserTransactionsPage = () => {
           rowKey: `booking-${row.booking_id}`,
         }),
       ),
+      ...(wallet?.transactions ?? []).map(
+        (row): WalletActivityRow => ({
+          ...row,
+          kind: "wallet",
+          rowKey: `wallet-${row.id}`,
+          issued_at: row.created_at,
+          currency: wallet?.currency ?? "EUR",
+        }),
+      ),
     ];
     return merged.sort(
       (a, b) => new Date(b.issued_at).getTime() - new Date(a.issued_at).getTime(),
     );
-  }, [chatRows, bookingRows]);
+  }, [chatRows, bookingRows, wallet]);
 
-  const isLoading = chatLoading || bookingLoading;
+  const isLoading = chatLoading || bookingLoading || walletLoading;
 
   const { data: chatDetail } = useQuery({
     queryKey: ["chat", "invoice", detailTarget?.kind === "chat_session" ? detailTarget.sessionId : null],
@@ -158,14 +179,31 @@ const UserTransactionsPage = () => {
     }
   };
 
-  const customerName = (row: TransactionRow) =>
-    row.kind === "chat_session" ? row.customer_display_name ?? "—" : row.customer_name;
+  const customerName = (row: TransactionRow) => {
+    if (row.kind === "wallet") return "—";
+    return row.kind === "chat_session" ? row.customer_display_name ?? "—" : row.customer_name;
+  };
 
-  const minutesLabel = (row: TransactionRow) =>
-    row.kind === "chat_session" ? row.total_minutes_purchased : row.duration_minutes;
+  const minutesLabel = (row: TransactionRow) => {
+    if (row.kind === "wallet") return "—";
+    return row.kind === "chat_session" ? row.total_minutes_purchased : row.duration_minutes;
+  };
 
-  const typeLabel = (row: TransactionRow) =>
-    row.kind === "chat_session" ? tx.typeChat : tx.typeBooking;
+  const typeLabel = (row: TransactionRow) => {
+    if (row.kind === "wallet") {
+      if (row.reference_type === "deposit" || /top-?up/i.test(row.description || "")) return tx.typeWalletTopup;
+      return row.type === "debit" ? tx.typeWalletDebit : tx.typeWalletCredit;
+    }
+    return row.kind === "chat_session" ? tx.typeChat : tx.typeBooking;
+  };
+
+  const amountLabel = (row: TransactionRow) => {
+    if (row.kind === "wallet") {
+      const sign = row.type === "credit" ? "+" : "−";
+      return `${sign}${Number(row.amount).toFixed(2)} ${row.currency}`;
+    }
+    return `${row.total_amount} ${row.currency}`;
+  };
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -198,7 +236,9 @@ const UserTransactionsPage = () => {
               <TableBody>
                 {rows.map((r) => (
                   <TableRow key={r.rowKey}>
-                    <TableCell className="font-mono text-sm">{r.invoice_number}</TableCell>
+                    <TableCell className="font-mono text-sm">
+                      {r.kind === "wallet" ? "—" : r.invoice_number}
+                    </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className="text-sm">{typeLabel(r)}</span>
@@ -210,13 +250,24 @@ const UserTransactionsPage = () => {
                       </div>
                     </TableCell>
                     <TableCell>{customerName(r)}</TableCell>
-                    <TableCell>{r.mentor_name}</TableCell>
+                    <TableCell>{r.kind === "wallet" ? (r.description || "—") : r.mentor_name}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatDate(r.issued_at)}</TableCell>
                     <TableCell>{minutesLabel(r)}</TableCell>
-                    <TableCell>
-                      {r.total_amount} {r.currency}
+                    <TableCell
+                      className={
+                        r.kind === "wallet"
+                          ? r.type === "credit"
+                            ? "font-medium text-green-600"
+                            : "font-medium text-red-600"
+                          : undefined
+                      }
+                    >
+                      {amountLabel(r)}
                     </TableCell>
                     <TableCell className="text-right">
+                      {r.kind === "wallet" ? (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      ) : (
                       <div className="flex flex-wrap justify-end gap-2">
                         <Button
                           type="button"
@@ -247,6 +298,7 @@ const UserTransactionsPage = () => {
                           {tx.downloadInvoice}
                         </Button>
                       </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

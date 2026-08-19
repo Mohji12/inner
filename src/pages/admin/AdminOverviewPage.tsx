@@ -9,12 +9,15 @@ import {
 } from "@/components/admin/AdminEntityFilters";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLanguage } from "@/i18n/LanguageContext";
+import { useDashboardPerson } from "@/hooks/useDashboardPerson";
 import {
   CalendarDays,
   CheckCircle2,
   Clock3,
   CreditCard,
+  Eye,
   FileUser,
+  MessageSquare,
   Star,
   UserCheck,
   UserRound,
@@ -24,6 +27,7 @@ import {
 } from "lucide-react";
 import { formatDateLocal } from "@/lib/timeZone";
 import { useEffectiveTimeZone } from "@/hooks/useEffectiveTimeZone";
+import { UrlVisitTable } from "@/components/admin/UrlVisitTable";
 
 const primaryStroke = "hsl(90 8% 48%)";
 
@@ -54,6 +58,7 @@ function KpiGrid({ cards }: { cards: KpiCard[] }) {
 export default function AdminOverviewPage() {
   const { t } = useLanguage();
   const d = t.app.dashboardAdmin;
+  const personName = useDashboardPerson(d.role);
   const effectiveTimeZone = useEffectiveTimeZone();
 
   const [draft, setDraft] = useState(emptyAdminEntityFilters);
@@ -70,6 +75,14 @@ export default function AdminOverviewPage() {
   const summary = data?.summary;
   const newApplications = summary?.new_coach_applications ?? 0;
   const rangeLabel = hasCustomDates ? d.filteredRange : d.last30Days;
+
+  const trafficCards: KpiCard[] = summary
+    ? [
+        { label: d.summaryPageViews, value: summary.page_views ?? 0, icon: Eye },
+        { label: d.summaryUniqueVisitors, value: summary.unique_visitors ?? 0, icon: Users },
+        { label: d.summaryChats, value: summary.chats ?? 0, icon: MessageSquare },
+      ]
+    : [];
 
   const activityCards: KpiCard[] = summary
     ? [
@@ -109,7 +122,7 @@ export default function AdminOverviewPage() {
     <div className="space-y-8">
       <div>
         <p className="text-sm uppercase tracking-widest text-accent">{d.overview}</p>
-        <h1 className="font-serif text-3xl">{d.overviewHeading}</h1>
+        <h1 className="font-serif text-3xl">{d.welcomeBackNamed.replace("{name}", personName)}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {data
             ? `${rangeLabel} · ${formatDateLocal(data.range_start, undefined, effectiveTimeZone)} – ${formatDateLocal(data.range_end, undefined, effectiveTimeZone)}`
@@ -161,6 +174,38 @@ export default function AdminOverviewPage() {
 
       {summary ? (
         <>
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl">{d.sectionTraffic}</h2>
+            <p className="text-sm text-muted-foreground">{d.visitsNote}</p>
+            <KpiGrid cards={trafficCards} />
+            {(data.top_pages ?? []).length > 0 ? (
+              <Card className="border-border/60 glass-card">
+                <CardHeader>
+                  <CardTitle className="font-serif text-lg">{d.topPages}</CardTitle>
+                  <p className="text-sm font-normal text-muted-foreground">{d.urlClicksHint}</p>
+                </CardHeader>
+                <CardContent>
+                  <UrlVisitTable
+                    rows={(data.top_pages ?? []).slice(0, 12).map((row) => ({
+                      label: row.path,
+                      views: row.views,
+                      unique_visitors: row.unique_visitors,
+                    }))}
+                    urlLabel={d.urlColumn}
+                    viewsLabel={d.topPagesViews}
+                    visitorsLabel={d.topPagesVisitors}
+                    emptyLabel={d.noData}
+                  />
+                  <p className="mt-3 text-sm">
+                    <Link to="/admin/analytics" className="text-accent underline underline-offset-4">
+                      {d.viewAllUrlClicks}
+                    </Link>
+                  </p>
+                </CardContent>
+              </Card>
+            ) : null}
+          </section>
+
           <section className="space-y-3">
             <h2 className="font-serif text-xl">{d.sectionActivity}</h2>
             <KpiGrid cards={activityCards} />

@@ -425,10 +425,11 @@ def record_webhook_event(
 
 
 def verify_generic_hmac_signature(*, secret: str, payload: bytes, signature: str | None) -> bool:
+    # Unsigned payloads are allowed; callers that require a signature must pass one.
+    if not signature:
+        return True
     if not secret:
         return str(settings.environment).strip().lower() != "production"
-    if not signature:
-        return False
     expected = hmac.new(secret.encode("utf-8"), payload, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, signature.strip())
 

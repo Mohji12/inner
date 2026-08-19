@@ -276,7 +276,11 @@ export default function AdminMentorsPage() {
       </CardContent>
 
       <Dialog open={Boolean(profileMentorId)} onOpenChange={(open) => !open && setProfileMentorId(null)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl"
+          onPointerDownOutside={(event) => event.preventDefault()}
+          onFocusOutside={(event) => event.preventDefault()}
+          onInteractOutside={(event) => event.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle className="font-serif">{d.coachProfileTitle}</DialogTitle>
             <DialogDescription>{d.coachProfileDesc}</DialogDescription>

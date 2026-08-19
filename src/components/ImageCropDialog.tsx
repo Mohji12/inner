@@ -115,7 +115,12 @@ export function ImageCropDialog({
 
   return (
     <Dialog open={open && Boolean(imageSrc)} onOpenChange={handleOpenChange}>
-      <DialogContent className="z-[60] max-w-lg gap-4 sm:max-w-xl">
+      <DialogContent
+        className="z-[60] max-w-lg gap-4 sm:max-w-xl"
+        onPointerDownOutside={(event) => event.preventDefault()}
+        onFocusOutside={(event) => event.preventDefault()}
+        onInteractOutside={(event) => event.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : null}

@@ -6,14 +6,28 @@ import { useLanguage } from "@/i18n/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Label } from "@/components/ui/label";
 import { AuthSuccessOverlay } from "@/components/ui/SuccessBurst";
 import { toast } from "sonner";
 import { GoogleSignIn } from "@/components/auth/GoogleSignIn";
-import { loginUser2FA, loginMentor2FA } from "@/api/auth";
-import { ShieldAlert, ArrowLeft } from "lucide-react";
+import {
+  loginUser2FA,
+  loginMentor2FA,
+  resendMentorVerifyEmail,
+  resendUserVerifyEmail,
+  verifyMentorEmail,
+  verifyUserEmail,
+} from "@/api/auth";
+import { ShieldAlert, ArrowLeft, Mail } from "lucide-react";
 import { resolvePostLoginPath } from "@/lib/postLoginRedirect";
 import { humanizeApiError } from "@/lib/humanizeApiError";
+import OtpEmailHint from "@/components/OtpEmailHint";
+
+function isUnverifiedEmailError(error: unknown): boolean {
+  const raw = error instanceof Error ? error.message : String(error ?? "");
+  return /please verify your email/i.test(raw);
+}
 
 type Role = "user" | "mentor" | "admin";
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
@@ -36,6 +50,8 @@ const LoginPage = () => {
   const [is2FARequired, setIs2FARequired] = useState(false);
   const [twoFactorCode, setTwoFactorCode] = useState("");
   const [tempToken, setTempToken] = useState("");
+  const [emailVerifyRequired, setEmailVerifyRequired] = useState(false);
+  const [emailOtp, setEmailOtp] = useState("");
   const [authSuccess, setAuthSuccess] = useState<{ to: string; message: string } | null>(null);
 
   useEffect(() => {
@@ -86,9 +102,71 @@ const LoginPage = () => {
       await loginAdminSession({ email: email.trim(), password });
       finishLogin(resolvePostLoginPath("admin", returnTo), a.welcomeBack);
     } catch (e) {
+      if (role !== "admin" && isUnverifiedEmailError(e)) {
+        setError("");
+        setEmailOtp("");
+        setEmailVerifyRequired(true);
+        try {
+          if (role === "user") await resendUserVerifyEmail(email.trim());
+          else await resendMentorVerifyEmail(email.trim());
+          toast.message(a.verifyEmailResent);
+        } catch {
+          toast.message(a.verifyEmailDescription.replace("{email}", email.trim()));
+        }
+        return;
+      }
       const msg = humanizeApiError(e, a.errFailed);
       setError(msg);
       toast.error(msg);
+    }
+  };
+
+  const finishAfterCredentials = async () => {
+    if (role === "user") {
+      const res = await loginUserSession({ email: email.trim(), password });
+      if (res.two_factor_required) {
+        setEmailVerifyRequired(false);
+        setIs2FARequired(true);
+        setTempToken(res.temp_token!);
+        return;
+      }
+      finishLogin(resolvePostLoginPath("user", returnTo), a.welcomeBack);
+      return;
+    }
+    const res = await loginMentorSession({ email: email.trim(), password });
+    if (res.two_factor_required) {
+      setEmailVerifyRequired(false);
+      setIs2FARequired(true);
+      setTempToken(res.temp_token!);
+      return;
+    }
+    finishLogin(resolvePostLoginPath("mentor", returnTo), a.welcomeBackMentor);
+  };
+
+  const onEmailOtpSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (emailOtp.replace(/\D/g, "").length !== 6) {
+      toast.error(a.verifyEmailFailed);
+      return;
+    }
+    try {
+      const body = { email: email.trim(), code: emailOtp.replace(/\D/g, "") };
+      if (role === "user") await verifyUserEmail(body);
+      else await verifyMentorEmail(body);
+      setEmailVerifyRequired(false);
+      await finishAfterCredentials();
+    } catch (e) {
+      toast.error(humanizeApiError(e, a.verifyEmailFailed));
+    }
+  };
+
+  const onResendEmailOtp = async () => {
+    try {
+      if (role === "user") await resendUserVerifyEmail(email.trim());
+      else await resendMentorVerifyEmail(email.trim());
+      toast.message(a.verifyEmailResent);
+    } catch (e) {
+      toast.error(humanizeApiError(e, a.errFailed));
     }
   };
 
@@ -120,6 +198,63 @@ const LoginPage = () => {
       toast.error(humanizeApiError(e, a.twoFactorFailed));
     }
   };
+
+  const renderEmailVerifyForm = () => (
+    <div className="space-y-6">
+      <div className="flex flex-col items-center gap-2 text-center">
+        <Mail className="w-12 h-12 text-primary" />
+        <h3 className="text-xl font-semibold">{a.verifyEmailTitle}</h3>
+        <p className="text-sm text-muted-foreground">
+          {a.verifyEmailDescription.replace("{email}", email.trim())}
+        </p>
+      </div>
+      <OtpEmailHint title={a.otpHintTitle} body={a.otpHintBody} />
+      <form onSubmit={(e) => void onEmailOtpSubmit(e)} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="email-otp">{a.verifyEmailCodeLabel}</Label>
+          <InputOTP
+            id="email-otp"
+            maxLength={6}
+            value={emailOtp}
+            onChange={setEmailOtp}
+            containerClassName="justify-center"
+          >
+            <InputOTPGroup>
+              <InputOTPSlot index={0} />
+              <InputOTPSlot index={1} />
+              <InputOTPSlot index={2} />
+              <InputOTPSlot index={3} />
+              <InputOTPSlot index={4} />
+              <InputOTPSlot index={5} />
+            </InputOTPGroup>
+          </InputOTP>
+        </div>
+        <Button type="submit" className="w-full gradient-cta text-white h-12 text-lg">
+          {a.verifyEmailSubmit}
+        </Button>
+      </form>
+      <div className="flex flex-col items-center gap-3">
+        <button
+          type="button"
+          onClick={() => void onResendEmailOtp()}
+          className="text-sm text-primary hover:underline"
+        >
+          {a.verifyEmailResend}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setEmailVerifyRequired(false);
+            setEmailOtp("");
+          }}
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          {a.verifyEmailBack}
+        </button>
+      </div>
+    </div>
+  );
 
   const render2FAForm = () => (
     <div className="space-y-6">
@@ -163,11 +298,19 @@ const LoginPage = () => {
       <main className="container mx-auto px-6 py-10">
         <Card className="mx-auto max-w-xl border-border/60 shadow-xl overflow-hidden">
           <CardHeader className="bg-muted/30 pb-8">
-            <CardTitle className="font-serif text-3xl">{is2FARequired ? a.securityVerification : a.title}</CardTitle>
-            <CardDescription>{is2FARequired ? a.securityVerificationHint : a.description}</CardDescription>
+            <CardTitle className="font-serif text-3xl">
+              {emailVerifyRequired ? a.verifyEmailTitle : is2FARequired ? a.securityVerification : a.title}
+            </CardTitle>
+            <CardDescription>
+              {emailVerifyRequired
+                ? a.verifyEmailDescription.replace("{email}", email.trim())
+                : is2FARequired
+                  ? a.securityVerificationHint
+                  : a.description}
+            </CardDescription>
           </CardHeader>
           <CardContent className="pt-8">
-            {is2FARequired ? render2FAForm() : (
+            {emailVerifyRequired ? renderEmailVerifyForm() : is2FARequired ? render2FAForm() : (
               <div className="space-y-8">
                 <form onSubmit={(e) => void onSubmit(e)} className="space-y-5">
                   <div>

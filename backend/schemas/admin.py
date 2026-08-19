@@ -2,13 +2,21 @@ from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+from schemas.site_analytics import ReferrerRow, TopPageRow
 
 
 class PaginatedMeta(BaseModel):
     total: int
     skip: int
     limit: int
+
+
+class AdminMeOut(BaseModel):
+    id: str
+    email: str
+    full_name: str
 
 
 class AdminUserRow(BaseModel):
@@ -195,6 +203,9 @@ class AnalyticsSummary(BaseModel):
     rejected_mentors: int
     pending_mentors: int
     new_coach_applications: int
+    page_views: int = 0
+    unique_visitors: int = 0
+    chats: int = 0
 
 
 class AnalyticsResponse(BaseModel):
@@ -207,6 +218,11 @@ class AnalyticsResponse(BaseModel):
     reviews_by_day: list[DateCountPoint]
     users_by_day: list[DateCountPoint]
     mentors_by_day: list[DateCountPoint]
+    page_views_by_day: list[DateCountPoint] = Field(default_factory=list)
+    chats_by_day: list[DateCountPoint] = Field(default_factory=list)
+    top_pages: list[TopPageRow] = Field(default_factory=list)
+    landing_pages: list[TopPageRow] = Field(default_factory=list)
+    referrers: list[ReferrerRow] = Field(default_factory=list)
 
 
 class AdminFilterPersonOption(BaseModel):
@@ -444,6 +460,7 @@ class AdminTransactionRow(BaseModel):
     currency: str
     status: str
     created_at: datetime
+    description: str | None = None
 
 
 class AdminTransactionList(BaseModel):
@@ -507,6 +524,7 @@ class AdminAnnouncementRow(BaseModel):
     recipient_count: int
     emails_sent: int
     created_at: datetime
+    email_warning: str | None = None
 
 
 class AdminAnnouncementList(BaseModel):

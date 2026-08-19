@@ -53,6 +53,8 @@ class BookingOut(BaseModel):
     status: str
     payment_status: str
     payment_id: str | None
+    paid_amount_eur: float | None = None
+    promo_applied: bool = False
     meeting_link: str | None
     notes_by_user: str | None
     notes_by_mentor: str | None

@@ -26,6 +26,7 @@ from api.v1 import (
     promo_codes,
     invoices,
     marketplace,
+    site_analytics,
 )
 
 api_router = APIRouter()
@@ -56,3 +57,4 @@ api_router.include_router(wallets.router)
 api_router.include_router(promo_codes.router)
 api_router.include_router(invoices.router)
 api_router.include_router(marketplace.router)
+api_router.include_router(site_analytics.router)

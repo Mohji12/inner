@@ -15,7 +15,7 @@ import { getMyWallet } from "@/api/wallets";
 import { useAuth } from "@/auth/AuthContext";
 import { getMentor, getPlatformPricing } from "@/api/mentors";
 import type { Booking, MentorDetail, ChatInboxSession } from "@/api/types";
-import { slotPriceForDuration } from "@/api/types";
+import { bookingAmountEur, slotPriceForDuration } from "@/api/types";
 import { CalendarIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -475,7 +475,10 @@ const UserAppointmentsPage = () => {
         ) : null}
         {sortedBookings.map((b) => {
           const mentor = mentorMap.get(b.mentor_id);
-          const amount = pricingQuery.data ? slotPriceForDuration(pricingQuery.data, b.duration) : null;
+          const amount = bookingAmountEur(
+            b,
+            pricingQuery.data ? slotPriceForDuration(pricingQuery.data, b.duration) : null,
+          );
           const startUtc = new Date(b.start_at_utc);
           const endUtc = new Date(b.end_at_utc);
           const now = new Date();
@@ -535,7 +538,16 @@ const UserAppointmentsPage = () => {
                     <p className="mt-1 text-sm text-muted-foreground">
                       {ap.paymentLabel}: {statusLabel(b.payment_status)}
                     </p>
-                    {amount != null ? <p className="text-sm font-medium">EUR {amount.toFixed(2)}</p> : null}
+                    {amount != null ? (
+                      <p className="text-sm font-medium">
+                        EUR {amount.toFixed(2)}
+                        {b.promo_applied ? (
+                          <span className="ml-2 text-xs font-normal text-emerald-700 dark:text-emerald-400">
+                            {t.app.userTransactions.promoApplied}
+                          </span>
+                        ) : null}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
 

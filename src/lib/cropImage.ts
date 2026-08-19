@@ -134,7 +134,9 @@ export async function getCroppedJpegFile(
     if (blob.size > CROP_MAX_BYTES) {
       throw new Error("Cropped image is larger than 2 MB. Try zooming in or using a smaller photo.");
     }
-    return new File([blob], filename, { type: "image/jpeg" });
+    const file = new File([blob], filename, { type: "image/jpeg", lastModified: Date.now() });
+    if (file.name && file.name.trim()) return file;
+    return new File([blob], filename || "photo.jpg", { type: "image/jpeg", lastModified: Date.now() });
   } finally {
     if (resolved.revoke) URL.revokeObjectURL(resolved.url);
   }

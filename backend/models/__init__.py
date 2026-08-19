@@ -29,6 +29,7 @@ from models.waitlist import WaitlistEntry
 from models.wallet import Wallet, WalletTransaction
 from models.promo_code import PromoCode
 from models.support_inquiry import SupportInquiry
+from models.site_page_view import SitePageView
 from models.marketplace import (
     AuditLog,
     CapabilityMatrix,
@@ -79,6 +80,7 @@ __all__ = [
     "WalletTransaction",
     "PromoCode",
     "SupportInquiry",
+    "SitePageView",
     "CapabilityMatrix",
     "CommissionConfig",
     "WalletAccount",

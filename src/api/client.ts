@@ -43,10 +43,17 @@ async function parseErrorDetail(response: Response): Promise<string> {
       if (typeof d.msg === "string") return d.msg;
     }
     if (Array.isArray(detail)) {
-      return detail
-        .map((item: { msg?: string }) => item?.msg)
-        .filter(Boolean)
-        .join(", ");
+      const msgs = detail
+        .map((item: { loc?: unknown[]; msg?: string; type?: string }) => {
+          const loc = Array.isArray(item.loc) ? item.loc.map(String).join(".") : "";
+          const msg = (item.msg || "").trim();
+          if (/field required/i.test(msg) && /\bfile\b/i.test(loc || msg)) {
+            return "Please choose a JPG or PNG image and try again.";
+          }
+          return msg;
+        })
+        .filter(Boolean);
+      return msgs.join(", ");
     }
     return response.statusText;
   } catch {
@@ -141,10 +148,16 @@ export async function ensureFreshAccessToken(): Promise<string | null> {
   const token = getAccessToken();
   const exp = getAccessTokenExpirySeconds(token);
   const now = Math.floor(Date.now() / 1000);
+  const expired = exp != null && exp <= now;
   const needsRefresh = !token || exp == null || exp <= now + 5 * 60;
 
   if (!needsRefresh) return token;
-  return refreshAccessToken({ clearOnFailure: true });
+  // After Mollie (or sleep), the refresh cookie can fail even though the access
+  // token is still valid. Do not wipe a live session in that case.
+  const refreshed = await refreshAccessToken({ clearOnFailure: expired || !token });
+  if (refreshed) return refreshed;
+  if (token && !expired) return token;
+  return null;
 }
 
 export type ApiFetchOptions = RequestInit & {

@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { CalendarDays, LogOut, Receipt, UserRound, Users, Wallet as WalletIcon, LayoutDashboard, Shield, LifeBuoy } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
+import { useDashboardPerson } from "@/hooks/useDashboardPerson";
 import {
   Sidebar,
   SidebarContent,
@@ -34,6 +35,7 @@ function UserDashboardSidebar() {
   const { logoutUserSession } = useAuth();
   const { t } = useLanguage();
   const d = t.app.dashboardUser;
+  const personName = useDashboardPerson(d.role);
   const { isMobile, setOpenMobile } = useSidebar();
 
   const onLogout = async () => {
@@ -46,7 +48,7 @@ function UserDashboardSidebar() {
     <>
       <Sidebar collapsible="icon" variant="floating">
         <SidebarHeader className="border-b border-sidebar-border/60 px-4 py-4">
-          <DashboardBrandHeader roleLabel={d.role} />
+          <DashboardBrandHeader roleLabel={personName} />
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>

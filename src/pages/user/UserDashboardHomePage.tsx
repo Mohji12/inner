@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { ArrowRight, CalendarDays, MessageSquare, Receipt, Users } from "lucide-react";
-import { useAuth } from "@/auth/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
+import { useDashboardPerson } from "@/hooks/useDashboardPerson";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,16 +23,16 @@ import { getUserDashboardStats, getUserSpendingSeries, type AnalyticsPeriod } fr
 import { listUserBookings } from "@/api/bookings";
 import { getMentor, getPlatformPricing } from "@/api/mentors";
 import type { Booking, MentorDetail, PlatformPricing } from "@/api/types";
-import { slotPriceForDuration } from "@/api/types";
+import { bookingAmountEur, slotPriceForDuration } from "@/api/types";
 import { getMyWallet } from "@/api/wallets";
 import { listChatInvoices } from "@/api/chat";
 import { formatDateLocal, formatTimeLocal } from "@/lib/timeZone";
 import { useEffectiveTimeZone } from "@/hooks/useEffectiveTimeZone";
 
 const UserDashboardHomePage = () => {
-  const { user } = useAuth();
   const { t } = useLanguage();
   const du = t.app.dashboardUser;
+  const personName = useDashboardPerson(du.role);
   const w = t.app.userWallet;
   const effectiveTimeZone = useEffectiveTimeZone();
 
@@ -109,8 +109,8 @@ const UserDashboardHomePage = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-serif font-bold">Welcome back, {user?.first_name || "User"}!</h1>
-        <p className="text-muted-foreground mt-1">Here's an overview of your progress and upcoming activities.</p>
+        <h1 className="text-3xl font-serif font-bold">{du.welcomeBackNamed.replace("{name}", personName)}</h1>
+        <p className="text-muted-foreground mt-1">{du.overviewSub}</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -277,7 +277,7 @@ const UserDashboardHomePage = () => {
               <div className="space-y-2">
                 {recentBookings.map((b) => {
                   const mentor = mentorMap.get(b.mentor_id);
-                  const amount = pricing ? slotPriceForDuration(pricing, b.duration) : null;
+                  const amount = bookingAmountEur(b, pricing ? slotPriceForDuration(pricing, b.duration) : null);
                   return (
                     <div key={b.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/60 p-3">
                       <div className="min-w-0">
@@ -292,7 +292,10 @@ const UserDashboardHomePage = () => {
                           {b.status}
                         </Badge>
                         {amount != null ? (
-                          <span className="text-sm font-medium">EUR {amount.toFixed(2)}</span>
+                          <span className="text-sm font-medium">
+                            EUR {amount.toFixed(2)}
+                            {b.promo_applied ? " · Promo" : ""}
+                          </span>
                         ) : (
                           <span className="text-sm text-muted-foreground">—</span>
                         )}

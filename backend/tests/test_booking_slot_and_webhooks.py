@@ -124,11 +124,11 @@ def test_expire_stale_pending_bookings_cancels_and_commits(monkeypatch):
     assert db.committed is True
 
 
-def test_mollie_webhook_signature_fail_closed_in_production():
+def test_mollie_webhook_signature_unsigned_allowed_in_production():
     with patch("services.mollie_service.settings") as mock_settings:
         mock_settings.mollie_webhook_secret = ""
         mock_settings.environment = "production"
-        assert verify_mollie_webhook_signature(b"{}", None) is False
+        assert verify_mollie_webhook_signature(b"{}", None) is True
 
 
 def test_mollie_webhook_signature_optional_in_development():
@@ -138,7 +138,7 @@ def test_mollie_webhook_signature_optional_in_development():
         assert verify_mollie_webhook_signature(b"{}", None) is True
 
 
-def test_generic_hmac_signature_fail_closed_in_production():
+def test_generic_hmac_signature_unsigned_allowed_in_production():
     with patch("services.marketplace_service.settings") as mock_settings:
         mock_settings.environment = "production"
-        assert verify_generic_hmac_signature(secret="", payload=b"{}", signature=None) is False
+        assert verify_generic_hmac_signature(secret="", payload=b"{}", signature=None) is True

@@ -78,10 +78,15 @@ const CoachApplicationForm = () => {
 
   return (
     <Card className="mx-auto max-w-3xl border-border/60 shadow-lg">
-      <CardHeader>
-        <span className="text-sm font-medium uppercase tracking-widest text-accent">{f.label}</span>
-        <CardTitle className="font-serif text-3xl">{f.heading}</CardTitle>
-        <CardDescription>{f.sub}</CardDescription>
+      <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1.5">
+          <span className="text-sm font-medium uppercase tracking-widest text-accent">{f.label}</span>
+          <CardTitle className="font-serif text-3xl">{f.heading}</CardTitle>
+          <CardDescription>{f.sub}</CardDescription>
+        </div>
+        <Button asChild variant="outline" className="shrink-0">
+          <Link to="/login?role=mentor">{t.app.becomeCoach.ctaLogin}</Link>
+        </Button>
       </CardHeader>
       <CardContent>
         {submitted ? (
@@ -186,8 +191,11 @@ const CoachApplicationForm = () => {
                 onChange={(e) => setForm((p) => ({ ...p, website: e.target.value }))}
               />
             </div>
-            <div className="md:col-span-2">
-              <Button type="submit" className="w-full gradient-cta text-white sm:w-auto" disabled={isLoading}>
+            <div className="flex flex-wrap gap-3 md:col-span-2">
+              <Button asChild type="button" variant="outline">
+                <Link to="/login?role=mentor">{t.app.becomeCoach.ctaLogin}</Link>
+              </Button>
+              <Button type="submit" className="gradient-cta text-white sm:w-auto" disabled={isLoading}>
                 {isLoading ? f.submitting : f.submit}
               </Button>
             </div>

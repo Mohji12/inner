@@ -94,20 +94,28 @@ async def _read_image_upload(file: UploadFile) -> bytes:
             status.HTTP_400_BAD_REQUEST,
             "Image size should be less than 2 MB.",
         )
-    if not _looks_like_image(contents, file.content_type, file.filename):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "File must be an image (JPG, PNG, WebP, or GIF)")
-    ctype = (file.filename or "").lower()
+    name = (file.filename or "").lower()
     ctype = (file.content_type or "").lower()
-    if ctype.endswith((".heic", ".heif")) or ctype in {
-        "image/heic",
-        "image/heif",
-        "image/heic-sequence",
-        "image/heif-sequence",
-    }:
+    heic_brand = False
+    if len(contents) >= 12 and contents[4:8] == b"ftyp":
+        brand = contents[8:12].lower()
+        heic_brand = brand in {b"heic", b"heif", b"mif1", b"msf1"}
+    if (
+        name.endswith((".heic", ".heif"))
+        or ctype in {
+            "image/heic",
+            "image/heif",
+            "image/heic-sequence",
+            "image/heif-sequence",
+        }
+        or heic_brand
+    ):
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
             "HEIC/HEIF photos are not supported. Please upload a JPG or PNG instead.",
         )
+    if not _looks_like_image(contents, file.content_type, file.filename):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "File must be an image (JPG, PNG, WebP, or GIF)")
     return contents
 
 

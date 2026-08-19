@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
 import PhoneWithDialCode from "@/components/PhoneWithDialCode";
+import OtpEmailHint from "@/components/OtpEmailHint";
 import { composeE164Phone, DEFAULT_DIAL_ISO, dialCodeForIso } from "@/lib/countryDialCodes";
 
 const SUPPORT_EMAIL = "info@mijnlevenspad.com";
@@ -94,15 +95,13 @@ const UserRegisterPage = () => {
         password: formData.password,
         preferred_language: formData.preferredLanguage.trim() || language,
       });
-      if (reg.dev_verification_code) {
-        await verifyUserEmail({ email, code: reg.dev_verification_code });
-        await completeUserOnboarding(email, formData.password, reg.id);
-        return;
-      }
       setVerifyCtx({ email, password: formData.password, userId: reg.id });
       setOtp("");
       setPhase("verify");
-      toast.message(a.verifyDescription);
+      toast.message(a.verifyDescription.replace("{email}", email));
+      if (reg.dev_verification_code) {
+        toast.message(a.devCodeToast.replace("{code}", reg.dev_verification_code), { duration: 20000 });
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : a.errFailed;
       setError(msg);
@@ -145,9 +144,14 @@ const UserRegisterPage = () => {
       <AppPageHeader />
       <main className="container mx-auto px-6 py-10">
         <Card className="mx-auto max-w-6xl border-border/60">
-          <CardHeader>
-            <CardTitle className="font-serif text-3xl">{a.title}</CardTitle>
-            <CardDescription>{a.description}</CardDescription>
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1.5">
+              <CardTitle className="font-serif text-3xl">{a.title}</CardTitle>
+              <CardDescription>{a.description}</CardDescription>
+            </div>
+            <Button asChild variant="outline" className="shrink-0">
+              <Link to="/login?role=user">{a.logIn}</Link>
+            </Button>
           </CardHeader>
           <CardContent className="grid gap-8 lg:grid-cols-5 lg:items-start">
             <div className="min-w-0 lg:col-span-3">
@@ -155,8 +159,11 @@ const UserRegisterPage = () => {
               <div className="grid grid-cols-1 gap-6">
                 <div>
                   <h3 className="font-serif text-xl">{a.verifyTitle}</h3>
-                  <p className="text-sm text-muted-foreground">{a.verifyDescription}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {a.verifyDescription.replace("{email}", verifyCtx?.email ?? formData.email)}
+                  </p>
                 </div>
+                <OtpEmailHint title={a.otpHintTitle} body={a.otpHintBody} />
                 <div className="space-y-2">
                   <Label htmlFor="otp">{a.otpLabel}</Label>
                   <InputOTP
@@ -200,6 +207,7 @@ const UserRegisterPage = () => {
               </div>
             ) : (
               <form lang={htmlLang} onSubmit={(e) => void onSubmit(e)} className="grid grid-cols-1 gap-5">
+                <OtpEmailHint title={a.otpHintTitle} body={a.otpHintBody} />
                 <div className="space-y-2">
                   <Label htmlFor="name">{a.fullName}</Label>
                   <Input
@@ -302,7 +310,10 @@ const UserRegisterPage = () => {
                   />
                 </div>
                 {error ? <p className="text-sm font-medium text-destructive">{error}</p> : null}
-                <div className="flex justify-end gap-3">
+                <div className="flex flex-wrap items-center justify-end gap-3">
+                  <Button asChild type="button" variant="outline">
+                    <Link to="/login?role=user">{a.logIn}</Link>
+                  </Button>
                   <Button type="button" variant="outline" onClick={() => navigate("/")}>
                     {a.back}
                   </Button>

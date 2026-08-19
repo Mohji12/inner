@@ -48,17 +48,34 @@ export default function AdminAnnouncementsPage() {
         mentor_id: audience === "one" ? mentorId : null,
       }),
     onSuccess: (row) => {
-      if (audience === "one" && selectedCoach) {
+      const emails = row.emails_sent ?? 0;
+      const recipients = row.recipient_count ?? 0;
+      if (sendEmail && emails === 0) {
+        toast.error(
+          d.announcementEmailFailed.replace(
+            "{detail}",
+            row.email_warning || d.announcementFailed,
+          ),
+        );
+      } else if (sendEmail && emails < recipients) {
+        toast.warning(
+          (row.email_warning
+            ? `${d.announcementEmailPartial} ${row.email_warning}`
+            : d.announcementEmailPartial)
+            .replace("{emails}", String(emails))
+            .replace("{recipients}", String(recipients)),
+        );
+      } else if (audience === "one" && selectedCoach) {
         toast.success(
           d.announcementSentOne
             .replace("{name}", selectedCoach.full_name)
-            .replace("{emails}", String(row.emails_sent)),
+            .replace("{emails}", String(emails)),
         );
       } else {
         toast.success(
           d.announcementSent
-            .replace("{recipients}", String(row.recipient_count))
-            .replace("{emails}", String(row.emails_sent)),
+            .replace("{recipients}", String(recipients))
+            .replace("{emails}", String(emails)),
         );
       }
       setTitle("");

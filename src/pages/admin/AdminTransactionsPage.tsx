@@ -17,7 +17,9 @@ export default function AdminTransactionsPage() {
     chat_purchase: d.chatInvoices,
     onboarding_payment: d.type,
     wallet_credit: d.credit,
-    wallet_debit: d.debit,
+    wallet_debit: d.walletSpend,
+    wallet_topup: d.walletTopup,
+    wallet_topup_pending: d.walletTopupPending,
   };
 
   const { data, isLoading } = useQuery({
@@ -38,7 +40,7 @@ export default function AdminTransactionsPage() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Table>
+            <Table>
           <TableHeader>
             <TableRow>
               <TableHead>{d.type}</TableHead>
@@ -46,12 +48,20 @@ export default function AdminTransactionsPage() {
               <TableHead>{d.email}</TableHead>
               <TableHead>{d.amount}</TableHead>
               <TableHead>{d.status}</TableHead>
+              <TableHead>{d.description}</TableHead>
               <TableHead>{d.txnId}</TableHead>
               <TableHead>{d.date}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.items.map((row) => (
+            {data.items.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-muted-foreground">
+                  {d.noData}
+                </TableCell>
+              </TableRow>
+            ) : (
+            data.items.map((row) => (
               <TableRow key={`${row.transaction_type}-${row.id}`}>
                 <TableCell>
                   <Badge variant="secondary">{typeLabels[row.transaction_type] ?? row.transaction_type}</Badge>
@@ -62,10 +72,14 @@ export default function AdminTransactionsPage() {
                   {row.currency} {row.amount}
                 </TableCell>
                 <TableCell>{row.status}</TableCell>
+                <TableCell className="max-w-[180px] truncate text-muted-foreground">
+                  {row.description ?? "—"}
+                </TableCell>
                 <TableCell className="max-w-[120px] truncate font-mono text-xs">{row.reference_id ?? "—"}</TableCell>
                 <TableCell className="text-muted-foreground">{new Date(row.created_at).toLocaleString()}</TableCell>
               </TableRow>
-            ))}
+            ))
+            )}
           </TableBody>
         </Table>
         {data.items.length < data.total ? (

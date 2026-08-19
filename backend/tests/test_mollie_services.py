@@ -5,15 +5,16 @@ from datetime import date
 
 from core.config import settings
 from services.mentor_monthly_fee_service import _month_anchor, _month_range, _prev_month_anchor
-from services.mollie_service import parse_webhook_payment_id, verify_mollie_webhook_signature
+from services.mollie_service import parse_webhook_payment_id, resolve_frontend_return_origin, verify_mollie_webhook_signature
 
 
 class MollieServiceTests(unittest.TestCase):
     def test_verify_webhook_signature(self) -> None:
         body = b'{"id":"tr_abc"}'
         secret = (settings.mollie_webhook_secret or "").strip()
+        # Mollie Payments webhooks are unsigned form posts.
+        self.assertTrue(verify_mollie_webhook_signature(body, None))
         if not secret:
-            self.assertTrue(verify_mollie_webhook_signature(body, None))
             return
         sig = hmac.new(secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
         self.assertTrue(verify_mollie_webhook_signature(body, sig))
@@ -22,6 +23,16 @@ class MollieServiceTests(unittest.TestCase):
     def test_parse_webhook_payment_id(self) -> None:
         self.assertEqual(parse_webhook_payment_id(b'{"id":"tr_test"}'), "tr_test")
         self.assertEqual(parse_webhook_payment_id(b"", {"id": "tr_form"}), "tr_form")
+
+    def test_frontend_return_origin_uses_allowed_claimed_origin(self) -> None:
+        origin = resolve_frontend_return_origin(
+            None, claimed_origin="https://www.mijnlevenspad.com/user/wallet"
+        )
+        self.assertEqual(origin, "https://www.mijnlevenspad.com")
+
+    def test_frontend_return_origin_rejects_unknown_host(self) -> None:
+        origin = resolve_frontend_return_origin(None, claimed_origin="https://evil.example")
+        self.assertNotEqual(origin, "https://evil.example")
 
 
 class MentorMonthlyFeeServiceTests(unittest.TestCase):

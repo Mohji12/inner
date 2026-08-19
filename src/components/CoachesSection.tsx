@@ -32,7 +32,7 @@ const CoachesSection = () => {
   return (
     <section id="coaches" className="bg-background/95 py-24 backdrop-blur-sm md:py-32">
       <div ref={ref} className="section-reveal container mx-auto px-4 sm:px-6">
-        <div className="mb-12 flex flex-wrap items-end justify-between gap-4 md:mb-16">
+        <div className="mb-12 md:mb-16">
           <div className="max-w-2xl">
             <span className="text-sm font-medium uppercase tracking-widest text-accent">{t.coaches.label}</span>
             <h2 className="mt-3 text-balance font-serif text-3xl font-semibold tracking-tight md:text-4xl lg:text-5xl">
@@ -40,9 +40,6 @@ const CoachesSection = () => {
             </h2>
             <p className="mt-3 text-muted-foreground">{t.coaches.sub}</p>
           </div>
-          <Button asChild variant="outline" className="shrink-0">
-            <Link to="/mentors">{t.coaches.viewAll}</Link>
-          </Button>
         </div>
 
         {isLoading ? (
@@ -62,17 +59,24 @@ const CoachesSection = () => {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
-            {featured.map((mentor) => (
-              <MentorBrowseCard
-                key={mentor.id}
-                mentor={mentor}
-                pricing={pricing}
-                viewProfileLabel={p.viewProfile}
-                consultNowLabel={p.consultNow}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
+              {featured.map((mentor) => (
+                <MentorBrowseCard
+                  key={mentor.id}
+                  mentor={mentor}
+                  pricing={pricing}
+                  viewProfileLabel={p.viewProfile}
+                  consultNowLabel={p.consultNow}
+                />
+              ))}
+            </div>
+            <div className="mt-10 flex justify-center">
+              <Button asChild variant="outline" className="min-w-[12rem]">
+                <Link to="/mentors">{t.coaches.viewAll}</Link>
+              </Button>
+            </div>
+          </>
         )}
       </div>
     </section>

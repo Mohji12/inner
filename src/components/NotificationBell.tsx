@@ -16,7 +16,7 @@ import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead, d
 import { listChatSessions } from "@/api/chat";
 import { useAuth } from "@/auth/AuthContext";
 import { useNotificationChime } from "@/hooks/useNotificationChime";
-import { playNotificationChime } from "@/lib/notificationSound";
+import { playNotificationChime, isBookingNotificationType } from "@/lib/notificationSound";
 import { cn } from "@/lib/utils";
 
 type BellItem = {
@@ -102,15 +102,26 @@ export function NotificationBell() {
   }, [isAdmin, applicationsQuery.data?.items, mentorsQuery.data?.items]);
 
   const displayItems: BellItem[] = isAdmin ? adminItems : actorItems;
-  const chimeIds = useMemo(
-    () => (isAdmin ? adminItems.map((item) => item.id) : actorItems.filter((item) => !item.is_read).map((item) => item.id)),
-    [isAdmin, adminItems, actorItems],
+  const chimeItems = useMemo(
+    () =>
+      isAdmin
+        ? adminItems.map((item) => ({ id: item.id, sound: "default" as const }))
+        : actorItems
+            .filter((item) => !item.is_read)
+            .map((item) => ({
+              id: item.id,
+              sound:
+                role === "mentor" && isBookingNotificationType(item.type)
+                  ? ("booking" as const)
+                  : ("default" as const),
+            })),
+    [isAdmin, adminItems, actorItems, role],
   );
   const chimeReady = isAdmin
     ? applicationsQuery.isSuccess && mentorsQuery.isSuccess
     : isActor && actorNotifReady;
 
-  useNotificationChime(chimeIds, chimeReady);
+  useNotificationChime(chimeItems, chimeReady);
 
   useEffect(() => {
     seenIdsRef.current = new Set();

@@ -97,6 +97,7 @@ export function createPaymentIntent(
       booking_id: bookingId,
       promo_code: opts?.promo_code ?? null,
       checkout_currency: opts?.checkout_currency ?? null,
+      return_origin: typeof window !== "undefined" ? window.location.origin : null,
     }),
   });
 }

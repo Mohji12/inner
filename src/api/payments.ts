@@ -23,10 +23,16 @@ export function syncMolliePaymentAfterCheckout(mollie_payment_id: string): Promi
   });
 }
 
+export function syncLatestWalletTopup(): Promise<Record<string, string>> {
+  return apiFetch("/payments/sync-latest-wallet-topup", { method: "POST" });
+}
+
 export type WalletTopupIntent = {
   checkout_url: string;
   mollie_payment_id: string;
   amount: number | string;
+  charge_amount?: number | string;
+  transaction_fee?: number | string;
   currency: string;
 };
 
@@ -39,6 +45,7 @@ export function createWalletTopupIntent(body: {
     body: JSON.stringify({
       amount: body.amount,
       currency: body.currency ?? "EUR",
+      return_origin: typeof window !== "undefined" ? window.location.origin : null,
     }),
   });
 }

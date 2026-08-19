@@ -267,6 +267,57 @@ def resolve_mollie_webhook_url(request: Request | None = None) -> str | None:
     return None
 
 
+def _normalize_origin(raw: str | None) -> str | None:
+    if not raw or not str(raw).strip():
+        return None
+    value = str(raw).strip()
+    parsed = urlparse(value if "://" in value else f"https://{value}")
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        return None
+    return f"{parsed.scheme}://{parsed.netloc}".rstrip("/")
+
+
+def _allowed_frontend_origins() -> set[str]:
+    allowed: set[str] = set()
+    for origin in settings.cors_origins_list:
+        normalized = _normalize_origin(origin)
+        if normalized:
+            allowed.add(normalized)
+    fallback = _normalize_origin(settings.mollie_redirect_base_url)
+    if fallback:
+        allowed.add(fallback)
+    return allowed
+
+
+def resolve_frontend_return_origin(
+    request: Request | None = None,
+    *,
+    claimed_origin: str | None = None,
+) -> str:
+    """Return users to the same SPA origin they paid from (www vs apex, local vs prod).
+
+    Login lives in localStorage, which is origin-specific. Sending Mollie back to a
+    different host looks like a logout.
+    """
+    allowed = _allowed_frontend_origins()
+    candidates: list[str] = []
+    claimed = _normalize_origin(claimed_origin)
+    if claimed:
+        candidates.append(claimed)
+    if request is not None:
+        origin = _normalize_origin(request.headers.get("origin"))
+        if origin:
+            candidates.append(origin)
+        referer = _normalize_origin(request.headers.get("referer"))
+        if referer:
+            candidates.append(referer)
+    for candidate in candidates:
+        if candidate in allowed:
+            return candidate
+    fallback = _normalize_origin(settings.mollie_redirect_base_url)
+    return fallback or "https://mijnlevenspad.com"
+
+
 def _headers() -> dict[str, str]:
     if not settings.mollie_api_key:
         raise MollieServiceError("Mollie API key not configured")
@@ -325,11 +376,16 @@ def get_mollie_payment(payment_id: str) -> dict[str, Any]:
 
 
 def verify_mollie_webhook_signature(raw_body: bytes, signature_header: str | None) -> bool:
+    """Mollie Payments webhooks are usually unsigned form posts (`id=tr_...`).
+
+    Authenticity is confirmed by fetching the payment from Mollie's API.
+    If Mollie (or a proxy) sends `X-Mollie-Signature`, verify it when a secret is set.
+    """
     secret = (settings.mollie_webhook_secret or "").strip()
+    if not signature_header:
+        return True
     if not secret:
         return str(settings.environment).strip().lower() != "production"
-    if not signature_header:
-        return False
     expected = hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, signature_header.strip())
 
@@ -516,7 +572,16 @@ def process_mollie_webhook_by_payment_id(db: Session, mollie_payment_id: str) ->
     if booking_payment:
         _sync_amount_currency_from_mollie(booking_payment, payment_data, status_str=status_str)
         if status_str == "paid":
-            if booking_payment.status != PAYMENT_RECORD_SUCCEEDED:
+            booking = db.query(Booking).filter(Booking.id == booking_payment.booking_id).first()
+            already_paid_elsewhere = bool(
+                booking
+                and booking.payment_status == PAYMENT_PAID
+                and booking.payment_id
+                and booking.payment_id != booking_payment.id
+            )
+            if already_paid_elsewhere:
+                booking_payment.status = "failed"
+            elif booking_payment.status != PAYMENT_RECORD_SUCCEEDED:
                 _mark_booking_paid(db, booking_payment)
                 metadata = payment_data.get("metadata") or {}
                 promo_code = str(metadata.get("promo_code") or "").strip()

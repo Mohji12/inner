@@ -1,7 +1,12 @@
 import { apiFetch, apiFetchBlob } from "./client";
+import { appendNamedFile } from "@/lib/imageUpload";
 import type { AdminCapabilityMatrixRow, AdminCommissionConfig, AdminPayoutApprovalRow } from "./types";
 
 export type AdminPeriod = "day" | "week" | "month" | "year";
+
+export function getAdminMe(): Promise<{ id: string; email: string; full_name: string }> {
+  return apiFetch("/admin/me");
+}
 
 export interface Paginated<T> {
   items: T[];
@@ -148,12 +153,20 @@ export interface AnalyticsResponse {
     rejected_mentors: number;
     pending_mentors: number;
     new_coach_applications: number;
+    page_views: number;
+    unique_visitors: number;
+    chats: number;
   };
   bookings_by_day: DateCountPoint[];
   payments_by_day: DateAmountPoint[];
   reviews_by_day: DateCountPoint[];
   users_by_day: DateCountPoint[];
   mentors_by_day: DateCountPoint[];
+  page_views_by_day: DateCountPoint[];
+  chats_by_day: DateCountPoint[];
+  top_pages: { path: string; views: number; unique_visitors: number }[];
+  landing_pages: { path: string; views: number; unique_visitors: number }[];
+  referrers: { host: string; views: number; unique_visitors: number }[];
 }
 
 export interface AdminChatInvoiceSummary {
@@ -433,8 +446,8 @@ export function uploadAdminMentorPhoto(
 ) {
   const body = new FormData();
   body.append("kind", params.kind);
-  body.append("file", params.cropped);
-  if (params.original) body.append("original", params.original);
+  appendNamedFile(body, "file", params.cropped, params.kind === "banner" ? "banner.jpg" : "profile.jpg");
+  if (params.original) appendNamedFile(body, "original", params.original, "original.jpg");
   if (params.crop) body.append("crop", JSON.stringify(params.crop));
   return apiFetch<AdminMentorRow>(`/admin/mentors/${mentorId}/photo`, {
     method: "POST",
@@ -781,6 +794,7 @@ export interface AdminTransactionRow {
   currency: string;
   status: string;
   created_at: string;
+  description?: string | null;
 }
 
 export interface AdminTransactionList {
@@ -874,6 +888,7 @@ export interface AdminAnnouncementRow {
   recipient_count: number;
   emails_sent: number;
   created_at: string;
+  email_warning?: string | null;
 }
 
 export interface AdminAnnouncementList {

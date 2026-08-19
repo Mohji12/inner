@@ -129,7 +129,8 @@ def _smtp_configured() -> bool:
 
 
 def _expose_dev_otp() -> bool:
-    return (not _smtp_configured()) or ((settings.environment or "").lower() == "development")
+    """Return OTP in API responses only when SMTP is not configured (local fallback)."""
+    return not _smtp_configured()
 
 
 @router.post("/register", response_model=MentorRegisterResponse, status_code=status.HTTP_201_CREATED)

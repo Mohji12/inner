@@ -8,9 +8,12 @@ import {
 } from "@/components/admin/AdminEntityFilters";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UrlVisitTable } from "@/components/admin/UrlVisitTable";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { useMemo, useState } from "react";
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
   Legend,
   Line,
@@ -24,6 +27,8 @@ import {
 const strokePrimary = "hsl(90 8% 48%)";
 const strokeAccent = "hsl(90 15% 40%)";
 const strokeMuted = "hsl(90 5% 45%)";
+const strokeVisits = "hsl(200 45% 42%)";
+const strokeChats = "hsl(32 55% 45%)";
 
 export default function AdminAnalyticsPage() {
   const { t } = useLanguage();
@@ -52,6 +57,8 @@ export default function AdminAnalyticsPage() {
       ...data.mentors_by_day,
       ...data.reviews_by_day,
       ...data.payments_by_day,
+      ...(data.page_views_by_day ?? []),
+      ...(data.chats_by_day ?? []),
     ]) {
       dates.add(x.date);
     }
@@ -64,6 +71,8 @@ export default function AdminAnalyticsPage() {
         mentors: pick(data.mentors_by_day, date),
         reviews: pick(data.reviews_by_day, date),
         revenue: pickAmt(data.payments_by_day, date),
+        pageViews: pick(data.page_views_by_day ?? [], date),
+        chats: pick(data.chats_by_day ?? [], date),
       }));
   }, [data]);
 
@@ -119,7 +128,25 @@ export default function AdminAnalyticsPage() {
 
       {data ? (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Card className="border-border/60">
+              <CardHeader className="pb-2">
+                <CardDescription>{d.summaryPageViews}</CardDescription>
+                <CardTitle className="font-serif text-2xl">{data.summary.page_views ?? 0}</CardTitle>
+              </CardHeader>
+            </Card>
+            <Card className="border-border/60">
+              <CardHeader className="pb-2">
+                <CardDescription>{d.summaryUniqueVisitors}</CardDescription>
+                <CardTitle className="font-serif text-2xl">{data.summary.unique_visitors ?? 0}</CardTitle>
+              </CardHeader>
+            </Card>
+            <Card className="border-border/60">
+              <CardHeader className="pb-2">
+                <CardDescription>{d.summaryChats}</CardDescription>
+                <CardTitle className="font-serif text-2xl">{data.summary.chats ?? 0}</CardTitle>
+              </CardHeader>
+            </Card>
             <Card className="border-border/60">
               <CardHeader className="pb-2">
                 <CardDescription>{d.summaryBookings}</CardDescription>
@@ -151,11 +178,113 @@ export default function AdminAnalyticsPage() {
               </CardHeader>
             </Card>
           </div>
+          <p className="text-sm text-muted-foreground">{d.visitsNote}</p>
 
-          {merged.length === 0 ? (
+          {merged.length === 0 &&
+          !(data.top_pages?.length) &&
+          !(data.landing_pages?.length) &&
+          !(data.referrers?.length) ? (
             <p className="text-muted-foreground">{d.noData}</p>
           ) : (
             <div className="grid gap-6 lg:grid-cols-2">
+              <Card className="border-border/60 glass-card lg:col-span-2">
+                <CardHeader>
+                  <CardTitle className="font-serif text-lg">{d.visitsByDay}</CardTitle>
+                </CardHeader>
+                <CardContent className="h-[280px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={merged}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
+                      <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <Tooltip />
+                      <Legend />
+                      <Line type="monotone" dataKey="pageViews" name={d.visitsSeries} stroke={strokeVisits} strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="chats" name={d.chatsSeries} stroke={strokeChats} strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+              {(data.top_pages ?? []).length > 0 ? (
+                <Card className="border-border/60 glass-card lg:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="font-serif text-lg">{d.topPages}</CardTitle>
+                    <CardDescription>{d.urlClicksHint}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={data.top_pages}
+                          layout="vertical"
+                          margin={{ left: 8, right: 16, top: 8, bottom: 8 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
+                          <XAxis type="number" tick={{ fontSize: 11 }} />
+                          <YAxis type="category" dataKey="path" width={160} tick={{ fontSize: 11 }} />
+                          <Tooltip />
+                          <Legend />
+                          <Bar dataKey="views" name={d.topPagesViews} fill={strokeVisits} radius={[0, 4, 4, 0]} />
+                          <Bar dataKey="unique_visitors" name={d.topPagesVisitors} fill={strokeAccent} radius={[0, 4, 4, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <UrlVisitTable
+                      rows={(data.top_pages ?? []).map((row) => ({
+                        label: row.path,
+                        views: row.views,
+                        unique_visitors: row.unique_visitors,
+                      }))}
+                      urlLabel={d.urlColumn}
+                      viewsLabel={d.topPagesViews}
+                      visitorsLabel={d.topPagesVisitors}
+                      emptyLabel={d.noData}
+                    />
+                  </CardContent>
+                </Card>
+              ) : null}
+              {(data.landing_pages ?? []).length > 0 ? (
+                <Card className="border-border/60 glass-card lg:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="font-serif text-lg">{d.landingPages}</CardTitle>
+                    <CardDescription>{d.landingPagesHint}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <UrlVisitTable
+                      rows={(data.landing_pages ?? []).map((row) => ({
+                        label: row.path,
+                        views: row.views,
+                        unique_visitors: row.unique_visitors,
+                      }))}
+                      urlLabel={d.urlColumn}
+                      viewsLabel={d.topPagesViews}
+                      visitorsLabel={d.topPagesVisitors}
+                      emptyLabel={d.noData}
+                    />
+                  </CardContent>
+                </Card>
+              ) : null}
+              {(data.referrers ?? []).length > 0 ? (
+                <Card className="border-border/60 glass-card lg:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="font-serif text-lg">{d.referrersTitle}</CardTitle>
+                    <CardDescription>{d.referrersHint}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <UrlVisitTable
+                      rows={(data.referrers ?? []).map((row) => ({
+                        label: row.host,
+                        views: row.views,
+                        unique_visitors: row.unique_visitors,
+                      }))}
+                      urlLabel={d.referrerColumn}
+                      viewsLabel={d.topPagesViews}
+                      visitorsLabel={d.topPagesVisitors}
+                      emptyLabel={d.noData}
+                    />
+                  </CardContent>
+                </Card>
+              ) : null}
               <Card className="border-border/60 glass-card lg:col-span-2">
                 <CardHeader>
                   <CardTitle className="font-serif text-lg">{d.activityByDay}</CardTitle>

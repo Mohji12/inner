@@ -29,6 +29,7 @@ import { CoachConnectStatusCard } from "@/components/mentor/CoachConnectStatusCa
 import { CoachWalletCard } from "@/components/mentor/CoachWalletCard";
 import { CoachPresenceBanner } from "@/components/CoachPresenceBanner";
 import { useLanguage } from "@/i18n/LanguageContext";
+import { useDashboardPerson } from "@/hooks/useDashboardPerson";
 import { toast } from "sonner";
 
 export default function MentorDashboardHomePage() {
@@ -36,6 +37,7 @@ export default function MentorDashboardHomePage() {
   const { t } = useLanguage();
   const queryClient = useQueryClient();
   const d = t.app.mentorDashboardHome;
+  const personName = useDashboardPerson(t.app.dashboardMentor.role);
 
   const earningsQ = useQuery({
     queryKey: ["mentor", "earnings"],
@@ -134,7 +136,7 @@ export default function MentorDashboardHomePage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm uppercase tracking-widest text-accent">{d.label}</p>
-          <h1 className="font-serif text-3xl">{d.heading}</h1>
+          <h1 className="font-serif text-3xl">{d.welcomeBackNamed.replace("{name}", personName)}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{d.subheading}</p>
         </div>
       </div>

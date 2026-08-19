@@ -4,6 +4,7 @@ import { CalendarDays, Clock, Coins, LayoutDashboard, LogOut, MessageSquare, Use
 import { getMentorActiveChatSession } from "@/api/chat";
 import { useAuth } from "@/auth/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
+import { useDashboardPerson } from "@/hooks/useDashboardPerson";
 import {
   Sidebar,
   SidebarContent,
@@ -36,6 +37,7 @@ function MentorDashboardSidebar() {
   const { logoutMentorSession } = useAuth();
   const { t } = useLanguage();
   const d = t.app.dashboardMentor;
+  const personName = useDashboardPerson(d.role);
   const { isMobile, setOpenMobile } = useSidebar();
 
   const { data: activeChat } = useQuery({
@@ -58,7 +60,7 @@ function MentorDashboardSidebar() {
     <>
       <Sidebar collapsible="icon" variant="floating">
         <SidebarHeader className="border-b border-sidebar-border/60 px-4 py-4">
-          <DashboardBrandHeader roleLabel={d.role} />
+          <DashboardBrandHeader roleLabel={personName} />
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>

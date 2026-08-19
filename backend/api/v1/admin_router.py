@@ -25,6 +25,7 @@ from models.platform_pricing import PlatformPricing
 from models.review import Review
 from models.user import User
 from models.wallet import Wallet, WalletTransaction
+from models.marketplace import AuditLog
 from models.refresh_token import RefreshToken
 from models.email_otp import EmailOtpCode
 from schemas.chat import ChatInvoiceConversationLineOut, ChatInvoiceDetailOut, ChatInvoiceLineOut, ChatInvoiceSummaryOut
@@ -38,6 +39,7 @@ from services.mentor_presence_tracking_service import (
     min_weekly_seconds,
     week_start_for,
 )
+from services.site_analytics_service import visit_stats
 from schemas.admin import (
     AdminBookingInvoiceList,
     AdminBookingInvoiceRow,
@@ -84,6 +86,7 @@ from schemas.admin import (
     AdminUserRow,
     AdminFilterOptionsResponse,
     AdminFilterPersonOption,
+    AdminMeOut,
     AnalyticsResponse,
     AnalyticsSummary,
     DateAmountPoint,
@@ -129,6 +132,19 @@ from schemas.coach_application import (
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 Period = Literal["day", "week", "month", "year"]
+
+
+def _admin_display_name(email: str) -> str:
+    local = (email or "").split("@")[0].replace(".", " ").replace("_", " ").replace("-", " ").strip()
+    parts = [p for p in local.split() if p]
+    if not parts:
+        return "Admin"
+    return " ".join(p[:1].upper() + p[1:] for p in parts)
+
+
+@router.get("/me", response_model=AdminMeOut)
+def admin_me(admin: CurrentAdmin) -> AdminMeOut:
+    return AdminMeOut(id=admin.id, email=admin.email, full_name=_admin_display_name(admin.email))
 
 def _period_bounds(period: Period) -> tuple[datetime, datetime]:
     end = datetime.now(timezone.utc)
@@ -510,7 +526,7 @@ async def admin_upload_mentor_photo(
     _admin: CurrentAdmin,
     lang: RequestLang,
     kind: Literal["avatar", "banner"] = Form("avatar"),
-    file: UploadFile = File(...),
+    file: UploadFile | None = File(None),
     original: UploadFile | None = File(None),
     crop: str | None = Form(None),
 ) -> AdminMentorRow:
@@ -522,6 +538,11 @@ async def admin_upload_mentor_photo(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Coach not found")
     if kind not in ("avatar", "banner"):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "kind must be avatar or banner")
+    if file is None:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Please choose a JPG or PNG image and try again.",
+        )
 
     original_bytes = await _read_optional_image_upload(original)
     contents = await _read_image_upload(file)
@@ -1093,10 +1114,13 @@ def admin_list_all_transactions(
     for wt in db.query(WalletTransaction).order_by(WalletTransaction.created_at.desc()).all():
         wallet = db.query(Wallet).filter(Wallet.id == wt.wallet_id).first()
         user = db.query(User).filter(User.id == wallet.user_id).first() if wallet else None
+        tx_type = f"wallet_{wt.type}"
+        if (wt.reference_type or "") == "deposit" and wt.type == "credit":
+            tx_type = "wallet_topup"
         combined.append(
             AdminTransactionRow(
                 id=wt.id,
-                transaction_type=f"wallet_{wt.type}",
+                transaction_type=tx_type,
                 reference_id=wt.reference_id,
                 party_name=user.full_name if user else (wallet.user_id if wallet else "Unknown"),
                 party_email=user.email if user else None,
@@ -1104,10 +1128,50 @@ def admin_list_all_transactions(
                 currency=str(wallet.currency if wallet else "EUR"),
                 status="completed",
                 created_at=wt.created_at,
+                description=wt.description,
             )
         )
 
-    combined.sort(key=lambda r: r.created_at, reverse=True)
+    settled_deposit_ids = {
+        (wt.reference_id or "").strip()
+        for wt in db.query(WalletTransaction).filter(WalletTransaction.reference_type == "deposit").all()
+        if (wt.reference_id or "").strip()
+    }
+    for log in (
+        db.query(AuditLog)
+        .filter(AuditLog.action == "wallet.topup.intent_created")
+        .order_by(AuditLog.created_at.desc())
+        .all()
+    ):
+        pid = (log.entity_id or "").strip()
+        if not pid or pid in settled_deposit_ids:
+            continue
+        details = log.details_json if isinstance(log.details_json, dict) else {}
+        amount = str(details.get("amount") or details.get("charge_amount") or "0")
+        currency = str(details.get("currency") or "EUR")
+        user = db.query(User).filter(User.id == log.actor_id).first()
+        combined.append(
+            AdminTransactionRow(
+                id=log.id,
+                transaction_type="wallet_topup_pending",
+                reference_id=pid,
+                party_name=user.full_name if user else log.actor_id,
+                party_email=user.email if user else None,
+                amount=amount,
+                currency=currency,
+                status="pending",
+                created_at=log.created_at,
+                description="Wallet top-up (awaiting Mollie)",
+            )
+        )
+
+    def _sort_ts(row: AdminTransactionRow) -> datetime:
+        ts = row.created_at
+        if ts.tzinfo is None:
+            return ts.replace(tzinfo=timezone.utc)
+        return ts
+
+    combined.sort(key=_sort_ts, reverse=True)
     total = len(combined)
     page = combined[skip : skip + limit]
     return AdminTransactionList(items=page, total=total, skip=skip, limit=limit)
@@ -1448,7 +1512,6 @@ def admin_wallet_analytics(
 ) -> AdminWalletAnalyticsResponse:
     tx_rows = (
         db.query(WalletTransaction)
-        .filter(WalletTransaction.admin_actor_role == "admin")
         .order_by(WalletTransaction.created_at.desc())
         .all()
     )
@@ -1763,6 +1826,32 @@ def _count_reviews(
     return int(q.scalar() or 0)
 
 
+def _count_chats(
+    db: DbSession,
+    start: datetime,
+    end: datetime,
+    *,
+    coach_id: str | None = None,
+    user_id: str | None = None,
+    coach_term: str | None = None,
+    user_term: str | None = None,
+) -> int:
+    q = (
+        db.query(func.count(ChatSession.id))
+        .select_from(ChatSession)
+        .filter(_in_range(ChatSession, start, end))
+    )
+    if coach_id:
+        q = q.filter(ChatSession.mentor_id == coach_id)
+    elif coach_term:
+        q = q.join(Mentor, ChatSession.mentor_id == Mentor.id).filter(Mentor.full_name.like(coach_term))
+    if user_id:
+        q = q.filter(ChatSession.user_id == user_id)
+    elif user_term:
+        q = q.join(User, ChatSession.user_id == User.id).filter(User.full_name.like(user_term))
+    return int(q.scalar() or 0)
+
+
 def _count_users(
     db: DbSession,
     start: datetime | None = None,
@@ -1936,6 +2025,20 @@ def _series_counts(
             q = q.filter(Mentor.id == coach_id)
         elif coach_term:
             q = q.filter(Mentor.full_name.like(coach_term))
+    elif model is ChatSession:
+        q = (
+            db.query(day, func.count(ChatSession.id))
+            .select_from(ChatSession)
+            .filter(_in_range(ChatSession, start, end))
+        )
+        if coach_id:
+            q = q.filter(ChatSession.mentor_id == coach_id)
+        elif coach_term:
+            q = q.join(Mentor, ChatSession.mentor_id == Mentor.id).filter(Mentor.full_name.like(coach_term))
+        if user_id:
+            q = q.filter(ChatSession.user_id == user_id)
+        elif user_term:
+            q = q.join(User, ChatSession.user_id == User.id).filter(User.full_name.like(user_term))
     else:
         q = db.query(day, func.count(model.id)).select_from(model).filter(_in_range(model, start, end))
 
@@ -2049,6 +2152,16 @@ def admin_analytics(
         db, coach_id=cid, coach_term=coach_term, approved=False, exclude_rejected=True
     )
     new_coach_applications = _count_coach_applications(db, coach_id=cid, coach_term=coach_term)
+    chats_n = _count_chats(
+        db, start, end, coach_id=cid, user_id=uid, coach_term=coach_term, user_term=user_term
+    )
+    stats = visit_stats(db, start, end)
+    page_views_n = stats.page_views
+    unique_visitors_n = stats.unique_visitors
+    page_views_by_day = stats.by_day
+    top_pages = stats.top_pages
+    landing_pages = stats.landing_pages
+    referrers = stats.referrers
 
     summary = AnalyticsSummary(
         bookings=bookings_n,
@@ -2065,6 +2178,9 @@ def admin_analytics(
         rejected_mentors=rejected_mentors,
         pending_mentors=pending_mentors,
         new_coach_applications=new_coach_applications,
+        page_views=page_views_n,
+        unique_visitors=unique_visitors_n,
+        chats=chats_n,
     )
 
     return AnalyticsResponse(
@@ -2114,6 +2230,20 @@ def admin_analytics(
         mentors_by_day=_series_counts(
             db, Mentor, start, end, coach_id=cid, coach_term=coach_term
         ),
+        page_views_by_day=page_views_by_day,
+        landing_pages=landing_pages,
+        referrers=referrers,
+        chats_by_day=_series_counts(
+            db,
+            ChatSession,
+            start,
+            end,
+            coach_id=cid,
+            user_id=uid,
+            coach_term=coach_term,
+            user_term=user_term,
+        ),
+        top_pages=top_pages,
     )
 
 
@@ -2204,7 +2334,7 @@ def admin_create_announcement(
     from services.admin_announcement_service import broadcast_admin_announcement
 
     try:
-        row = broadcast_admin_announcement(
+        row, email_warning = broadcast_admin_announcement(
             db,
             admin_id=admin.id,
             title=payload.title,
@@ -2221,6 +2351,7 @@ def admin_create_announcement(
         recipient_count=row.recipient_count,
         emails_sent=row.emails_sent,
         created_at=row.created_at,
+        email_warning=email_warning,
     )
 
 

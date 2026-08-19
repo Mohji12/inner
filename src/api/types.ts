@@ -231,6 +231,8 @@ export interface Booking {
   status: string;
   payment_status: string;
   payment_id: string | null;
+  paid_amount_eur?: number | null;
+  promo_applied?: boolean;
   meeting_link: string | null;
   notes_by_user: string | null;
   notes_by_mentor: string | null;
@@ -271,6 +273,14 @@ export function slotPriceForDuration(pricing: PlatformPricing, minutes: number):
   if (minutes <= 30) return p30;
   if (Number.isFinite(p60) && p60 > 0) return p60;
   return Math.round(p30 * (minutes / 30) * 100) / 100;
+}
+
+/** Paid amount after promo/wallet when known; otherwise the catalog fallback. */
+export function bookingAmountEur(booking: Booking, catalogFallback?: number | null): number | null {
+  if (typeof booking.paid_amount_eur === "number" && Number.isFinite(booking.paid_amount_eur)) {
+    return booking.paid_amount_eur;
+  }
+  return catalogFallback ?? null;
 }
 
 /** Session package EUR: coach minute rate × length when chat pricing is on; else platform tier. */

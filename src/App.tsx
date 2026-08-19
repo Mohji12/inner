@@ -72,6 +72,7 @@ import AccessibilityWidget from "@/components/accessibility/AccessibilityWidget"
 import MentorPresenceHeartbeat from "@/components/MentorPresenceHeartbeat";
 import UserPresenceHeartbeat from "@/components/UserPresenceHeartbeat";
 import MetaPixel from "@/components/MetaPixel";
+import SiteVisitTracker from "@/components/SiteVisitTracker";
 import SessionKeepAlive from "@/components/SessionKeepAlive";
 import { NotificationAudioUnlock } from "@/components/NotificationAudioUnlock";
 
@@ -93,6 +94,7 @@ const App = () => (
               <Sonner />
               <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <MetaPixel />
+                <SiteVisitTracker />
                 <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<LoginPage />} />

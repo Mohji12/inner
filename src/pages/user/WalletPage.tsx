@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { getMyWallet } from "@/api/wallets";
-import { createWalletTopupIntent, syncMolliePaymentAfterCheckout } from "@/api/payments";
+import { createWalletTopupIntent, syncLatestWalletTopup, syncMolliePaymentAfterCheckout } from "@/api/payments";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 const PRESETS = [5, 10, 20, 50, 100] as const;
 const MIN_EUR = 5;
 const MAX_EUR = 500;
+const TRANSACTION_FEE_EUR = 0.5;
 
 function parseAmount(raw: string): number | null {
   const n = Number(raw.replace(",", ".").trim());
@@ -53,6 +54,7 @@ const WalletPage = () => {
     return "";
   }, [amount, customAmount, w.invalidAmountError, w.maxAmountError, w.minAmountError]);
   const canPay = amount != null && amount >= MIN_EUR && amount <= MAX_EUR && !paying;
+  const chargeAmount = amount != null && !amountError ? Math.round((amount + TRANSACTION_FEE_EUR) * 100) / 100 : null;
 
   useEffect(() => {
     if (syncedRef.current) return;
@@ -72,8 +74,13 @@ const WalletPage = () => {
           if (st === "paid") toast.success(w.topupSuccess);
           else if (["failed", "canceled", "cancelled", "expired"].includes(st)) toast.error(w.topupFailed);
           else toast.info(w.topupPending);
-        } else {
-          toast.success(w.topupSuccess);
+        } else if (topupFlag === "success") {
+          const out = await syncLatestWalletTopup();
+          if (cancelled) return;
+          const st = String(out.status || "").toLowerCase();
+          if (st === "paid") toast.success(w.topupSuccess);
+          else if (["failed", "canceled", "cancelled", "expired"].includes(st)) toast.error(w.topupFailed);
+          else toast.info(w.topupPending);
         }
         await queryClient.invalidateQueries({ queryKey: ["wallet"] });
       } catch {
@@ -195,6 +202,26 @@ const WalletPage = () => {
             />
             {amountError ? <p className="text-sm text-destructive">{amountError}</p> : null}
           </div>
+
+          {chargeAmount != null && amount != null ? (
+            <div className="max-w-xs space-y-1 rounded-md border border-border/70 bg-muted/30 px-3 py-2 text-sm">
+              <p className="text-muted-foreground">
+                {w.feeHint.replace("{fee}", TRANSACTION_FEE_EUR.toFixed(2))}
+              </p>
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">{w.creditLine}</span>
+                <span>€{amount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">{w.feeLine}</span>
+                <span>€{TRANSACTION_FEE_EUR.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between gap-4 font-medium">
+                <span>{w.payLine}</span>
+                <span>€{chargeAmount.toFixed(2)}</span>
+              </div>
+            </div>
+          ) : null}
 
           <Button type="button" className="w-full sm:w-auto" onClick={() => void onPay()} disabled={!canPay}>
             {paying ? w.paying : w.payWithMollie}

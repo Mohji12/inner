@@ -7,7 +7,7 @@ import {
   stringListToCommaSeparated,
   unknownListToStrings,
 } from "@/lib/dbJsonFields";
-import { formatUploadError, validateImageFile } from "@/lib/imageUpload";
+import { appendNamedFile, formatUploadError, validateImageFile } from "@/lib/imageUpload";
 import { mediaUrlFromApi } from "@/lib/mediaUrl";
 import { resolveBrowserTimeZone } from "@/lib/timeZone";
 import { useLanguage } from "@/i18n/LanguageContext";
@@ -25,7 +25,7 @@ function dateInputValue(iso: string | null): string {
 
 async function postUserAvatar(file: File): Promise<string> {
   const formData = new FormData();
-  formData.append("file", file);
+  appendNamedFile(formData, "file", file, "avatar.jpg");
   const data = await apiFetch<{ url: string }>("/upload/avatar", { method: "POST", body: formData });
   return data.url;
 }

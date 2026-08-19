@@ -25,6 +25,7 @@ import { composeE164Phone, DEFAULT_DIAL_ISO, dialCodeForIso } from "@/lib/countr
 import PhoneWithDialCode from "@/components/PhoneWithDialCode";
 import { COACH_AGREEMENT_TEXT, COACH_AGREEMENT_VERSION, readCoachAgreementAcceptance } from "@/lib/coachAgreement";
 import SpokenLanguageCheckboxGroup from "@/components/SpokenLanguageCheckboxGroup";
+import OtpEmailHint from "@/components/OtpEmailHint";
 
 const TAB_ORDER = ["account", "profile", "background"] as const;
 type TabId = (typeof TAB_ORDER)[number];
@@ -298,22 +299,14 @@ const MentorRegisterPage = () => {
           toast.error(msg);
         }
       }
-      if (reg.dev_verification_code) {
-        const verified = await verifyMentorEmail({ email, code: reg.dev_verification_code });
-        await completeMentorOnboarding(
-          email,
-          formData.password,
-          verified.message,
-          verified.mentor_id || reg.id,
-          Boolean(verified.account_active),
-        );
-        return;
-      }
       setVerifyCtx({ email, password: formData.password, mentorId: reg.id });
       setOtp("");
       setPhase("verify");
       setAgreementAcceptedBeforeVerify(false);
-      toast.message(m.verifyDescription);
+      toast.message(m.verifyDescription.replace("{email}", email));
+      if (reg.dev_verification_code) {
+        toast.message(m.devCodeToast.replace("{code}", reg.dev_verification_code), { duration: 20000 });
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : m.errFailed;
       setError(msg);
@@ -363,22 +356,30 @@ const MentorRegisterPage = () => {
       <AppPageHeader />
       <main className="container mx-auto px-6 py-10">
         <Card className="mx-auto max-w-4xl border-border/60">
-          <CardHeader>
-            <CardTitle className="font-serif text-3xl">{m.title}</CardTitle>
-            <CardDescription>
-              {m.description}{" "}
-              <Link to="/become-a-coach" className="text-accent underline underline-offset-4">
-                {t.app.header.becomeCoach}
-              </Link>
-            </CardDescription>
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1.5">
+              <CardTitle className="font-serif text-3xl">{m.title}</CardTitle>
+              <CardDescription>
+                {m.description}{" "}
+                <Link to="/become-a-coach" className="text-accent underline underline-offset-4">
+                  {t.app.header.becomeCoach}
+                </Link>
+              </CardDescription>
+            </div>
+            <Button asChild variant="outline" className="shrink-0">
+              <Link to="/login?role=mentor">{m.mentorLogin}</Link>
+            </Button>
           </CardHeader>
           <CardContent>
             {phase === "verify" ? (
               <div className="space-y-6">
                 <div>
                   <h3 className="font-serif text-xl">{m.verifyTitle}</h3>
-                  <p className="text-sm text-muted-foreground">{m.verifyDescription}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {m.verifyDescription.replace("{email}", verifyCtx?.email ?? formData.email)}
+                  </p>
                 </div>
+                <OtpEmailHint title={m.otpHintTitle} body={m.otpHintBody} />
                 <div className="space-y-2">
                   <Label htmlFor="otp">{m.otpLabel}</Label>
                   <InputOTP
@@ -460,6 +461,7 @@ const MentorRegisterPage = () => {
 
                 <TabsContent value="account" className="mt-6 space-y-4">
                   <p className="text-sm text-muted-foreground">{m.accountHint}</p>
+                  <OtpEmailHint title={m.otpHintTitle} body={m.otpHintBody} />
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="space-y-2 md:col-span-2">
                       <Label htmlFor="name">{m.fullName}</Label>
@@ -789,6 +791,9 @@ const MentorRegisterPage = () => {
 
               {tabIndex === TAB_ORDER.length - 1 ? (
                 <div className="flex flex-wrap justify-end gap-3">
+                  <Button asChild type="button" variant="outline">
+                    <Link to="/login?role=mentor">{m.mentorLogin}</Link>
+                  </Button>
                   <Button type="submit" className="gradient-cta text-white">
                     {m.submit}
                   </Button>

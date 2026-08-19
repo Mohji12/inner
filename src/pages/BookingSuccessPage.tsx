@@ -5,7 +5,7 @@ import { getUserBooking, getBookingCalendarUrl } from "@/api/bookings";
 import { getMentor, getPlatformPricing } from "@/api/mentors";
 import { syncMolliePaymentAfterCheckout } from "@/api/payments";
 import type { Booking, MentorDetail, PlatformPricing } from "@/api/types";
-import { slotPriceForDuration } from "@/api/types";
+import { bookingAmountEur, slotPriceForDuration } from "@/api/types";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -100,7 +100,7 @@ const BookingSuccessPage = () => {
     initMetaPixel();
     trackPurchase({
       eventId: `booking-paid-${bookingId}`,
-      value: slotPriceForDuration(pricing, booking.duration),
+      value: bookingAmountEur(booking, slotPriceForDuration(pricing, booking.duration)) ?? 0,
       currency: "EUR",
       contentName: "session_booking",
     });
@@ -114,7 +114,10 @@ const BookingSuccessPage = () => {
     );
   }
 
-  const amount = booking && pricing ? slotPriceForDuration(pricing, booking.duration) : null;
+  const amount =
+    booking != null
+      ? bookingAmountEur(booking, pricing ? slotPriceForDuration(pricing, booking.duration) : null)
+      : null;
 
   const header =
     pageState === "paid"
@@ -192,6 +195,7 @@ const BookingSuccessPage = () => {
                 {pageState === "paid" && amount != null ? (
                   <p>
                     {b.amountPaid}: EUR {amount.toFixed(2)}
+                    {booking.promo_applied ? ` (${t.app.userTransactions.promoApplied})` : ""}
                   </p>
                 ) : null}
                 {booking.meeting_link ? (

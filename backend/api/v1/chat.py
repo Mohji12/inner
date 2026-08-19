@@ -69,7 +69,7 @@ from services.livekit_call_token import livekit_room_name_for_session
 from services.livekit_phone_dial import dial_phone_into_chat_room, normalize_phone_e164
 from services.phone_bridge_service import bridge_room_name, validate_bridge_numbers
 from services.fx_checkout import FxCheckoutError, FxUpstreamError
-from services.mollie_service import resolve_mollie_webhook_url
+from services.mollie_service import resolve_frontend_return_origin, resolve_mollie_webhook_url
 from services.chat_hub import chat_hub
 from services.chat_invoice_pdf import build_chat_invoice_pdf
 from services.chat_invoice_service import (
@@ -197,7 +197,7 @@ def start_instant_session(
             mentor_id=payload.mentor_id,
             minutes=INSTANT_SESSION_MINUTES,
             checkout_currency=(payload.checkout_currency or "EUR").strip(),
-            redirect_url=f"{settings.mollie_redirect_base_url.rstrip('/')}/user/appointments?sessionId={{session_id}}",
+            redirect_url=f"{resolve_frontend_return_origin(request)}/user/appointments?sessionId={{session_id}}",
             webhook_url=resolve_mollie_webhook_url(request),
         )
     except FxCheckoutError as e:
@@ -255,7 +255,7 @@ def create_chat_session(
             mentor_id=payload.mentor_id,
             minutes=payload.minutes,
             checkout_currency=(payload.checkout_currency or "EUR").strip(),
-            redirect_url=f"{settings.mollie_redirect_base_url.rstrip('/')}/user/appointments?sessionId={{session_id}}",
+            redirect_url=f"{resolve_frontend_return_origin(request)}/user/appointments?sessionId={{session_id}}",
             webhook_url=resolve_mollie_webhook_url(request),
         )
     except FxCheckoutError as e:
@@ -311,7 +311,7 @@ def extend_chat_session(
             user_id=me.id,
             minutes=payload.minutes,
             checkout_currency=(payload.checkout_currency or "EUR").strip(),
-            redirect_url=f"{settings.mollie_redirect_base_url.rstrip('/')}/user/chat/{session_id}",
+            redirect_url=f"{resolve_frontend_return_origin(request)}/user/chat/{session_id}",
             webhook_url=resolve_mollie_webhook_url(request),
         )
     except FxCheckoutError as e:
