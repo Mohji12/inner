@@ -39,6 +39,7 @@ from services.mentor_presence_tracking_service import (
     min_weekly_seconds,
     week_start_for,
 )
+from services.presence_service import presence_service
 from services.site_analytics_service import visit_stats
 from schemas.admin import (
     AdminBookingInvoiceList,
@@ -2151,6 +2152,11 @@ def admin_analytics(
     pending_mentors = _count_mentors(
         db, coach_id=cid, coach_term=coach_term, approved=False, exclude_rejected=True
     )
+    # Live presence (in-memory heartbeats). When a single coach filter is set, 0 or 1.
+    if cid:
+        online_mentors = 1 if presence_service.is_online(cid, "mentor") else 0
+    else:
+        online_mentors = presence_service.count_online("mentor")
     new_coach_applications = _count_coach_applications(db, coach_id=cid, coach_term=coach_term)
     chats_n = _count_chats(
         db, start, end, coach_id=cid, user_id=uid, coach_term=coach_term, user_term=user_term
@@ -2178,6 +2184,7 @@ def admin_analytics(
         rejected_mentors=rejected_mentors,
         pending_mentors=pending_mentors,
         new_coach_applications=new_coach_applications,
+        online_mentors=online_mentors,
         page_views=page_views_n,
         unique_visitors=unique_visitors_n,
         chats=chats_n,

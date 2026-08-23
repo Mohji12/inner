@@ -92,6 +92,7 @@ class MentorPublicOut(BaseModel):
     is_online: bool = False
     last_seen_at: datetime | None = None
     next_availability_at: datetime | None = None
+    next_availability_end_at: datetime | None = None
     status: str
     created_at: datetime
     badges: list[str] = Field(default_factory=list)

@@ -203,6 +203,7 @@ class AnalyticsSummary(BaseModel):
     rejected_mentors: int
     pending_mentors: int
     new_coach_applications: int
+    online_mentors: int = 0
     page_views: int = 0
     unique_visitors: int = 0
     chats: int = 0

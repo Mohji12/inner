@@ -95,7 +95,7 @@ export const useChatWebSocket = ({ sessionId, token, onMessage, role }: UseChatW
             const viewingThisThread =
               typeof document !== "undefined" && document.visibilityState === "visible";
             if (!viewingThisThread) {
-              playNotificationChime();
+              playNotificationChime("default");
             }
           }
         }

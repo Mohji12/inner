@@ -1,10 +1,10 @@
 import { useEffect } from "react";
-import { bindNotificationAudioUnlock } from "@/lib/notificationSound";
+import { bindDefaultNotificationAudioUnlock } from "@/lib/notificationSound";
 
-/** Unlocks notification audio after the first click or keypress anywhere in the app. */
+/** Unlocks chat/notification audio after the first click or keypress (silent). */
 export function NotificationAudioUnlock() {
   useEffect(() => {
-    bindNotificationAudioUnlock();
+    bindDefaultNotificationAudioUnlock();
   }, []);
   return null;
 }

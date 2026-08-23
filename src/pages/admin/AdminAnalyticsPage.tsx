@@ -41,6 +41,7 @@ export default function AdminAnalyticsPage() {
   const { data, isLoading, isFetching, isError, error } = useQuery({
     queryKey: ["admin", "analytics", period, apiFilters],
     queryFn: () => fetchAdminAnalytics(period, apiFilters),
+    refetchInterval: 15_000,
   });
 
   const pick = (rows: { date: string; count: number }[], date: string) =>
@@ -157,6 +158,12 @@ export default function AdminAnalyticsPage() {
               <CardHeader className="pb-2">
                 <CardDescription>{d.summaryUsers}</CardDescription>
                 <CardTitle className="font-serif text-2xl">{data.summary.new_users}</CardTitle>
+              </CardHeader>
+            </Card>
+            <Card className="border-border/60">
+              <CardHeader className="pb-2">
+                <CardDescription>{d.summaryOnlineMentors}</CardDescription>
+                <CardTitle className="font-serif text-2xl">{data.summary.online_mentors ?? 0}</CardTitle>
               </CardHeader>
             </Card>
             <Card className="border-border/60">

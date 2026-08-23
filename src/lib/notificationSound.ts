@@ -1,7 +1,7 @@
 /** Platform notification sounds: bundled clips, with a short generated ping as fallback. */
 
 import bookingAlertSrc from "@/assets/audio/booking-alert.mp4?url";
-import notificationSrc from "@/assets/audio/notification.mp4?url";
+import notificationSrc from "@/assets/audio/WhatsApp Audio 2026-08-17 at 04.34.36.mp4?url";
 
 export type NotificationSoundKind = "default" | "booking";
 
@@ -26,7 +26,6 @@ const COOLDOWN_MS: Record<NotificationSoundKind, number> = {
 };
 
 let audioCtx: AudioContext | null = null;
-let gestureBound = false;
 const lastPlayedAt: Record<NotificationSoundKind, number> = {
   default: 0,
   booking: 0,
@@ -125,21 +124,35 @@ function unlockElement(el: HTMLAudioElement) {
     });
 }
 
-export function unlockNotificationAudio() {
+export function unlockNotificationAudio(options?: { includeBooking?: boolean }) {
   const ctx = getAudioContext();
   if (ctx?.state === "suspended") {
     void ctx.resume();
   }
   for (const kind of Object.keys(SOURCES) as NotificationSoundKind[]) {
+    if (kind === "booking" && !options?.includeBooking) continue;
     const el = getCustomAudio(kind);
     if (el) unlockElement(el);
   }
 }
 
-export function bindNotificationAudioUnlock() {
-  if (typeof window === "undefined" || gestureBound) return;
-  gestureBound = true;
-  const unlock = () => unlockNotificationAudio();
+let coachBookingGestureBound = false;
+let defaultNotificationGestureBound = false;
+
+/** Unlocks chat/notification audio after gesture (default sound only). */
+export function bindDefaultNotificationAudioUnlock() {
+  if (typeof window === "undefined" || defaultNotificationGestureBound) return;
+  defaultNotificationGestureBound = true;
+  const unlock = () => unlockNotificationAudio({ includeBooking: false });
+  window.addEventListener("pointerdown", unlock, { passive: true });
+  window.addEventListener("keydown", unlock, { passive: true });
+}
+
+/** Unlocks booking alert audio after gesture — coach dashboard only. */
+export function bindCoachBookingAudioUnlock() {
+  if (typeof window === "undefined" || coachBookingGestureBound) return;
+  coachBookingGestureBound = true;
+  const unlock = () => unlockNotificationAudio({ includeBooking: true });
   window.addEventListener("pointerdown", unlock, { passive: true });
   window.addEventListener("keydown", unlock, { passive: true });
 }

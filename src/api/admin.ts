@@ -153,6 +153,7 @@ export interface AnalyticsResponse {
     rejected_mentors: number;
     pending_mentors: number;
     new_coach_applications: number;
+    online_mentors: number;
     page_views: number;
     unique_visitors: number;
     chats: number;

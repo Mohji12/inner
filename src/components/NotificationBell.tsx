@@ -15,8 +15,7 @@ import { fetchAdminCoachApplications, fetchAdminMentors } from "@/api/admin";
 import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification } from "@/api/notifications";
 import { listChatSessions } from "@/api/chat";
 import { useAuth } from "@/auth/AuthContext";
-import { useNotificationChime } from "@/hooks/useNotificationChime";
-import { playNotificationChime, isBookingNotificationType } from "@/lib/notificationSound";
+import { isBookingNotificationType, playNotificationChime } from "@/lib/notificationSound";
 import { cn } from "@/lib/utils";
 
 type BellItem = {
@@ -40,6 +39,11 @@ export function NotificationBell() {
     : role === "admin"
       ? "/admin/coach-applications"
       : "/user/notifications";
+
+  const toastSeenRef = useRef<Set<string>>(new Set());
+  const toastInitRef = useRef(false);
+  const notifSoundBaselineRef = useRef<Set<string> | null>(null);
+  const inboxUnreadBaselineRef = useRef<number | null>(null);
 
   const { data, isSuccess: actorNotifReady } = useQuery({
     queryKey: ["notifications", "recent"],
@@ -69,11 +73,6 @@ export function NotificationBell() {
     enabled: isAdmin,
   });
 
-  const seenIdsRef = useRef<Set<string>>(new Set());
-  const initializedRef = useRef(false);
-  const inboxUnreadInitRef = useRef(false);
-  const lastInboxUnreadRef = useRef(0);
-
   const actorItems = data?.notifications ?? [];
   const adminItems = useMemo<BellItem[]>(() => {
     if (!isAdmin) return [];
@@ -102,51 +101,46 @@ export function NotificationBell() {
   }, [isAdmin, applicationsQuery.data?.items, mentorsQuery.data?.items]);
 
   const displayItems: BellItem[] = isAdmin ? adminItems : actorItems;
-  const chimeItems = useMemo(
-    () =>
-      isAdmin
-        ? adminItems.map((item) => ({ id: item.id, sound: "default" as const }))
-        : actorItems
-            .filter((item) => !item.is_read)
-            .map((item) => ({
-              id: item.id,
-              sound:
-                role === "mentor" && isBookingNotificationType(item.type)
-                  ? ("booking" as const)
-                  : ("default" as const),
-            })),
-    [isAdmin, adminItems, actorItems, role],
-  );
-  const chimeReady = isAdmin
-    ? applicationsQuery.isSuccess && mentorsQuery.isSuccess
-    : isActor && actorNotifReady;
-
-  useNotificationChime(chimeItems, chimeReady);
 
   useEffect(() => {
-    seenIdsRef.current = new Set();
-    initializedRef.current = false;
-    inboxUnreadInitRef.current = false;
-    lastInboxUnreadRef.current = 0;
+    toastSeenRef.current = new Set();
+    toastInitRef.current = false;
+    notifSoundBaselineRef.current = null;
+    inboxUnreadBaselineRef.current = null;
   }, [role]);
 
   useEffect(() => {
     if (!isActor || !actorNotifReady) return;
     const list = data?.notifications ?? [];
-    const ids = new Set(list.map((n) => n.id));
-    if (!initializedRef.current) {
-      seenIdsRef.current = ids;
-      initializedRef.current = true;
+
+    if (notifSoundBaselineRef.current === null) {
+      notifSoundBaselineRef.current = new Set(list.map((n) => n.id));
+    } else {
+      let played = false;
+      for (const notif of list) {
+        if (notifSoundBaselineRef.current.has(notif.id)) continue;
+        notifSoundBaselineRef.current.add(notif.id);
+        if (notif.is_read || isBookingNotificationType(notif.type)) continue;
+        if (!played) {
+          playNotificationChime("default");
+          played = true;
+        }
+      }
+    }
+
+    if (!toastInitRef.current) {
+      toastSeenRef.current = new Set(list.map((n) => n.id));
+      toastInitRef.current = true;
       return;
     }
     for (const notif of list) {
-      if (seenIdsRef.current.has(notif.id) || notif.is_read) continue;
+      if (toastSeenRef.current.has(notif.id) || notif.is_read) continue;
       if (notif.type === "booking_started" || notif.type === "booking_confirmed") {
         toast(notif.title, { description: notif.body, duration: 10_000 });
       }
+      toastSeenRef.current.add(notif.id);
     }
-    seenIdsRef.current = ids;
-  }, [data?.notifications, isActor, actorNotifReady]);
+  }, [data?.notifications, isActor, actorNotifReady, role]);
 
   useEffect(() => {
     if (!isActor || !inboxQuery.isSuccess) return;
@@ -155,15 +149,14 @@ export function NotificationBell() {
       const count = role === "mentor" ? session.unread_count_mentor : session.unread_count_user;
       return sum + (Number(count) || 0);
     }, 0);
-    if (!inboxUnreadInitRef.current) {
-      lastInboxUnreadRef.current = unread;
-      inboxUnreadInitRef.current = true;
+    if (inboxUnreadBaselineRef.current === null) {
+      inboxUnreadBaselineRef.current = unread;
       return;
     }
-    if (unread > lastInboxUnreadRef.current) {
-      playNotificationChime();
+    if (unread > inboxUnreadBaselineRef.current) {
+      playNotificationChime("default");
     }
-    lastInboxUnreadRef.current = unread;
+    inboxUnreadBaselineRef.current = unread;
   }, [inboxQuery.data?.sessions, inboxQuery.isSuccess, role, isActor]);
 
   const markAsRead = useMutation({

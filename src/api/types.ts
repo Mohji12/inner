@@ -97,6 +97,8 @@ export interface MentorPublic {
   last_seen_at: string | null;
   /** Next planned platform window start (UTC ISO), if coach posted one */
   next_availability_at?: string | null;
+  /** End of that next planned window (UTC ISO) */
+  next_availability_end_at?: string | null;
   /** True while a posted time-off block covers now */
   unavailable_now?: boolean;
   /** Current time-off if active, otherwise the next upcoming block */

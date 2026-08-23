@@ -946,7 +946,7 @@ Je erkent en accepteert deze voorwaarden op het moment van registratie.
       saving: "Opslaan…",
       timezoneHint: "Tijden worden opgeslagen in je profieltijdzone",
       upcomingTitle: "Komende vensters",
-      upcomingHint: "Gebruikers zien dit wanneer ze willen boeken terwijl je offline of bezet bent.",
+      upcomingHint: "Deze tijden staan op je openbare kaart en profiel, zodat gebruikers weten wanneer ze je online kunnen verwachten.",
       loading: "Laden…",
       empty: "Nog geen komende vensters.",
       remove: "Verwijderen",
@@ -1015,6 +1015,9 @@ Je erkent en accepteert deze voorwaarden op het moment van registratie.
       seeWhenAvailable: "Bekijk wanneer beschikbaar",
       dismiss: "Begrepen",
       bookWhenOnline: "Je kunt een live sessie boeken zodra de coach online is.",
+      platformAvailability: "Platformbeschikbaarheid",
+      platformAvailabilityHint: "Tijden waarop deze coach van plan is online te zijn.",
+      nextOnPlatform: "Volgende op het platform",
     },
     contactPage: {
       label: "Contact",

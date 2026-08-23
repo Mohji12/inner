@@ -40,6 +40,7 @@ export const adminDashboardOverrides: Partial<Record<Language, DeepPartial<AppCo
       summaryPaidPayments: "Betaalde betalingen",
       summaryPendingPayments: "Openstaande betalingen",
       summaryActiveMentors: "Actieve coaches",
+      summaryOnlineMentors: "Coaches nu online",
       summaryPendingMentors: "Wacht op goedkeuring",
       summaryRejectedMentors: "Afgewezen coaches",
       summaryNewCoachApplications: "Nieuwe aanmeldingen",

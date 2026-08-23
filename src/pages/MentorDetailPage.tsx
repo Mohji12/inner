@@ -96,8 +96,8 @@ const MentorDetailPage = () => {
 
   const { data: upcomingWindows = [] } = useQuery({
     queryKey: ["mentor", mentorId, "availability-windows"],
-    queryFn: () => listMentorAvailabilityWindows(mentorId!, 5),
-    enabled: Boolean(mentorId) && (mentorOffline || mentorBusy || mentorUnavailable || availabilityOpen),
+    queryFn: () => listMentorAvailabilityWindows(mentorId!, 8),
+    enabled: Boolean(mentorId),
   });
 
   const { data: pricing } = useQuery({
@@ -344,6 +344,35 @@ const MentorDetailPage = () => {
               <section>
                 <p className="mb-2 text-sm uppercase tracking-widest text-accent">{md.about}</p>
                 <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground sm:text-base">{mentor.bio}</p>
+              </section>
+            ) : null}
+
+            {upcomingWindows.length > 0 ? (
+              <section className="rounded-xl border border-border/70 p-4">
+                <p className="mb-1 text-sm uppercase tracking-widest text-accent">{md.platformAvailability}</p>
+                <p className="mb-3 text-xs text-muted-foreground">{md.platformAvailabilityHint}</p>
+                <ul className="space-y-2">
+                  {upcomingWindows.map((w) => (
+                    <li
+                      key={w.id}
+                      className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm"
+                    >
+                      <span className="font-medium">
+                        {formatDateLocal(
+                          w.start_at_utc,
+                          { weekday: "short", month: "short", day: "numeric", year: "numeric" },
+                          effectiveTimeZone,
+                        )}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {" · "}
+                        {formatTimeLocal(w.start_at_utc, undefined, effectiveTimeZone)}
+                        {" – "}
+                        {formatTimeLocal(w.end_at_utc, undefined, effectiveTimeZone)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </section>
             ) : null}
 

@@ -25,4 +25,21 @@ class PresenceService:
             return False
         return True
 
+    def count_online(self, role: str | None = None) -> int:
+        """Return how many subjects are currently online (optionally filtered by role)."""
+        now = datetime.now(timezone.utc)
+        stale: list[Tuple[str, str]] = []
+        count = 0
+        for key, last_heartbeat in self._online_users.items():
+            sub, user_role = key
+            if role is not None and user_role != role:
+                continue
+            if (now - last_heartbeat).total_seconds() > 60:
+                stale.append(key)
+                continue
+            count += 1
+        for key in stale:
+            self.set_offline(*key)
+        return count
+
 presence_service = PresenceService()

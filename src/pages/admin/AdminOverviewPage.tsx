@@ -18,6 +18,7 @@ import {
   Eye,
   FileUser,
   MessageSquare,
+  Radio,
   Star,
   UserCheck,
   UserRound,
@@ -70,6 +71,7 @@ export default function AdminOverviewPage() {
   const { data, isLoading, isFetching, isError, error } = useQuery({
     queryKey: ["admin", "analytics", "month", apiFilters],
     queryFn: () => fetchAdminAnalytics("month", apiFilters),
+    refetchInterval: 15_000,
   });
 
   const summary = data?.summary;
@@ -101,6 +103,11 @@ export default function AdminOverviewPage() {
 
   const coachCards: KpiCard[] = summary
     ? [
+        {
+          label: d.summaryOnlineMentors,
+          value: summary.online_mentors ?? 0,
+          icon: Radio,
+        },
         { label: d.summaryMentors, value: summary.new_mentors, icon: Users },
         { label: d.summaryTotalMentors, value: summary.total_mentors, icon: Users },
         { label: d.summaryActiveMentors, value: summary.active_mentors, icon: UserCheck },

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { unknownListToStrings } from "@/lib/dbJsonFields";
 import { normalizeCoachCardVisibility } from "@/lib/coachCardVisibility";
 import { formatUnavailabilityLine } from "@/lib/mentorUnavailability";
+import { formatDateLocal, formatTimeLocal } from "@/lib/timeZone";
 import { useEffectiveTimeZone } from "@/hooks/useEffectiveTimeZone";
 import { useLanguage } from "@/i18n/LanguageContext";
 
@@ -48,6 +49,7 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
   const auth = useAuthOptional();
   const { t } = useLanguage();
   const u = t.app.mentorUnavailability;
+  const md = t.app.mentorDetail;
   const effectiveTimeZone = useEffectiveTimeZone();
   const role = auth?.role ?? null;
   const userAccessToken = auth?.userAccessToken ?? null;
@@ -56,6 +58,23 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
     unavailableNow: availability === "unavailable",
     timeZone: effectiveTimeZone,
   });
+  const nextAvailabilityLine = mentor.next_availability_at
+    ? [
+        formatDateLocal(
+          mentor.next_availability_at,
+          { weekday: "short", month: "short", day: "numeric" },
+          effectiveTimeZone,
+        ),
+        [
+          formatTimeLocal(mentor.next_availability_at, undefined, effectiveTimeZone),
+          mentor.next_availability_end_at
+            ? formatTimeLocal(mentor.next_availability_end_at, undefined, effectiveTimeZone)
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" – "),
+      ].join(" · ")
+    : null;
   const cardVis = normalizeCoachCardVisibility(mentor.public_card_visibility);
 
   const expertise = unknownListToStrings(mentor.expertise_areas);
@@ -143,6 +162,11 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
               {unavailabilityLine ? (
                 <p className="text-right text-[10px] font-medium leading-tight text-primary-foreground/85">
                   {unavailabilityLine}
+                </p>
+              ) : null}
+              {nextAvailabilityLine ? (
+                <p className="text-right text-[10px] font-medium leading-tight text-primary-foreground/85">
+                  {md.nextOnPlatform}: {nextAvailabilityLine}
                 </p>
               ) : null}
             </div>

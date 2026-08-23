@@ -75,6 +75,7 @@ import MetaPixel from "@/components/MetaPixel";
 import SiteVisitTracker from "@/components/SiteVisitTracker";
 import SessionKeepAlive from "@/components/SessionKeepAlive";
 import { NotificationAudioUnlock } from "@/components/NotificationAudioUnlock";
+import { CoachBookingAlert } from "@/components/CoachBookingAlert";
 
 const queryClient = new QueryClient();
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
@@ -88,6 +89,7 @@ const App = () => (
             <TooltipProvider>
               <SessionKeepAlive />
               <NotificationAudioUnlock />
+              <CoachBookingAlert />
               <MentorPresenceHeartbeat />
               <UserPresenceHeartbeat />
               <Toaster />

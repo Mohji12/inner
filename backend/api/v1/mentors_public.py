@@ -78,6 +78,30 @@ def _unavailability_block(snap) -> UnavailabilityPublicBlock | None:
     )
 
 
+def _load_next_availability_windows(
+    db: DbSession,
+    mentor_ids: list[str],
+) -> dict[str, MentorAvailabilityWindow]:
+    """Next future platform window per mentor (start ascending)."""
+    if not mentor_ids:
+        return {}
+    now = datetime.now(timezone.utc)
+    rows = (
+        db.query(MentorAvailabilityWindow)
+        .filter(
+            MentorAvailabilityWindow.mentor_id.in_(mentor_ids),
+            MentorAvailabilityWindow.end_at_utc > now,
+        )
+        .order_by(MentorAvailabilityWindow.start_at_utc.asc())
+        .all()
+    )
+    out: dict[str, MentorAvailabilityWindow] = {}
+    for row in rows:
+        if row.mentor_id not in out:
+            out[row.mentor_id] = row
+    return out
+
+
 def _mentor_public_out(
     mentor: Mentor,
     busy_mentor_ids: set[str],
@@ -85,6 +109,7 @@ def _mentor_public_out(
     session_pricing_active: bool,
     lang: str = "en",
     unavailability_rows: list[MentorUnavailability] | None = None,
+    next_window: MentorAvailabilityWindow | None = None,
 ) -> MentorPublicOut:
     base = MentorPublicOut.model_validate(mentor)
     is_online = presence_service.is_online(mentor.id, "mentor")
@@ -113,6 +138,8 @@ def _mentor_public_out(
         "session_packages_available": packages_ok,
         "unavailable_now": unavailable_now,
         "unavailability": _unavailability_block(unavail_snap),
+        "next_availability_at": next_window.start_at_utc if next_window else None,
+        "next_availability_end_at": next_window.end_at_utc if next_window else None,
     })
     visibility = normalize_card_visibility(getattr(mentor, "public_card_visibility", None))
     return apply_card_visibility_to_public(out, visibility)
@@ -187,7 +214,9 @@ def list_mentors(
     busy = mentor_ids_with_live_chat(db)
     rows = query.all()
     active_pricing = bool(pricing.is_active)
-    umap = load_unavailability_by_mentor(db, [m.id for m in rows])
+    mentor_ids = [m.id for m in rows]
+    umap = load_unavailability_by_mentor(db, mentor_ids)
+    next_windows = _load_next_availability_windows(db, mentor_ids)
     public_rows = [
         _mentor_public_out(
             m,
@@ -195,6 +224,7 @@ def list_mentors(
             session_pricing_active=active_pricing,
             lang=lang,
             unavailability_rows=umap.get(m.id, []),
+            next_window=next_windows.get(m.id),
         )
         for m in rows
     ]
@@ -249,12 +279,14 @@ def get_mentor(mentor_id: str, db: DbSession, lang: RequestLang) -> MentorDetail
     busy = mentor_ids_with_live_chat(db)
     pricing = get_platform_pricing(db)
     umap = load_unavailability_by_mentor(db, [mentor.id])
+    next_windows = _load_next_availability_windows(db, [mentor.id])
     out = _mentor_public_out(
         mentor,
         busy,
         session_pricing_active=bool(pricing.is_active),
         lang=lang,
         unavailability_rows=umap.get(mentor.id, []),
+        next_window=next_windows.get(mentor.id),
     )
 
     base_detail = MentorDetailOut.model_validate(mentor)
@@ -264,17 +296,6 @@ def get_mentor(mentor_id: str, db: DbSession, lang: RequestLang) -> MentorDetail
     # Never expose company / KVK on the public coach profile.
     detail["current_company"] = None
     detail["kvk_number"] = None
-    now = datetime.now(timezone.utc)
-    next_win = (
-        db.query(MentorAvailabilityWindow)
-        .filter(
-            MentorAvailabilityWindow.mentor_id == mentor.id,
-            MentorAvailabilityWindow.end_at_utc > now,
-        )
-        .order_by(MentorAvailabilityWindow.start_at_utc.asc())
-        .first()
-    )
-    detail["next_availability_at"] = next_win.start_at_utc if next_win else None
     return MentorDetailOut.model_validate(detail)
 
 
@@ -393,6 +414,7 @@ def get_similar_mentors(mentor_id: str, db: DbSession, lang: RequestLang, limit:
         rows.extend(more_rows)
 
     umap = load_unavailability_by_mentor(db, [m.id for m in rows])
+    next_windows = _load_next_availability_windows(db, [m.id for m in rows])
     public_rows = [
         _mentor_public_out(
             m,
@@ -400,6 +422,7 @@ def get_similar_mentors(mentor_id: str, db: DbSession, lang: RequestLang, limit:
             session_pricing_active=active_pricing,
             lang=lang,
             unavailability_rows=umap.get(m.id, []),
+            next_window=next_windows.get(m.id),
         )
         for m in rows
     ]
