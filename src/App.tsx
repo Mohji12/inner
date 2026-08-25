@@ -87,14 +87,14 @@ const App = () => (
         <LanguageProvider>
           <AccessibilityProvider>
             <TooltipProvider>
-              <SessionKeepAlive />
-              <NotificationAudioUnlock />
-              <CoachBookingAlert />
-              <MentorPresenceHeartbeat />
-              <UserPresenceHeartbeat />
               <Toaster />
               <Sonner />
               <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                <SessionKeepAlive />
+                <NotificationAudioUnlock />
+                <CoachBookingAlert />
+                <MentorPresenceHeartbeat />
+                <UserPresenceHeartbeat />
                 <MetaPixel />
                 <SiteVisitTracker />
                 <Routes>

@@ -8,6 +8,7 @@ from services.mentor_monthly_fee_service import generate_monthly_invoices_for_pr
 from database import SessionLocal
 from services.mentor_presence_tracking_service import send_weekly_presence_warnings
 from services.booking_slot_service import expire_stale_pending_bookings
+from services.admin_report_service import send_daily_analytics_report
 
 try:
     from tasks.marketplace_tasks import process_outbox, reconcile_webhook_stuck, retry_failed_payouts
@@ -89,6 +90,15 @@ def start_scheduler():
         trigger=IntervalTrigger(hours=24),
         id="mentor_weekly_presence_warnings_job",
         name="Coach weekly presence warnings",
+        replace_existing=True,
+    )
+
+    # Daily admin analytics report
+    scheduler.add_job(
+        send_daily_analytics_report,
+        trigger=IntervalTrigger(hours=24),
+        id="send_daily_analytics_report_job",
+        name="Send daily admin analytics report",
         replace_existing=True,
     )
 
