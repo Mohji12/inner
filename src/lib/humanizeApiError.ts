@@ -1,0 +1,37 @@
+const PATTERNS: Array<[RegExp, string]> = [
+  [/please verify your email/i, "Please verify your email before signing in. Check your inbox for the code."],
+  [/pending admin approval/i, "Your coach account is waiting for admin approval. You'll be able to sign in once approved."],
+  [/coach account was rejected/i, "Your coach account was rejected. Please contact support."],
+  [/unauthorized|invalid email or password/i, "Incorrect email or password. Please try again. Coaches must use the Coach login option."],
+  [/account is not active/i, "This account is not active. Please contact support."],
+  [/forbidden|not allowed/i, "You don't have permission to do that."],
+  [/not found/i, "We couldn't find what you're looking for."],
+  [/network|failed to fetch|load failed/i, "Connection problem. Check your internet and try again."],
+  [/mollie create payment failed/i, "Payment could not be started. Please try again in a moment."],
+  [/mentor_unavailable|marked as unavailable/i, "This coach is unavailable right now. Try again when their time off ends."],
+  [/mentor_occupied|marked as occupied/i, "This coach is occupied and not taking new sessions right now."],
+  [/offline/i, "This coach is offline. Book when they are online on the platform."],
+  [/mentor is currently in a chat|mentor_in_chat/i, "This coach is in another session. Try again shortly."],
+  [/an account with this email already exists/i, "This email is already registered. Sign in with your password first."],
+  [/this coach account uses a password/i, "Sign in with your password first to link Google to your coach account."],
+  [/image size should be less than|image is more than|must be at most/i, "Image size should be less than 2 MB."],
+  [/file must be an image/i, "Please choose a JPG, PNG, WebP, or GIF image."],
+  [/invalid or expired/i, "That code has expired or is incorrect. Request a new one and try again."],
+];
+
+export function humanizeApiError(error: unknown, fallback = "Something went wrong. Please try again."): string {
+  const raw = error instanceof Error ? error.message : String(error ?? "");
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return fallback;
+  }
+  for (const [pattern, message] of PATTERNS) {
+    if (pattern.test(trimmed)) {
+      return message;
+    }
+  }
+  if (trimmed.length > 140 || /traceback|sqlalchemy|httpx|HTTPException/i.test(trimmed)) {
+    return fallback;
+  }
+  return trimmed;
+}

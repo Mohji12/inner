@@ -1,0 +1,546 @@
+from decimal import Decimal
+from fastapi import APIRouter, Depends, Request, HTTPException, status
+from sqlalchemy.orm import Session
+from pydantic import BaseModel
+import logging
+from datetime import datetime, timezone
+
+from database import get_db
+from api.deps import get_current_user, AnyActorDep, AnyActor
+from models.user import User
+from models.chat_purchase import ChatPurchase
+from models.mentor_onboarding_payment import MentorOnboardingPayment
+from models.mentor_monthly_invoice import MentorMonthlyInvoice
+from models.booking import Booking
+from models.marketplace import AuditLog
+from models.payment import Payment
+from core.booking_states import PAYMENT_PAID, PAYMENT_RECORD_FAILED, PAYMENT_RECORD_PENDING, PAYMENT_RECORD_SUCCEEDED
+from core.security import new_uuid
+from services.mollie_service import (
+    MollieServiceError,
+    create_mollie_payment,
+    get_mollie_payment,
+    parse_webhook_payment_id,
+    process_mollie_webhook_by_payment_id,
+    resolve_mollie_webhook_url,
+    resolve_frontend_return_origin,
+    verify_mollie_webhook_signature,
+)
+from services.ledger_service import q2
+from services.wallet_topup_service import (
+    WALLET_TOPUP_CURRENCY,
+    WALLET_TOPUP_MAX_EUR,
+    WALLET_TOPUP_MIN_EUR,
+    wallet_topup_charge_eur,
+    wallet_topup_fee_eur,
+)
+from services.wallet_payment_service import WalletPaymentError, pay_booking_with_wallet
+from services.marketplace_service import (
+    audit_log,
+    record_webhook_event,
+    verify_generic_hmac_signature,
+)
+from services.promo_service import validate_promo_code, calculate_discount, apply_promo_code
+from services.mollie_service import _mark_booking_paid
+from services.pricing_service import PricingError, booking_base_eur_amount, booking_transaction_fee_eur
+from core.config import settings
+from services.fx_checkout import (
+    FxCheckoutError,
+    FxUpstreamError,
+    eur_to_checkout_amount,
+    normalized_checkout_currency_list,
+)
+
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/payments", tags=["Payments"])
+
+
+class CheckoutCurrenciesResponse(BaseModel):
+    currencies: list[str]
+
+
+class CreateIntentRequest(BaseModel):
+    booking_id: str
+    promo_code: str | None = None
+    checkout_currency: str | None = None
+    return_origin: str | None = None
+
+
+class CreateIntentResponse(BaseModel):
+    checkout_url: str
+    payment_id: str
+    amount: float
+    currency: str
+
+
+class BookingCheckoutPreview(BaseModel):
+    session_amount_eur: float
+    transaction_fee_eur: float
+    total_eur: float
+
+
+class SyncMolliePaymentIn(BaseModel):
+    mollie_payment_id: str
+
+
+class WalletTopupIntentIn(BaseModel):
+    amount: Decimal
+    currency: str = "EUR"
+    return_origin: str | None = None
+    # Relative app path to restore after Mollie (e.g. /payment/...?bookingId=).
+    return_path: str | None = None
+
+
+def _safe_wallet_return_path(raw: str | None) -> str | None:
+    if not raw:
+        return None
+    path = raw.strip()
+    if not path.startswith("/") or path.startswith("//") or "://" in path:
+        return None
+    if len(path) > 512:
+        return None
+    return path
+
+
+class WalletTopupIntentOut(BaseModel):
+    checkout_url: str
+    mollie_payment_id: str
+    amount: Decimal
+    charge_amount: Decimal
+    transaction_fee: Decimal
+    currency: str
+
+
+class PayWithWalletIn(BaseModel):
+    booking_id: str
+    promo_code: str | None = None
+
+
+class PayWithWalletOut(BaseModel):
+    checkout_url: str
+    payment_id: str
+    amount: float
+    currency: str
+    paid_from: str = "wallet"
+
+
+def _ensure_actor_can_sync_mollie_payment(db: Session, actor: AnyActor, payment_id: str) -> None:
+    if actor.role == "admin":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Admin cannot sync via this endpoint")
+    bp = db.query(Payment).filter(Payment.transaction_id == payment_id).first()
+    if bp:
+        if actor.role != "user" or bp.user_id != actor.subject_id:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Not your payment")
+        return
+    cp = db.query(ChatPurchase).filter(ChatPurchase.transaction_id == payment_id).first()
+    if cp:
+        if actor.role != "user" or cp.user_id != actor.subject_id:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Not your chat payment")
+        return
+    ob = db.query(MentorOnboardingPayment).filter(MentorOnboardingPayment.mollie_payment_id == payment_id).first()
+    if ob:
+        if actor.role != "mentor" or ob.mentor_id != actor.subject_id:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Not your onboarding payment")
+        return
+    inv = db.query(MentorMonthlyInvoice).filter(MentorMonthlyInvoice.mollie_payment_id == payment_id).first()
+    if inv:
+        if actor.role != "mentor" or inv.mentor_id != actor.subject_id:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Not your invoice payment")
+        return
+    try:
+        payment_data = get_mollie_payment(payment_id)
+    except MollieServiceError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Payment not tied to your account") from None
+    metadata = payment_data.get("metadata") or {}
+    if str(metadata.get("kind") or "") == "wallet_topup":
+        if actor.role != "user" or str(metadata.get("user_id") or "") != actor.subject_id:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Not your payment")
+        return
+    raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Payment not tied to your account")
+
+
+@router.post("/wallet/topup-intent", response_model=WalletTopupIntentOut)
+def create_wallet_topup_intent(
+    request: Request,
+    body: WalletTopupIntentIn,
+    actor: AnyActorDep,
+    db: Session = Depends(get_db),
+) -> WalletTopupIntentOut:
+    if actor.role != "user":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Only users can top up wallet")
+    amount = q2(body.amount)
+    if amount < WALLET_TOPUP_MIN_EUR:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail=f"Amount must be at least {WALLET_TOPUP_MIN_EUR} EUR",
+        )
+    if amount > WALLET_TOPUP_MAX_EUR:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail=f"Amount must be at most {WALLET_TOPUP_MAX_EUR} EUR",
+        )
+    currency = (body.currency or WALLET_TOPUP_CURRENCY).strip().upper()
+    if currency != WALLET_TOPUP_CURRENCY:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Wallet top-up currency must be EUR")
+    fee = wallet_topup_fee_eur()
+    charge_amount = wallet_topup_charge_eur(amount)
+    origin = resolve_frontend_return_origin(request, claimed_origin=body.return_origin)
+    redirect_url = f"{origin}/user/wallet?topup=success"
+    return_path = _safe_wallet_return_path(body.return_path)
+    if return_path:
+        from urllib.parse import quote
+
+        redirect_url = f"{redirect_url}&returnTo={quote(return_path, safe='')}"
+    webhook_url = resolve_mollie_webhook_url(request)
+    try:
+        mollie_payment_id, checkout_url = create_mollie_payment(
+            amount=charge_amount,
+            currency=currency,
+            description=f"Wallet topup {actor.subject_id[:8]}",
+            redirect_url=redirect_url,
+            webhook_url=webhook_url,
+            metadata={
+                "kind": "wallet_topup",
+                "user_id": actor.subject_id,
+                "amount": str(amount),
+                "credit_amount": str(amount),
+                "charge_amount": str(charge_amount),
+                "transaction_fee": str(fee),
+                "currency": currency,
+            },
+        )
+    except MollieServiceError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+    audit_log(
+        db,
+        actor_role="user",
+        actor_id=actor.subject_id,
+        action="wallet.topup.intent_created",
+        entity_type="mollie_payment",
+        entity_id=mollie_payment_id,
+        details={
+            "amount": str(amount),
+            "charge_amount": str(charge_amount),
+            "transaction_fee": str(fee),
+            "currency": currency,
+        },
+    )
+    db.commit()
+    return WalletTopupIntentOut(
+        checkout_url=checkout_url,
+        mollie_payment_id=mollie_payment_id,
+        amount=amount,
+        charge_amount=charge_amount,
+        transaction_fee=fee,
+        currency=currency,
+    )
+
+
+@router.post("/sync-mollie-payment")
+def sync_mollie_payment_route(
+    body: SyncMolliePaymentIn,
+    actor: AnyActorDep,
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    """
+    When Mollie cannot reach webhookUrl (SPA-only Amplify host, localhost, etc.), the browser
+    can call this after redirect so bookings/chats finalize from Mollie API state.
+    """
+    pid = (body.mollie_payment_id or "").strip()
+    if not pid:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="mollie_payment_id required")
+    _ensure_actor_can_sync_mollie_payment(db, actor, pid)
+    return process_mollie_webhook_by_payment_id(db, pid)
+
+
+@router.post("/sync-latest-wallet-topup")
+def sync_latest_wallet_topup(
+    actor: AnyActorDep,
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    """After Mollie redirect, credit a paid top-up even if the browser lost the payment id."""
+    if actor.role != "user":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Only users can sync wallet top-up")
+    rows = (
+        db.query(AuditLog)
+        .filter(
+            AuditLog.actor_id == actor.subject_id,
+            AuditLog.action == "wallet.topup.intent_created",
+        )
+        .order_by(AuditLog.created_at.desc())
+        .limit(8)
+        .all()
+    )
+    last = {"status": "none", "type": "wallet_topup"}
+    for row in rows:
+        pid = (row.entity_id or "").strip()
+        if not pid:
+            continue
+        try:
+            last = process_mollie_webhook_by_payment_id(db, pid)
+        except MollieServiceError:
+            continue
+        if str(last.get("status") or "").lower() == "paid":
+            return last
+    return last
+
+
+@router.get("/checkout-currencies", response_model=CheckoutCurrenciesResponse)
+def checkout_currencies():
+    return CheckoutCurrenciesResponse(currencies=normalized_checkout_currency_list())
+
+
+@router.get("/booking-checkout-preview", response_model=BookingCheckoutPreview)
+def booking_checkout_preview(
+    booking_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    if booking.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    mentor = booking.mentor
+    try:
+        session_amount = booking_base_eur_amount(db, mentor=mentor, duration_minutes=booking.duration)
+    except PricingError as e:
+        raise HTTPException(status_code=400, detail=e.message) from e
+    transaction_fee = booking_transaction_fee_eur()
+    return BookingCheckoutPreview(
+        session_amount_eur=float(session_amount),
+        transaction_fee_eur=float(transaction_fee),
+        total_eur=float(session_amount + transaction_fee),
+    )
+
+
+@router.post("/create-intent", response_model=CreateIntentResponse)
+def create_intent(
+    request: Request,
+    req: CreateIntentRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    booking = db.query(Booking).filter(Booking.id == req.booking_id).with_for_update().first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+        
+    if booking.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    if booking.payment_status == PAYMENT_PAID:
+        return CreateIntentResponse(
+            checkout_url=f"/booking/thank-you?bookingId={booking.id}",
+            payment_id=booking.payment_id or "",
+            amount=0.0,
+            currency="EUR",
+        )
+
+    mentor = booking.mentor
+    try:
+        base_amount = booking_base_eur_amount(db, mentor=mentor, duration_minutes=booking.duration)
+    except PricingError as e:
+        raise HTTPException(status_code=400, detail=e.message) from e
+    discount_amount = Decimal("0.0")
+    transaction_fee = booking_transaction_fee_eur()
+    total_due = base_amount + transaction_fee
+
+    if req.promo_code:
+        try:
+            promo = validate_promo_code(
+                db,
+                req.promo_code,
+                total_due,
+                current_user.id,
+                mentor.id,
+                duration_minutes=booking.duration,
+            )
+            discount_amount = calculate_discount(promo, total_due)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    final_amount = max(Decimal("0.0"), total_due - discount_amount)
+    promo_applied = bool((req.promo_code or "").strip())
+
+    existing_pending = (
+        db.query(Payment)
+        .filter(
+            Payment.booking_id == booking.id,
+            Payment.status == PAYMENT_RECORD_PENDING,
+        )
+        .order_by(Payment.created_at.desc())
+        .first()
+    )
+    if existing_pending and existing_pending.transaction_id:
+        pending_eur = (
+            existing_pending.amount_base_eur
+            if existing_pending.amount_base_eur is not None
+            else existing_pending.amount
+        )
+        can_reuse = (
+            not promo_applied
+            and str(existing_pending.payment_gateway or "").strip().lower() == "mollie"
+            and Decimal(str(pending_eur or 0)) == final_amount
+        )
+        if can_reuse:
+            try:
+                mollie_data = get_mollie_payment(existing_pending.transaction_id)
+                if mollie_data.get("status") == "open":
+                    checkout_href = (mollie_data.get("_links") or {}).get("checkout", {}).get("href")
+                    if checkout_href:
+                        return CreateIntentResponse(
+                            checkout_url=checkout_href,
+                            payment_id=existing_pending.transaction_id,
+                            amount=float(existing_pending.amount),
+                            currency=existing_pending.currency,
+                        )
+            except MollieServiceError:
+                pass
+        else:
+            existing_pending.status = PAYMENT_RECORD_FAILED
+
+    if final_amount <= 0:
+        # Bypass Mollie when session and fee are fully covered (e.g. future fee-waiving promos).
+        fake_payment_id = f"promo_{new_uuid().replace('-', '')}"
+        payment = Payment(
+            id=new_uuid(),
+            user_id=current_user.id,
+            booking_id=booking.id,
+            amount=Decimal("0.0"),
+            amount_base_eur=Decimal("0.0"),
+            currency="EUR",
+            payment_gateway="promo",
+            transaction_id=fake_payment_id,
+            status="pending",
+            created_at=datetime.now(timezone.utc),
+        )
+        db.add(payment)
+
+        _mark_booking_paid(db, payment)
+
+        if req.promo_code:
+            apply_promo_code(db, req.promo_code, user_id=current_user.id, booking_id=booking.id)
+
+        db.commit()
+
+        return CreateIntentResponse(
+            checkout_url=f"/booking/thank-you?bookingId={booking.id}",
+            payment_id=fake_payment_id,
+            amount=0.0,
+            currency="EUR",
+        )
+
+    ccy_req = (req.checkout_currency or "EUR").strip()
+    try:
+        charged, checkout_ccy, fx_rate = eur_to_checkout_amount(final_amount, ccy_req)
+    except FxCheckoutError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except FxUpstreamError as e:
+        raise HTTPException(status_code=502, detail=str(e)) from e
+
+    try:
+        redirect_url = (
+            f"{resolve_frontend_return_origin(request, claimed_origin=req.return_origin)}"
+            f"/booking/thank-you?bookingId={booking.id}"
+        )
+        webhook_url = resolve_mollie_webhook_url(request)
+        mollie_payment_id, checkout_url = create_mollie_payment(
+            amount=charged,
+            currency=checkout_ccy,
+            description=f"Booking payment {booking.id[:8]}",
+            redirect_url=redirect_url,
+            webhook_url=webhook_url,
+            metadata={
+                "kind": "booking",
+                "booking_id": booking.id,
+                "user_id": current_user.id,
+                "promo_code": req.promo_code or ""
+            }
+        )
+        payment = Payment(
+            id=new_uuid(),
+            user_id=current_user.id,
+            booking_id=booking.id,
+            amount=charged,
+            amount_base_eur=final_amount,
+            currency=checkout_ccy,
+            fx_rate_used=fx_rate if checkout_ccy != "EUR" else None,
+            payment_gateway="mollie",
+            transaction_id=mollie_payment_id,
+            status="pending",
+            created_at=datetime.now(timezone.utc),
+        )
+        db.add(payment)
+        db.commit()
+        
+        return CreateIntentResponse(
+            checkout_url=checkout_url,
+            payment_id=mollie_payment_id,
+            amount=float(charged),
+            currency=checkout_ccy
+        )
+    except MollieServiceError as e:
+        logging.getLogger(__name__).warning("Mollie create payment failed: %s", e)
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to start checkout. Please try again.",
+        ) from e
+
+
+@router.post("/pay-with-wallet", response_model=PayWithWalletOut)
+def pay_with_wallet(
+    req: PayWithWalletIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        result = pay_booking_with_wallet(
+            db,
+            user_id=current_user.id,
+            booking_id=req.booking_id,
+            promo_code=req.promo_code,
+        )
+        db.commit()
+    except WalletPaymentError as e:
+        db.rollback()
+        raise HTTPException(status_code=e.status_code, detail=str(e)) from e
+    except Exception:
+        db.rollback()
+        raise
+    return PayWithWalletOut(
+        checkout_url=f"/booking/thank-you?bookingId={result.booking_id}",
+        payment_id=result.payment.transaction_id or result.payment.id,
+        amount=float(result.amount),
+        currency=result.currency,
+        paid_from="wallet",
+    )
+
+
+@router.post("/webhook")
+async def mollie_webhook(request: Request, db: Session = Depends(get_db)):
+    payload = await request.body()
+    sig_header = request.headers.get("x-mollie-signature")
+    sig_valid = verify_mollie_webhook_signature(payload, sig_header) and verify_generic_hmac_signature(
+        secret=(settings.mollie_webhook_secret or "").strip(),
+        payload=payload,
+        signature=sig_header,
+    )
+    if not sig_valid:
+        raise HTTPException(status_code=400, detail="Invalid webhook signature")
+    form = await request.form()
+    payment_id = parse_webhook_payment_id(payload, dict(form))
+    event = record_webhook_event(
+        db,
+        provider="mollie",
+        event_key=payment_id,
+        event_type="payment.status",
+        payload=payload,
+        signature_valid=sig_valid,
+    )
+    if event.processing_status == "processed":
+        return {"status": "duplicate", "payment_id": payment_id}
+    out = process_mollie_webhook_by_payment_id(db, payment_id)
+    event.processing_status = "processed"
+    event.processed_at = datetime.now(timezone.utc)
+    db.commit()
+    return out

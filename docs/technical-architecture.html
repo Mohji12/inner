@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Mijn Levenspad - Technical Architecture</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    if (typeof mermaid === "undefined") {
+      var n = document.getElementById("diagram-status");
+      if (n) n.textContent = "Mermaid CDN failed to load. Check internet connection, then refresh.";
+      return;
+    }
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: "neutral",
+      securityLevel: "loose",
+      flowchart: { htmlLabels: false },
+      er: { useMaxWidth: true },
+      sequence: { useMaxWidth: true }
+    });
+    mermaid.run({ querySelector: ".mermaid" }).then(function () {
+      var n = document.getElementById("diagram-status");
+      if (n) n.textContent = "Diagrams rendered. Use Print / Save as PDF when ready.";
+    }).catch(function (err) {
+      console.error(err);
+      var n = document.getElementById("diagram-status");
+      if (n) n.textContent = "Some diagrams failed to render. Open the browser console for details.";
+    });
+  });
+</script>
+<style>
+  :root {
+    --ink: #1a1f16;
+    --muted: #5a6454;
+    --line: #d5d9cf;
+    --bg: #f7f6f1;
+    --card: #ffffff;
+    --accent: #4a5d3a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.55;
+    font-size: 14px;
+  }
+  .toolbar {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; gap: 12px; align-items: center; justify-content: space-between;
+    padding: 12px 20px;
+    background: #2f3b28; color: #fff;
+  }
+  .toolbar button {
+    background: #e8efe0; color: #1a1f16; border: 0; border-radius: 8px;
+    padding: 8px 14px; font-weight: 600; cursor: pointer;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 28px 20px 80px; }
+  h1 { font-size: 28px; margin: 0 0 8px; color: var(--accent); }
+  h2 { font-size: 20px; margin-top: 36px; padding-top: 12px; border-top: 1px solid var(--line); }
+  h3 { font-size: 16px; margin-top: 22px; }
+  p { margin: 10px 0; }
+  a { color: var(--accent); }
+  code { background: #eef1ea; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  pre:not(.mermaid) { background: #1e241c; color: #e8efe0; padding: 14px; border-radius: 10px; overflow: auto; font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; background: var(--card); }
+  th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #eef2e8; }
+  pre.mermaid {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px; margin: 16px 0; overflow-x: auto;
+    font-family: ui-monospace, Consolas, monospace; font-size: 12px;
+    white-space: pre-wrap;
+  }
+  pre.mermaid[data-processed="true"] {
+    font-family: inherit; font-size: inherit; white-space: normal;
+  }
+  #diagram-status {
+    background: #e8efe0; border: 1px solid #c5d3b8; border-radius: 8px;
+    padding: 10px 12px; margin-bottom: 18px; color: #2f3b28;
+  }
+  ul, ol { padding-left: 22px; }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
+  .meta { color: var(--muted); margin-bottom: 24px; }
+  @media print {
+    .toolbar { display: none !important; }
+    #diagram-status { display: none !important; }
+    body { background: #fff; font-size: 11pt; }
+    .wrap { max-width: none; padding: 0; }
+    h2 { break-before: page; border-top: 0; margin-top: 0; }
+    h2:first-of-type { break-before: avoid; }
+    .mermaid, table { break-inside: avoid; }
+    a { color: inherit; text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <div><strong>Mijn Levenspad</strong> · Technical Architecture</div>
+    <button type="button" onclick="window.print()">Download / Print as PDF</button>
+  </div>
+  <div class="wrap">
+    <p class="meta">Open this file in a browser. Click <strong>Download / Print as PDF</strong> (or Ctrl+P) and choose <em>Save as PDF</em>.</p>
+    <div id="diagram-status">Loading diagrams…</div>
+    <h1>Mijn Levenspad — Technical Architecture</h1>
+<p><strong>Product:</strong> Spiritual coaching marketplace with booking, metered live chat, WebRTC meetings, and coach payouts   <strong>Document type:</strong> System architecture (C4-style)   <strong>Stack:</strong> React (Vite) + FastAPI + MySQL + Redis/Celery + Mollie + LiveKit   <strong>Version:</strong> 1.0 · Generated from codebase analysis  </p>
+<hr/>
+<h2 id="table-of-contents">Table of contents</h2>
+<ol><li><a href="#1-executive-summary">Executive summary</a></li><li><a href="#2-system-context-c4-l1">System context (C4 L1)</a></li><li><a href="#3-container-diagram-c4-l2">Container diagram (C4 L2)</a></li><li><a href="#4-technology-stack">Technology stack</a></li><li><a href="#5-frontend-architecture">Frontend architecture</a></li><li><a href="#6-backend-architecture">Backend architecture</a></li><li><a href="#7-data-model-overview">Data model overview</a></li><li><a href="#8-authentication--security">Authentication &amp; security</a></li><li><a href="#9-core-domain-flows">Core domain flows</a></li><li><a href="#10-payments--money-architecture">Payments &amp; money architecture</a></li><li><a href="#11-realtime-chat-websocket-livekit">Realtime: chat, WebSocket, LiveKit</a></li><li><a href="#12-admin--operations">Admin &amp; operations</a></li><li><a href="#13-background-jobs--async">Background jobs &amp; async</a></li><li><a href="#14-external-integrations">External integrations</a></li><li><a href="#15-deployment-topology">Deployment topology</a></li><li><a href="#16-known-gaps--recommendations">Known gaps &amp; recommendations</a></li><li><a href="#17-appendix--api-surface-map">Appendix — API surface map</a></li></ol>
+<hr/>
+<h2 id="1-executive-summary">1. Executive summary</h2>
+<p>Mijn Levenspad is a <strong>multi-sided coaching platform</strong>:</p>
+<table>
+<tr><th>Actor</th><th>Primary jobs</th></tr>
+<tr><td><strong>User</strong></td><td>Discover coaches, book sessions, pay via Mollie, chat (metered), join LiveKit calls, wallet/top-ups, reviews</td></tr>
+<tr><td><strong>Coach (Mentor)</strong></td><td>Register (KVK + bank), set availability, take bookings/chat, earn 70% of metered chat, request payouts</td></tr>
+<tr><td><strong>Admin</strong></td><td>Approve coaches, analytics/KPIs, settlements, marketplace payouts, wallet ops, announcements, invoices</td></tr>
+</table>
+<p><strong>Architectural style:</strong> Modular monolith API (FastAPI) + SPA client (React), with optional Celery workers for marketplace outbox processing. Money movement is centered on <strong>Mollie</strong> (checkout + Connect) with a parallel <strong>manual bank-transfer</strong> path using coach IBAN stored at registration.</p>
+<p><strong>Revenue split (metered chat):</strong> platform <strong>30%</strong> / coach <strong>70%</strong> (<code>backend/services/charges_service.py</code>).</p>
+<hr/>
+<h2 id="2-system-context-c4-l1">2. System context (C4 L1)</h2>
+<pre class="mermaid">
+flowchart TB
+  User[User / Client]
+  Coach[Coach / Mentor]
+  Admin[Administrator]
+  MLP[Mijn Levenspad Platform]
+
+  Mollie[Mollie Payments + Connect]
+  LiveKit[LiveKit WebRTC + SIP]
+  SMTP[ZeptoMail SMTP]
+  Cloudinary[Cloudinary]
+  FX[Frankfurter ECB FX]
+  Meta[Meta CAPI]
+
+  User --> MLP
+  Coach --> MLP
+  Admin --> MLP
+  MLP <--> Mollie
+  MLP --> LiveKit
+  MLP --> SMTP
+  MLP --> Cloudinary
+  MLP --> FX
+  MLP --> Meta
+</pre>
+<h3>Context narrative</h3>
+<p>Actors interact only through the web SPA. The platform owns business logic, persistence, and orchestration of payment/media/comms providers. Mollie is the <strong>system of record for card/iDEAL checkout</strong>; the platform DB is the <strong>system of record for bookings, chat minutes, settlements, and coach bank details</strong>.</p>
+<hr/>
+<h2 id="3-container-diagram-c4-l2">3. Container diagram (C4 L2)</h2>
+<pre class="mermaid">
+flowchart TB
+  subgraph Clients[Browsers]
+    U[User]
+    C[Coach]
+    A[Admin]
+  end
+
+  subgraph Frontend[Frontend container]
+    SPA[React SPA Vite Amplify]
+  end
+
+  subgraph Backend[Backend container]
+    API[FastAPI uvicorn REST + WebSocket]
+    SCH[APScheduler in-process]
+    CEL[Celery worker marketplace]
+  end
+
+  subgraph Data[Data stores]
+    DB[(MySQL therapy)]
+    REDIS[(Redis Upstash)]
+    UP[(Local uploads)]
+  end
+
+  subgraph Ext[External systems]
+    MOLLIE[Mollie API]
+    LK[LiveKit Cloud]
+    SMTP[SMTP]
+    CDN[Cloudinary]
+  end
+
+  U --> SPA
+  C --> SPA
+  A --> SPA
+  SPA -->|HTTPS REST| API
+  SPA -->|WSS chat| API
+  API --> DB
+  API --> REDIS
+  CEL --> REDIS
+  CEL --> DB
+  SCH --> API
+  API --> MOLLIE
+  MOLLIE -->|webhook| API
+  API --> LK
+  API --> SMTP
+  API --> CDN
+  API --> UP
+</pre>
+<h3>Container responsibilities</h3>
+<table>
+<tr><th>Container</th><th>Responsibility</th></tr>
+<tr><td><strong>SPA</strong></td><td>UI, i18n, role dashboards, Mollie redirect return, optional <code>sync-mollie-payment</code></td></tr>
+<tr><td><strong>FastAPI</strong></td><td>Auth, domain APIs, webhooks, WS hub, PDF invoices, schema bootstrap</td></tr>
+<tr><td><strong>MySQL</strong></td><td>Canonical transactional data</td></tr>
+<tr><td><strong>Redis</strong></td><td>Celery broker; marketplace async; (optional result backend)</td></tr>
+<tr><td><strong>Celery</strong></td><td>Outbox processing, webhook reconcile, marketplace jobs</td></tr>
+<tr><td><strong>APScheduler</strong></td><td>In-process periodic tasks started in app lifespan</td></tr>
+</table>
+<hr/>
+<h2 id="4-technology-stack">4. Technology stack</h2>
+<h3>Frontend</h3>
+<table>
+<tr><th>Layer</th><th>Choice</th></tr>
+<tr><td>Framework</td><td>React 18 + TypeScript</td></tr>
+<tr><td>Build</td><td>Vite</td></tr>
+<tr><td>Routing</td><td>React Router</td></tr>
+<tr><td>Data fetching</td><td>TanStack Query</td></tr>
+<tr><td>UI</td><td>Tailwind + shadcn/Radix</td></tr>
+<tr><td>Charts</td><td>Recharts (admin analytics)</td></tr>
+<tr><td>Auth client</td><td>In-memory JWT + httpOnly refresh cookies</td></tr>
+<tr><td>i18n</td><td>Custom <code>LanguageContext</code> + <code>appBase</code> / overrides</td></tr>
+</table>
+<h3>Backend</h3>
+<table>
+<tr><th>Layer</th><th>Choice</th></tr>
+<tr><td>Framework</td><td>FastAPI</td></tr>
+<tr><td>ORM</td><td>SQLAlchemy</td></tr>
+<tr><td>Validation</td><td>Pydantic v2</td></tr>
+<tr><td>Auth</td><td>JWT (HS256) access + refresh tokens in cookies</td></tr>
+<tr><td>Rate limit</td><td>SlowAPI</td></tr>
+<tr><td>PDF</td><td>ReportLab</td></tr>
+<tr><td>Async jobs</td><td>Celery + Redis</td></tr>
+<tr><td>In-process jobs</td><td>APScheduler</td></tr>
+</table>
+<h3>Infrastructure (typical)</h3>
+<table>
+<tr><th>Concern</th><th>Typical deployment</th></tr>
+<tr><td>SPA</td><td>AWS Amplify / static CDN (<code>mijnlevenspad.com</code>)</td></tr>
+<tr><td>API</td><td>VPS/EC2 + nginx → uvicorn (intended host historically <code>innerfixintix.in</code>)</td></tr>
+<tr><td>DB</td><td>MySQL (managed / RDS-compatible; current remote <code>therapy</code>)</td></tr>
+<tr><td>Queue</td><td>Upstash Redis / local Redis</td></tr>
+</table>
+<hr/>
+<h2 id="5-frontend-architecture">5. Frontend architecture</h2>
+<h3>5.1 Route map (by role)</h3>
+<pre class="mermaid">
+flowchart LR
+  subgraph Public
+    H["/"]
+    M["/mentors"]
+    MD["/mentors/:id"]
+    B["/book/:id"]
+    P["/payment/..."]
+    REG_U["/register"]
+    REG_C["/mentor/register"]
+    CONTACT["/contact"]
+  end
+
+  subgraph UserDash["/user/*"]
+    UD[dashboard]
+    UA[appointments]
+    UW[wallet]
+    UC[chat]
+    US[support]
+  end
+
+  subgraph CoachDash["/mentor/*"]
+    CD[dashboard]
+    CAv[availability]
+    CE[earnings]
+    CP[payouts]
+    CS[settlements]
+    CCh[chat]
+  end
+
+  subgraph AdminDash["/admin/*"]
+    AO[overview KPIs]
+    AB[bookings]
+    AM[mentors]
+    AS[settlements]
+    AMk[marketplace]
+    AAn[analytics]
+  end
+</pre>
+<h3>5.2 Frontend module layout</h3>
+<pre><code class="language-">src/
+  api/           # Typed REST clients (auth, bookings, payments, mentors, admin, chat…)
+  auth/          # AuthContext — role-scoped access tokens + refresh
+  components/    # Shared UI, dashboards layouts, admin filters
+  pages/         # Route pages (public + user + mentor + admin)
+  i18n/          # Copy &amp; locale overrides
+  lib/           # Timezone, Mollie pending helpers, errors</code></pre>
+<h3>5.3 API client pattern</h3>
+<ul><li><code>apiFetch</code> attaches <code>Authorization: Bearer &lt;access&gt;</code></li><li>Sends <code>credentials: &#x27;include&#x27;</code> for refresh cookies</li><li>On <strong>401</strong>, attempts role-specific refresh, then retries</li><li><code>VITE_API_URL</code> selects API origin (empty → same-origin / Vite proxy in local dev)</li></ul>
+<hr/>
+<h2 id="6-backend-architecture">6. Backend architecture</h2>
+<h3>6.1 Layering</h3>
+<pre class="mermaid">
+flowchart TB
+  R[api/v1 routers] --> S[services]
+  S --> M[models]
+  S --> EXT[External SDKs Mollie LiveKit SMTP Cloudinary]
+  R --> SCH[schemas Pydantic]
+  MAIN[main.py lifespan] --> BOOT[db/startup_schema.py]
+  MAIN --> R
+  MAIN --> WS[api/v1/chat_ws.py]
+  TASKS[tasks/marketplace_tasks.py] --> S
+</pre>
+<h3>6.2 Router map (<code>/api/v1</code>)</h3>
+<table>
+<tr><th>Router module</th><th>Domain</th></tr>
+<tr><td><code>auth_user</code> / <code>auth_mentor</code> / <code>auth_admin</code></td><td>Login, register, refresh, logout</td></tr>
+<tr><td><code>users_me</code> / <code>mentor_me</code></td><td>Self profile</td></tr>
+<tr><td><code>mentors_public</code></td><td>Directory, slots, chat availability</td></tr>
+<tr><td><code>bookings</code> (+ reschedule, calendar, waitlist)</td><td>Appointments</td></tr>
+<tr><td><code>payments</code></td><td>Mollie intent, webhook, sync</td></tr>
+<tr><td><code>chat</code> + <code>chat_ws</code></td><td>Metered chat REST + WebSocket</td></tr>
+<tr><td><code>meetings</code></td><td>LiveKit token / meeting metadata</td></tr>
+<tr><td><code>marketplace</code></td><td>Wallet ledger, Connect, coach payouts</td></tr>
+<tr><td><code>wallets</code></td><td>User wallet</td></tr>
+<tr><td><code>invoices</code> / promo / favorites / notifications</td><td>Ancillary</td></tr>
+<tr><td><code>contact</code></td><td>Public + authenticated support forms</td></tr>
+<tr><td><code>admin_router</code></td><td>Full ops surface</td></tr>
+<tr><td><code>coach_applications</code></td><td>Become-a-coach lead pipeline</td></tr>
+<tr><td><code>file_upload</code></td><td>Images</td></tr>
+</table>
+<h3>6.3 Startup bootstrap</h3>
+<p>On API boot (<code>main.py</code> lifespan), the app <strong>idempotently ensures</strong> schema pieces (ledger tables, presence, announcements, pricing, payout bank columns, availability windows, etc.). Steps soft-fail on transient MySQL disconnects so the API can still serve.</p>
+<h3>6.4 Service catalog (selected)</h3>
+<table>
+<tr><th>Service</th><th>Role</th></tr>
+<tr><td><code>payment_service</code> / <code>mollie_service</code></td><td>Checkout + webhook processing</td></tr>
+<tr><td><code>booking_service</code> / <code>booking_slot_service</code></td><td>Slot locking &amp; booking lifecycle</td></tr>
+<tr><td><code>chat_service</code> / <code>chat_payment_service</code></td><td>Sessions, minutes, purchases</td></tr>
+<tr><td><code>charges_service</code></td><td>70/30 fee math</td></tr>
+<tr><td><code>settlement_service</code></td><td>Cycle aggregation for coach pay</td></tr>
+<tr><td><code>marketplace_service</code> / <code>ledger_service</code></td><td>Double-entry-ish wallet accounts</td></tr>
+<tr><td><code>payout_gateway</code></td><td>Mollie Connect payout adapter</td></tr>
+<tr><td><code>payout_bank_service</code></td><td>IBAN/BIC validation</td></tr>
+<tr><td><code>wallet_service</code></td><td>User wallet credit/debit</td></tr>
+<tr><td><code>meeting_service</code> / <code>livekit_*</code></td><td>WebRTC rooms</td></tr>
+<tr><td><code>fx_checkout</code></td><td>Multi-currency Mollie amounts</td></tr>
+<tr><td><code>support_inquiry_service</code></td><td>Contact emails</td></tr>
+</table>
+<hr/>
+<h2 id="7-data-model-overview">7. Data model overview</h2>
+<h3>7.1 Core entity relationships</h3>
+<pre class="mermaid">
+erDiagram
+  USER ||--o{ BOOKING : places
+  MENTOR ||--o{ BOOKING : receives
+  BOOKING ||--o| PAYMENT : paid_by
+  BOOKING ||--o| REVIEW : rated_by
+  USER ||--o{ CHAT_SESSION : starts
+  MENTOR ||--o{ CHAT_SESSION : hosts
+  CHAT_SESSION ||--o{ CHAT_PURCHASE : funds
+  CHAT_SESSION ||--o{ CHAT_MESSAGE : contains
+  MENTOR ||--o| MENTOR_PAYOUT_ACCOUNT : bank
+  MENTOR ||--o| COACH_CONNECT_ACCOUNT : mollie
+  MENTOR ||--o{ MENTOR_SETTLEMENT : settles
+  MENTOR_SETTLEMENT ||--o{ MENTOR_SETTLEMENT_ITEM : lines
+  USER ||--o| WALLET : holds
+  WALLET ||--o{ WALLET_TRANSACTION : txs
+</pre>
+<h3>7.2 Table groups</h3>
+<table>
+<tr><th>Group</th><th>Tables (representative)</th></tr>
+<tr><td>Identity</td><td><code>users</code>, <code>mentors</code>, <code>admins</code>, <code>refresh_tokens</code>, <code>email_otp_codes</code></td></tr>
+<tr><td>Scheduling</td><td><code>availability_slots</code>, <code>mentor_availability_windows</code>, <code>bookings</code>, <code>waitlist</code></td></tr>
+<tr><td>Payments</td><td><code>payments</code>, <code>chat_purchases</code>, <code>promo_codes</code>, <code>platform_pricing</code></td></tr>
+<tr><td>Chat / media</td><td><code>chat_sessions</code>, <code>chat_messages</code>, <code>chat_bridge_sessions</code></td></tr>
+<tr><td>Coach money</td><td><code>mentor_payout_accounts</code>, <code>mentor_settlements</code>, <code>mentor_settlement_items</code>, <code>mentor_monthly_invoices</code>, <code>mentor_onboarding_payments</code></td></tr>
+<tr><td>Marketplace ledger</td><td><code>wallet_accounts</code>, <code>ledger_transactions</code>, <code>ledger_entries</code>, <code>coach_payout_requests</code>, <code>coach_connect_accounts</code>, <code>outbox_events</code>, <code>webhook_event_logs</code></td></tr>
+<tr><td>Ops</td><td><code>notifications</code>, <code>admin_announcements</code>, <code>coach_applications</code>, <code>mentor_presence_weeks</code>, <code>reviews</code></td></tr>
+</table>
+<hr/>
+<h2 id="8-authentication-security">8. Authentication &amp; security</h2>
+<pre class="mermaid">
+sequenceDiagram
+  participant Browser
+  participant SPA
+  participant API
+  participant DB
+
+  Browser->>SPA: Login form
+  SPA->>API: POST auth role login
+  API->>DB: Verify credentials
+  API-->>SPA: access JWT plus refresh cookie
+  SPA->>SPA: Keep access token in memory
+
+  SPA->>API: API call with Bearer access
+  alt access expired
+    API-->>SPA: 401
+    SPA->>API: POST auth role refresh cookie
+    API-->>SPA: new access JWT
+    SPA->>API: Retry original call
+  end
+</pre>
+<h3>Security properties</h3>
+<ul><li><strong>Three roles:</strong> <code>user</code>, <code>mentor</code>, <code>admin</code> — separate cookie names</li><li><strong>CORS</strong> allow-list + regex for <code>*.mijnlevenspad.com</code></li><li><strong>Rate limiting</strong> via SlowAPI</li><li><strong>Webhook signature</strong> verification when <code>MOLLIE_WEBHOOK_SECRET</code> set (fail-closed in production)</li><li><strong>OTP email verification</strong> for registration</li><li><strong>Coach agreement</strong> version snapshot at register</li></ul>
+<hr/>
+<h2 id="9-core-domain-flows">9. Core domain flows</h2>
+<h3>9.1 Coach registration (incl. bank details)</h3>
+<pre class="mermaid">
+sequenceDiagram
+  participant Coach
+  participant SPA
+  participant API
+  participant DB
+  participant SMTP
+
+  Coach->>SPA: Fill register form (KVK + IBAN)
+  SPA->>API: POST /auth/mentor/register
+  API->>API: Validate IBAN/BIC
+  API->>DB: Insert Mentor status=pending
+  API->>DB: Insert MentorPayoutAccount submitted
+  API->>SMTP: Send OTP
+  API-->>SPA: Register response
+  Note over Coach,API: Admin later approves to active
+</pre>
+<h3>9.2 Booking + Mollie checkout</h3>
+<pre class="mermaid">
+sequenceDiagram
+  participant User
+  participant SPA
+  participant API
+  participant Mollie
+  participant DB
+
+  User->>SPA: Select slot and Book
+  SPA->>API: POST bookings
+  API->>DB: Create booking pending_payment
+  SPA->>API: POST payments create-intent
+  API->>Mollie: Create payment with webhookUrl
+  Mollie-->>SPA: checkoutUrl
+  User->>Mollie: Pay iDEAL or card
+  Mollie->>API: POST payments webhook
+  API->>DB: Payment paid and booking confirmed
+  Mollie-->>SPA: Redirect thank-you
+  opt Webhook unreachable
+    SPA->>API: POST payments sync-mollie-payment
+  end
+</pre>
+<h3>9.3 Metered chat session</h3>
+<pre class="mermaid">
+sequenceDiagram
+  participant User
+  participant SPA
+  participant API
+  participant Mollie
+  participant WS as Chat WebSocket hub
+
+  User->>API: POST chat sessions with minutes
+  API->>Mollie: Chat purchase checkout
+  User->>Mollie: Pay
+  Mollie->>API: Webhook purchase succeeded
+  API->>API: Activate session ends_at
+  User->>WS: Connect ws chat session
+  Coach->>WS: Connect
+  loop Messages
+    SPA->>API: POST messages
+    API->>WS: Broadcast new_message
+  end
+  User->>API: Extend minutes optional Mollie
+  Note over API: Timer is server authority ends_at
+</pre>
+<h3>9.4 Coach settlement &amp; payout</h3>
+<pre class="mermaid">
+flowchart TD
+  A[Paid bookings + chat purchases] --> B[Admin: generate settlements]
+  B --> C{Settlement approved}
+  C -->|Mollie Connect ready| D[Execute Connect payout]
+  C -->|Manual IBAN| E[Ops bank transfer]
+  E --> F[Mark settlement paid]
+  D --> G[Payout status processing/paid]
+  H[Coach wallet withdraw request] --> I[Admin approve marketplace payout]
+  I --> D
+</pre>
+<hr/>
+<h2 id="10-payments-money-architecture">10. Payments &amp; money architecture</h2>
+<h3>10.1 Money in (user → platform)</h3>
+<table>
+<tr><th>Product</th><th>Mechanism</th><th>DB artifact</th></tr>
+<tr><td>Session booking</td><td>Mollie payment</td><td><code>payments</code> + <code>bookings.payment_status</code></td></tr>
+<tr><td>Chat minutes</td><td>Mollie payment</td><td><code>chat_purchases</code></td></tr>
+<tr><td>Wallet top-up</td><td>Mollie</td><td>ledger / wallet credit</td></tr>
+<tr><td>Coach onboarding fee</td><td>Mollie (optional; can be €0)</td><td><code>mentor_onboarding_payments</code></td></tr>
+<tr><td>Coach monthly fee</td><td>Mollie invoice checkout</td><td><code>mentor_monthly_invoices</code></td></tr>
+</table>
+<h3>10.2 Money out (platform → coach)</h3>
+<table>
+<tr><th>Path</th><th>When to use</th><th>Mechanism</th></tr>
+<tr><td><strong>Manual bank transfer</strong></td><td>Default / Connect incomplete</td><td>IBAN on <code>mentor_payout_accounts</code></td></tr>
+<tr><td><strong>Mollie Connect</strong></td><td><code>payouts_enabled=true</code></td><td><code>payout_gateway</code> → connected account payout</td></tr>
+<tr><td><strong>Marketplace withdraw</strong></td><td>Coach wallet balance</td><td>Request → admin approve → execute</td></tr>
+</table>
+<h3>10.3 Fee model</h3>
+<pre class="mermaid">
+pie title Metered chat gross split
+  "Coach net (70%)" : 70
+  "Platform fee (30%)" : 30
+</pre>
+<p>Session packages use <code>platform_pricing</code> tiers (5/10/20/30/60 minutes). Chat uses per-minute rate on mentor (<code>chat_price_per_minute</code>, default ~€0.90).</p>
+<h3>10.4 Critical config</h3>
+<table>
+<tr><th>Env</th><th>Purpose</th></tr>
+<tr><td><code>MOLLIE_API_KEY</code></td><td>Organization payments (<code>test_</code> vs <code>live_</code>)</td></tr>
+<tr><td><code>MOLLIE_WEBHOOK_BASE_URL</code></td><td>Public <strong>API</strong> origin for webhooks</td></tr>
+<tr><td><code>MOLLIE_REDIRECT_BASE_URL</code></td><td>Public <strong>SPA</strong> origin for return URLs</td></tr>
+<tr><td><code>MOLLIE_CONNECT_*</code></td><td>OAuth Connect for coach payouts</td></tr>
+<tr><td><code>MARKETPLACE_*_PERCENT</code></td><td>Commission / coach share defaults</td></tr>
+</table>
+<hr/>
+<h2 id="11-realtime-chat-websocket-livekit">11. Realtime: chat, WebSocket, LiveKit</h2>
+<pre class="mermaid">
+flowchart LR
+  subgraph TextPath[Text path]
+    REST[REST messages API]
+    HUB[In-process WS hub]
+    CLIENTS[Browser WS clients]
+    REST --> HUB --> CLIENTS
+  end
+
+  subgraph AVPath[AV path separate]
+    MEET[meetings API]
+    LK[LiveKit SFU]
+    BROWSER[WebRTC in browser]
+    MEET -->|JWT plus URL| BROWSER
+    BROWSER <--> LK
+  end
+
+  CHAT[chat_session_id] -.-> MEET
+  CHAT -.-> REST
+</pre>
+<p><strong>Important production note:</strong> nginx/ALB must upgrade <code>/api/v1/ws/</code> (see <code>backend/README.md</code>). Without it, browsers get WS <code>1006</code> and fall back to polling.</p>
+<p>LiveKit SIP can optionally dial the peer’s phone into the room (<code>LIVEKIT_SIP_*</code>).</p>
+<hr/>
+<h2 id="12-admin-operations">12. Admin &amp; operations</h2>
+<h3>Admin console capabilities</h3>
+<ul><li>KPI overview + analytics (filters: coach, user, date range)</li><li>Users / coaches CRUD-ish ops, approval, bank detail view</li><li>Bookings, payments, reviews lists with filters</li><li>Settlements generate / approve / pay / mark paid</li><li>Marketplace commission + payout queue</li><li>Wallet credit/debit ops</li><li>Coach presence (weekly hours)</li><li>Announcements (in-app + optional email)</li><li>Coach applications CRM</li><li>Invoice PDF downloads (booking, chat, monthly)</li></ul>
+<h3>Coach presence</h3>
+<p>Heartbeats from coach dashboard → weekly seconds online → admin compliance view (default target 20h/week).</p>
+<hr/>
+<h2 id="13-background-jobs-async">13. Background jobs &amp; async</h2>
+<pre class="mermaid">
+flowchart TB
+  API[FastAPI request] -->|enqueue| OB[(outbox_events)]
+  API -->|Celery.delay| REDIS[(Redis)]
+  WORKER[Celery worker] --> REDIS
+  WORKER --> OB
+  WORKER --> DB[(MySQL)]
+  SCH[APScheduler in API process] --> JOBS[Periodic maintenance]
+</pre>
+<ul><li><strong>Celery app:</strong> <code>backend/celery_app.py</code> · tasks in <code>tasks/marketplace_tasks.py</code></li><li><strong>Risk:</strong> Upstash max record size can block enqueue (observed in local logs) — requires Redis hygiene + running worker</li></ul>
+<hr/>
+<h2 id="14-external-integrations">14. External integrations</h2>
+<table>
+<tr><th>System</th><th>Direction</th><th>Used for</th></tr>
+<tr><td><strong>Mollie</strong></td><td>Bi-directional</td><td>Checkout, webhooks, Connect OAuth, payouts</td></tr>
+<tr><td><strong>LiveKit</strong></td><td>Outbound</td><td>Room JWT, optional SIP</td></tr>
+<tr><td><strong>ZeptoMail SMTP</strong></td><td>Outbound</td><td>OTP, support, announcements</td></tr>
+<tr><td><strong>Cloudinary</strong></td><td>Outbound</td><td>Image CDN (else local <code>/uploads</code>)</td></tr>
+<tr><td><strong>Frankfurter</strong></td><td>Outbound</td><td>FX for non-EUR checkout</td></tr>
+<tr><td><strong>Meta CAPI</strong></td><td>Outbound</td><td>Optional analytics events</td></tr>
+<tr><td><strong>Google Sign-In</strong></td><td>Frontend optional</td><td><code>VITE_GOOGLE_CLIENT_ID</code></td></tr>
+</table>
+<hr/>
+<h2 id="15-deployment-topology">15. Deployment topology</h2>
+<h3>Target (healthy production)</h3>
+<pre class="mermaid">
+flowchart TB
+  DNS1[mijnlevenspad.com] --> AMP[Amplify SPA]
+  DNS2[api.example.com] --> NGX[nginx TLS]
+  NGX --> UV[uvicorn FastAPI]
+  NGX -->|WS upgrade| UV
+  UV --> MYSQL[(MySQL)]
+  UV --> REDIS[(Redis)]
+  W[celery worker] --> REDIS
+  W --> MYSQL
+  MOLLIE[Mollie] -->|webhook HTTPS| NGX
+  AMP -->|VITE_API_URL| NGX
+</pre>
+<h3>Current observed gaps (ops checklist)</h3>
+<table>
+<tr><th>Item</th><th>Status / risk</th></tr>
+<tr><td>SPA hosts</td><td><code>mijnlevenspad.com</code> / Amplify up (static) — <strong>no <code>/api</code> proxy</strong></td></tr>
+<tr><td>Configured API host <code>innerfixintix.in</code></td><td>DNS <strong>NXDOMAIN</strong> → webhooks/redirects broken if used</td></tr>
+<tr><td>Local API</td><td>Often <code>localhost:8001</code> against remote DB</td></tr>
+<tr><td>Mollie key mode</td><td>Live key possible on development machine — high risk</td></tr>
+<tr><td>Celery/Redis</td><td>Outbox enqueue failures possible when Redis oversized</td></tr>
+</table>
+<hr/>
+<h2 id="16-known-gaps-recommendations">16. Known gaps &amp; recommendations</h2>
+<ol><li><strong>Establish a stable public API hostname</strong> (DNS + TLS + nginx) and set <code>MOLLIE_WEBHOOK_BASE_URL</code> to it.</li><li>Set SPA <code>VITE_API_URL</code> to that API host; keep <code>MOLLIE_REDIRECT_BASE_URL</code> on the SPA origin.</li><li>Use <strong>test_</strong> Mollie keys for local/dev; <strong>live_</strong> only on production API.</li><li>Run Celery worker continuously; monitor Redis size / flush stuck keys.</li><li>Complete IBAN collection for all active coaches; finish Mollie Connect KYC where auto-payouts are desired.</li><li>Prefer horizontal scale carefully: <strong>in-process WS hub is single-instance</strong> — multi-node needs Redis pub/sub or sticky sessions + shared bus.</li><li>Document nginx WS upgrade as a release gate for chat.</li></ol>
+<hr/>
+<h2 id="17-appendix-api-surface-map">17. Appendix — API surface map</h2>
+<pre><code class="language-">/health
+/api/v1/auth/user|mentor|admin/...
+/api/v1/users/me
+/api/v1/mentors/...          (public directory)
+/api/v1/mentors/me/...       (coach self)
+/api/v1/bookings/...
+/api/v1/payments/...         (intent, webhook, sync, currencies)
+/api/v1/chat/...             (sessions, messages, invoices)
+/api/v1/ws/chat/{session_id} (WebSocket)
+/api/v1/meetings/...
+/api/v1/marketplace/...      (wallet, connect, payouts)
+/api/v1/wallets/...
+/api/v1/admin/...            (ops)
+/api/v1/contact/...
+/uploads/...                 (static fallback media)</code></pre>
+<h3>Repository layout</h3>
+<pre><code class="language-">inner-path-design-main/
+  src/                 # React SPA
+  backend/
+    main.py            # FastAPI entry
+    api/v1/            # Routers
+    services/          # Domain logic
+    models/            # SQLAlchemy
+    schemas/           # Pydantic
+    tasks/             # Celery
+    db/                # Session + startup schema
+    migrations/        # SQL migrations
+  docs/
+    TECHNICAL_ARCHITECTURE.md   # this file
+    technical-architecture.html # print-to-PDF companion</code></pre>
+<hr/>
+<h2 id="document-control">Document control</h2>
+<table>
+<tr><th>Field</th><th>Value</th></tr>
+<tr><td>Source of truth</td><td>Application repository</td></tr>
+<tr><td>Diagram format</td><td>Mermaid (render in GitHub, VS Code, or the HTML companion)</td></tr>
+<tr><td>PDF export</td><td>Open <code>docs/technical-architecture.html</code> → Print → Save as PDF</td></tr>
+</table>
+<p>*End of technical architecture document.*</p>
+  </div>
+</body>
+</html>

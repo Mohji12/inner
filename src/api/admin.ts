@@ -1,0 +1,921 @@
+import { apiFetch, apiFetchBlob } from "./client";
+import { appendNamedFile } from "@/lib/imageUpload";
+import type { AdminCapabilityMatrixRow, AdminCommissionConfig, AdminPayoutApprovalRow } from "./types";
+
+export type AdminPeriod = "day" | "week" | "month" | "year";
+
+export function getAdminMe(): Promise<{ id: string; email: string; full_name: string }> {
+  return apiFetch("/admin/me");
+}
+
+export interface Paginated<T> {
+  items: T[];
+  total: number;
+  skip: number;
+  limit: number;
+}
+
+export interface AdminUserRow {
+  id: string;
+  full_name: string;
+  email: string;
+  phone_number: string;
+  account_status: string;
+  email_verified: boolean;
+  created_at: string;
+}
+
+export interface AdminMentorRow {
+  id: string;
+  full_name: string;
+  email: string;
+  phone_number: string;
+  headline: string | null;
+  bio?: string | null;
+  current_company?: string | null;
+  kvk_number?: string | null;
+  languages_spoken?: unknown[] | null;
+  years_of_experience?: number;
+  education?: unknown[] | null;
+  certifications?: unknown[] | null;
+  expertise_areas?: unknown[] | null;
+  skills?: unknown[] | null;
+  tools_technologies?: unknown[] | null;
+  session_modes?: unknown[] | null;
+  previous_companies?: unknown[] | null;
+  profile_image?: string | null;
+  profile_image_original?: string | null;
+  profile_image_crop?: Record<string, unknown> | null;
+  banner_image?: string | null;
+  banner_image_original?: string | null;
+  banner_image_crop?: Record<string, unknown> | null;
+  country_code?: string | null;
+  timezone?: string | null;
+  average_rating?: string | number | null;
+  total_reviews?: number;
+  total_sessions_completed?: number;
+  price_10_min?: string | number | null;
+  price_20_min?: string | number | null;
+  price_30_min?: string | number | null;
+  chat_price_per_minute?: string | number | null;
+  chat_currency?: string | null;
+  chat_min_purchase_minutes?: number;
+  agreement_accepted_at?: string | null;
+  agreement_version?: string | null;
+  last_seen_at?: string | null;
+  presence_accrued_at?: string | null;
+  deactivated_at?: string | null;
+  is_totp_enabled?: boolean;
+  has_google_id?: boolean;
+  public_card_visibility?: Record<string, unknown> | null;
+  status: string;
+  is_approved: boolean;
+  email_verified: boolean;
+  is_verified?: boolean;
+  created_at: string;
+  updated_at?: string | null;
+}
+
+export type MentorApprovalAction = "approve" | "reject";
+
+export interface MentorApprovalUpdatePayload {
+  action: MentorApprovalAction;
+  reason?: string;
+}
+
+export interface AdminBookingRow {
+  id: string;
+  user_id: string;
+  mentor_id: string;
+  user_name: string;
+  mentor_name: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  start_at_utc: string;
+  end_at_utc: string;
+  duration: number;
+  status: string;
+  payment_status: string;
+  created_at: string;
+}
+
+export interface AdminPaymentRow {
+  id: string;
+  user_id: string;
+  booking_id: string;
+  amount: string;
+  currency: string;
+  status: string;
+  payment_gateway: string;
+  transaction_id: string | null;
+  created_at: string;
+}
+
+export interface AdminReviewRow {
+  id: string;
+  user_id: string;
+  mentor_id: string;
+  user_name: string;
+  mentor_name: string;
+  booking_id: string;
+  rating: number;
+  review_text: string | null;
+  created_at: string;
+}
+
+export interface DateCountPoint {
+  date: string;
+  count: number;
+}
+
+export interface DateAmountPoint {
+  date: string;
+  amount: string;
+}
+
+export interface AnalyticsResponse {
+  period: AdminPeriod;
+  range_start: string;
+  range_end: string;
+  summary: {
+    bookings: number;
+    new_users: number;
+    new_mentors: number;
+    reviews: number;
+    revenue: string;
+    total_users: number;
+    total_mentors: number;
+    total_payments: number;
+    paid_payments: number;
+    pending_payments: number;
+    active_mentors: number;
+    rejected_mentors: number;
+    pending_mentors: number;
+    new_coach_applications: number;
+    online_mentors: number;
+    page_views: number;
+    unique_visitors: number;
+    chats: number;
+  };
+  bookings_by_day: DateCountPoint[];
+  payments_by_day: DateAmountPoint[];
+  reviews_by_day: DateCountPoint[];
+  users_by_day: DateCountPoint[];
+  mentors_by_day: DateCountPoint[];
+  page_views_by_day: DateCountPoint[];
+  chats_by_day: DateCountPoint[];
+  top_pages: { path: string; views: number; unique_visitors: number }[];
+  landing_pages: { path: string; views: number; unique_visitors: number }[];
+  referrers: { host: string; views: number; unique_visitors: number }[];
+}
+
+export interface AdminChatInvoiceSummary {
+  session_id: string;
+  invoice_number: string;
+  mentor_name: string;
+  total_amount: string;
+  currency: string;
+  total_minutes_purchased: number;
+  session_started_at: string;
+  session_ended_at: string;
+  issued_at: string;
+}
+
+export interface AdminChatInvoiceLine {
+  id: string;
+  minutes: number;
+  amount: string;
+  currency: string;
+  status: string;
+  transaction_id: string | null;
+  created_at: string;
+}
+
+export interface AdminChatInvoiceConversationLine {
+  id: string;
+  sender_role: string;
+  sender_display_name: string;
+  body: string;
+  created_at: string;
+}
+
+export interface AdminChatInvoiceDetail {
+  invoice_number: string;
+  issued_at: string;
+  payment_status: string;
+  session_id: string;
+  session_status: string;
+  session_started_at: string;
+  session_ended_at: string;
+  session_duration_seconds: number;
+  total_minutes_purchased: number;
+  total_amount: string;
+  currency: string;
+  bill_to_name: string;
+  bill_to_email: string;
+  bill_to_phone: string | null;
+  service_provider_name: string;
+  service_provider_email: string;
+  line_items: AdminChatInvoiceLine[];
+  conversation: AdminChatInvoiceConversationLine[];
+}
+
+export interface AdminSettlementCandidateRow {
+  mentor_id: string;
+  mentor_name: string;
+  currency: string;
+  gross_amount: string;
+  fee_amount: string;
+  net_amount: string;
+  item_count: number;
+}
+
+export interface AdminSettlementCandidateList {
+  cycle_start: string;
+  cycle_end: string;
+  candidates: AdminSettlementCandidateRow[];
+}
+
+export interface AdminSettlementRow {
+  id: string;
+  mentor_id: string;
+  mentor_name: string;
+  currency: string;
+  cycle_start: string;
+  cycle_end: string;
+  gross_amount: string;
+  fee_amount: string;
+  net_amount: string;
+  status: string;
+  provider_batch_ref: string | null;
+  failure_reason: string | null;
+  paid_at: string | null;
+  created_at: string;
+  /** True when coach has Mollie Connect tokens and payouts enabled (DB snapshot). */
+  connect_payout_ready: boolean;
+  connect_payout_blocked_reason: string | null;
+}
+
+export interface AdminSettlementItemRow {
+  id: string;
+  source_type: string;
+  source_id: string;
+  amount: string;
+  created_at: string;
+}
+
+export interface AdminSettlementDetail extends AdminSettlementRow {
+  items: AdminSettlementItemRow[];
+}
+
+export interface AdminSettlementList {
+  items: AdminSettlementRow[];
+  total: number;
+  skip: number;
+  limit: number;
+}
+
+export interface AdminWalletAdjustPayload {
+  amount: number;
+  reason: string;
+  reference_type?: string;
+  reference_id?: string;
+}
+
+export interface AdminWalletAdjustResponse {
+  wallet_id: string;
+  user_id: string;
+  balance: string;
+  transaction_id: string;
+  transaction_type: string;
+  amount: string;
+  created_at: string;
+}
+
+export interface AdminWalletUserAnalyticsRow {
+  user_id: string;
+  user_name: string;
+  user_email: string;
+  currency: string;
+  credited_total: string;
+  debited_total: string;
+  net_total: string;
+  transaction_count: number;
+  last_transaction_at: string | null;
+}
+
+export interface AdminWalletAnalyticsResponse {
+  items: AdminWalletUserAnalyticsRow[];
+  total_credited: string;
+  total_debited: string;
+  total_net: string;
+}
+
+export interface AdminMentorPayoutAccount {
+  mentor_id: string;
+  provider_name: string;
+  provider_account_ref: string;
+  status: string;
+  verified_at: string | null;
+}
+
+export interface AdminMentorMonthlyInvoiceRow {
+  id: string;
+  mentor_id: string;
+  mentor_name: string;
+  invoice_month: string;
+  gross_revenue: string;
+  fee_percent: string;
+  fee_amount: string;
+  currency: string;
+  status: string;
+  mollie_checkout_url: string | null;
+  paid_at: string | null;
+  reminder_sent_at: string | null;
+  created_at: string;
+}
+
+export interface AdminMentorMonthlyInvoiceList {
+  items: AdminMentorMonthlyInvoiceRow[];
+  total: number;
+  skip: number;
+  limit: number;
+}
+
+function qs(params: Record<string, string | number | undefined>): string {
+  const u = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== "") u.set(k, String(v));
+  }
+  const s = u.toString();
+  return s ? `?${s}` : "";
+}
+
+export function fetchAdminUsers(skip = 0, limit = 50, q?: string) {
+  return apiFetch<Paginated<AdminUserRow>>(`/admin/users${qs({ skip, limit, q })}`);
+}
+
+export function deleteAdminUser(userId: string) {
+  return apiFetch<{ ok: boolean; deleted_id: string }>(`/admin/users/${userId}`, {
+    method: "DELETE",
+  });
+}
+
+export function fetchAdminMentors(skip = 0, limit = 50, q?: string) {
+  return apiFetch<Paginated<AdminMentorRow>>(`/admin/mentors${qs({ skip, limit, q })}`);
+}
+
+export function fetchAdminMentor(mentorId: string) {
+  return apiFetch<AdminMentorRow>(`/admin/mentors/${mentorId}`);
+}
+
+export type CoachApplicationStatus = "new" | "reviewed" | "contacted" | "rejected";
+
+export interface AdminCoachApplicationRow {
+  id: string;
+  full_name: string;
+  email: string;
+  phone_number: string;
+  headline: string;
+  motivation: string;
+  years_of_experience: number;
+  languages_spoken: string[] | null;
+  website_or_social: string | null;
+  status: CoachApplicationStatus | string;
+  admin_notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function fetchAdminCoachApplications(
+  skip = 0,
+  limit = 50,
+  q?: string,
+  status?: string,
+) {
+  return apiFetch<Paginated<AdminCoachApplicationRow>>(
+    `/admin/coach-applications${qs({ skip, limit, q, status })}`,
+  );
+}
+
+export function updateAdminCoachApplication(
+  applicationId: string,
+  payload: { status?: CoachApplicationStatus; admin_notes?: string | null },
+) {
+  return apiFetch<AdminCoachApplicationRow>(`/admin/coach-applications/${applicationId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateMentorApproval(mentorId: string, payload: MentorApprovalUpdatePayload) {
+  return apiFetch<AdminMentorRow>(`/admin/mentors/${mentorId}/approval`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export type AdminMentorCardVisibilityUpdate = {
+  headline?: boolean;
+  expertise_tags?: boolean;
+  years_experience?: boolean;
+  rating?: boolean;
+  session_packages?: boolean;
+  profile_photo?: boolean;
+  banner_photo?: boolean;
+};
+
+export function updateAdminMentorCardVisibility(
+  mentorId: string,
+  payload: AdminMentorCardVisibilityUpdate,
+) {
+  return apiFetch<AdminMentorRow>(`/admin/mentors/${mentorId}/card-visibility`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function uploadAdminMentorPhoto(
+  mentorId: string,
+  params: {
+    kind: "avatar" | "banner";
+    cropped: File;
+    original?: File | null;
+    crop?: Record<string, unknown> | null;
+  },
+) {
+  const body = new FormData();
+  body.append("kind", params.kind);
+  appendNamedFile(body, "file", params.cropped, params.kind === "banner" ? "banner.jpg" : "profile.jpg");
+  if (params.original) appendNamedFile(body, "original", params.original, "original.jpg");
+  if (params.crop) body.append("crop", JSON.stringify(params.crop));
+  return apiFetch<AdminMentorRow>(`/admin/mentors/${mentorId}/photo`, {
+    method: "POST",
+    body,
+  });
+}
+
+export function deleteAdminMentor(mentorId: string) {
+  return apiFetch<{ ok: boolean; deleted_id: string }>(`/admin/mentors/${mentorId}`, {
+    method: "DELETE",
+  });
+}
+
+export function fetchAdminBookings(
+  skip = 0,
+  limit = 50,
+  filters?: {
+    coach_id?: string;
+    user_id?: string;
+    coach_name?: string;
+    user_name?: string;
+    date_from?: string;
+    date_to?: string;
+  },
+) {
+  return apiFetch<Paginated<AdminBookingRow>>(
+    `/admin/bookings${qs({
+      skip,
+      limit,
+      coach_id: filters?.coach_id,
+      user_id: filters?.user_id,
+      coach_name: filters?.coach_name,
+      user_name: filters?.user_name,
+      date_from: filters?.date_from,
+      date_to: filters?.date_to,
+    })}`,
+  );
+}
+
+export function fetchAdminPayments(
+  skip = 0,
+  limit = 50,
+  filters?: {
+    coach_id?: string;
+    user_id?: string;
+    coach_name?: string;
+    user_name?: string;
+    date_from?: string;
+    date_to?: string;
+  },
+) {
+  return apiFetch<Paginated<AdminPaymentRow>>(
+    `/admin/payments${qs({
+      skip,
+      limit,
+      coach_id: filters?.coach_id,
+      user_id: filters?.user_id,
+      coach_name: filters?.coach_name,
+      user_name: filters?.user_name,
+      date_from: filters?.date_from,
+      date_to: filters?.date_to,
+    })}`,
+  );
+}
+
+export function fetchAdminReviews(
+  skip = 0,
+  limit = 50,
+  filters?: {
+    coach_id?: string;
+    user_id?: string;
+    coach_name?: string;
+    user_name?: string;
+    date_from?: string;
+    date_to?: string;
+  },
+) {
+  return apiFetch<Paginated<AdminReviewRow>>(
+    `/admin/reviews${qs({
+      skip,
+      limit,
+      coach_id: filters?.coach_id,
+      user_id: filters?.user_id,
+      coach_name: filters?.coach_name,
+      user_name: filters?.user_name,
+      date_from: filters?.date_from,
+      date_to: filters?.date_to,
+    })}`,
+  );
+}
+
+export type AdminAnalyticsFilters = {
+  coach_id?: string;
+  user_id?: string;
+  coach_name?: string;
+  user_name?: string;
+  date_from?: string;
+  date_to?: string;
+};
+
+export function fetchAdminAnalytics(period: AdminPeriod, filters?: AdminAnalyticsFilters) {
+  return apiFetch<AnalyticsResponse>(
+    `/admin/analytics${qs({
+      period,
+      coach_id: filters?.coach_id,
+      user_id: filters?.user_id,
+      coach_name: filters?.coach_name,
+      user_name: filters?.user_name,
+      date_from: filters?.date_from,
+      date_to: filters?.date_to,
+    })}`,
+  );
+}
+
+export interface AdminFilterPersonOption {
+  id: string;
+  full_name: string;
+  email: string;
+}
+
+export interface AdminFilterOptionsResponse {
+  coaches: AdminFilterPersonOption[];
+  users: AdminFilterPersonOption[];
+}
+
+export function fetchAdminFilterOptions() {
+  return apiFetch<AdminFilterOptionsResponse>("/admin/filter-options");
+}
+
+export function fetchAdminChatInvoices() {
+  return apiFetch<AdminChatInvoiceSummary[]>("/admin/chat-invoices");
+}
+
+export function fetchAdminChatInvoice(sessionId: string) {
+  return apiFetch<AdminChatInvoiceDetail>(`/admin/chat-invoices/${sessionId}`);
+}
+
+export function downloadAdminChatInvoicePdf(sessionId: string) {
+  return apiFetchBlob(`/admin/chat-invoices/${sessionId}/pdf`);
+}
+
+export function fetchAdminSettlementCandidates(cycleEnd?: string) {
+  return apiFetch<AdminSettlementCandidateList>(`/admin/settlements/candidates${qs({ cycle_end: cycleEnd })}`);
+}
+
+export function generateAdminSettlements(payload: { cycle_start?: string; cycle_end?: string }) {
+  return apiFetch<AdminSettlementList>("/admin/settlements/generate", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function fetchAdminSettlements(skip = 0, limit = 50) {
+  return apiFetch<AdminSettlementList>(`/admin/settlements${qs({ skip, limit })}`);
+}
+
+export function fetchAdminSettlement(id: string) {
+  return apiFetch<AdminSettlementDetail>(`/admin/settlements/${id}`);
+}
+
+export function approveAdminSettlement(id: string) {
+  return apiFetch<AdminSettlementRow>(`/admin/settlements/${id}/approve`, { method: "POST" });
+}
+
+export function payAdminSettlement(id: string, idempotencyKey?: string) {
+  return apiFetch<AdminSettlementRow>(`/admin/settlements/${id}/pay`, {
+    method: "POST",
+    body: JSON.stringify({ idempotency_key: idempotencyKey }),
+  });
+}
+
+export function markAdminSettlementPaid(id: string) {
+  return apiFetch<AdminSettlementRow>(`/admin/settlements/${id}/mark-paid`, { method: "POST" });
+}
+
+export function downloadAdminSettlementInvoicePdf(id: string) {
+  return apiFetchBlob(`/admin/settlements/${id}/pdf`);
+}
+
+export function adminCreditUserWallet(userId: string, payload: AdminWalletAdjustPayload) {
+  return apiFetch<AdminWalletAdjustResponse>(`/admin/wallets/${userId}/credit`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function adminDebitUserWallet(userId: string, payload: AdminWalletAdjustPayload) {
+  return apiFetch<AdminWalletAdjustResponse>(`/admin/wallets/${userId}/debit`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function fetchAdminWalletAnalytics() {
+  return apiFetch<AdminWalletAnalyticsResponse>("/admin/wallets/analytics");
+}
+
+export function upsertMentorPayoutAccount(
+  mentorId: string,
+  payload: { provider_name: string; provider_account_ref: string; status?: string },
+) {
+  return apiFetch<AdminMentorPayoutAccount>(`/admin/mentors/${mentorId}/payout-account`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function fetchAdminMentorMonthlyInvoices(skip = 0, limit = 50) {
+  return apiFetch<AdminMentorMonthlyInvoiceList>(`/admin/mentor-monthly-invoices${qs({ skip, limit })}`);
+}
+
+export function regenerateAdminMentorMonthlyInvoiceLink(invoiceId: string) {
+  return apiFetch<AdminMentorMonthlyInvoiceRow>(`/admin/mentor-monthly-invoices/${invoiceId}/regenerate-link`, {
+    method: "POST",
+  });
+}
+
+export function markAdminMentorMonthlyInvoiceReminder(invoiceId: string) {
+  return apiFetch<AdminMentorMonthlyInvoiceRow>(`/admin/mentor-monthly-invoices/${invoiceId}/mark-reminder`, {
+    method: "POST",
+  });
+}
+
+export function downloadAdminMentorMonthlyInvoicePdf(invoiceId: string) {
+  return apiFetchBlob(`/admin/mentor-monthly-invoices/${invoiceId}/pdf`);
+}
+
+export function getAdminMarketplaceCommission(currency = "EUR") {
+  return apiFetch<AdminCommissionConfig>(`/marketplace/commission/current?currency=${encodeURIComponent(currency)}`);
+}
+
+export function updateAdminMarketplaceCommission(payload: {
+  percent: number;
+  currency?: string;
+  effective_from?: string;
+}) {
+  return apiFetch<AdminCommissionConfig>("/marketplace/commission", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function listAdminMarketplaceCapabilities() {
+  return apiFetch<AdminCapabilityMatrixRow[]>("/marketplace/capabilities");
+}
+
+export function upsertAdminMarketplaceCapability(payload: {
+  country_code: string;
+  entity_type: string;
+  currency: string;
+  supports_connect: boolean;
+  supports_payouts: boolean;
+  supports_transfers: boolean;
+  notes?: string;
+}) {
+  return apiFetch<AdminCapabilityMatrixRow>("/marketplace/capabilities", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function listAdminMarketplacePayoutRequests(status?: string) {
+  return apiFetch<AdminPayoutApprovalRow[]>(`/marketplace/payouts${qs({ status })}`);
+}
+
+export function approveAdminMarketplacePayout(payoutId: string) {
+  return apiFetch<AdminPayoutApprovalRow>(`/marketplace/payouts/${payoutId}/approve`, { method: "POST" });
+}
+
+export function executeAdminMarketplacePayout(payoutId: string) {
+  return apiFetch<AdminPayoutApprovalRow>(`/marketplace/payouts/${payoutId}/execute`, { method: "POST" });
+}
+
+export function releaseAdminCoachPendingToWithdrawable(mentorId: string, amount: number, currency = "EUR") {
+  return apiFetch<{ mentor_id: string; released_amount: string; currency: string }>(
+    `/marketplace/coaches/${mentorId}/release-pending${qs({ amount, currency })}`,
+    { method: "POST" },
+  );
+}
+
+export interface AdminMentorBankDetailsPrivate {
+  mentor_id: string;
+  has_bank_details: boolean;
+  account_holder_name: string | null;
+  iban: string | null;
+  bic: string | null;
+  status: string;
+  provider_name: string;
+  provider_account_ref: string;
+  verified_at: string | null;
+  updated_at: string | null;
+}
+
+/** Full IBAN for manual transfers — admin only. */
+export function getAdminMentorPayoutBankDetails(mentorId: string) {
+  return apiFetch<AdminMentorBankDetailsPrivate>(`/admin/mentors/${mentorId}/payout-bank-details`);
+}
+
+export interface AdminBookingInvoiceRow {
+  booking_id: string;
+  invoice_number: string;
+  customer_name: string;
+  customer_email: string;
+  mentor_name: string;
+  total_amount: string;
+  currency: string;
+  payment_status: string;
+  duration_minutes: number;
+  issued_at: string;
+}
+
+export interface AdminBookingInvoiceList {
+  items: AdminBookingInvoiceRow[];
+  total: number;
+  skip: number;
+  limit: number;
+}
+
+export interface AdminOnboardingInvoiceRow {
+  payment_id: string;
+  invoice_number: string;
+  mentor_name: string;
+  mentor_email: string;
+  total_amount: string;
+  currency: string;
+  payment_status: string;
+  issued_at: string;
+}
+
+export interface AdminOnboardingInvoiceList {
+  items: AdminOnboardingInvoiceRow[];
+  total: number;
+  skip: number;
+  limit: number;
+}
+
+export interface AdminTransactionRow {
+  id: string;
+  transaction_type: string;
+  reference_id: string | null;
+  party_name: string;
+  party_email: string | null;
+  amount: string;
+  currency: string;
+  status: string;
+  created_at: string;
+  description?: string | null;
+}
+
+export interface AdminTransactionList {
+  items: AdminTransactionRow[];
+  total: number;
+  skip: number;
+  limit: number;
+}
+
+export function fetchAdminBookingInvoices(skip = 0, limit = 50) {
+  return apiFetch<AdminBookingInvoiceList>(`/admin/booking-invoices?skip=${skip}&limit=${limit}`);
+}
+
+export function downloadAdminBookingInvoicePdf(bookingId: string) {
+  return apiFetchBlob(`/admin/booking-invoices/${bookingId}/pdf`);
+}
+
+export function fetchAdminOnboardingInvoices(skip = 0, limit = 50) {
+  return apiFetch<AdminOnboardingInvoiceList>(`/admin/onboarding-invoices?skip=${skip}&limit=${limit}`);
+}
+
+export function fetchAdminTransactions(skip = 0, limit = 100) {
+  return apiFetch<AdminTransactionList>(`/admin/transactions?skip=${skip}&limit=${limit}`);
+}
+
+export interface AdminMentorPresenceRow {
+  mentor_id: string;
+  full_name: string;
+  email: string;
+  status: string;
+  week_start: string;
+  seconds_online: number;
+  hours_online: number;
+  min_hours: number;
+  meets_minimum: boolean;
+  warning_sent_at: string | null;
+}
+
+export interface AdminMentorPresenceList {
+  week_start: string;
+  min_hours: number;
+  items: AdminMentorPresenceRow[];
+  total: number;
+  skip: number;
+  limit: number;
+}
+
+export interface AdminMentorPresenceHistoryRow {
+  week_start: string;
+  seconds_online: number;
+  hours_online: number;
+  meets_minimum: boolean;
+  warning_sent_at: string | null;
+}
+
+export interface AdminMentorPresenceDetail {
+  mentor_id: string;
+  full_name: string;
+  email: string;
+  status: string;
+  min_hours: number;
+  weeks: AdminMentorPresenceHistoryRow[];
+}
+
+export function fetchAdminMentorPresence(opts?: {
+  week_start?: string;
+  q?: string;
+  mentor_id?: string;
+  skip?: number;
+  limit?: number;
+}) {
+  const params = new URLSearchParams();
+  params.set("skip", String(opts?.skip ?? 0));
+  params.set("limit", String(opts?.limit ?? 50));
+  if (opts?.week_start) params.set("week_start", opts.week_start);
+  if (opts?.q?.trim()) params.set("q", opts.q.trim());
+  if (opts?.mentor_id?.trim()) params.set("mentor_id", opts.mentor_id.trim());
+  return apiFetch<AdminMentorPresenceList>(`/admin/mentor-presence?${params.toString()}`);
+}
+
+export function fetchAdminMentorPresenceDetail(mentorId: string, weeks = 8) {
+  return apiFetch<AdminMentorPresenceDetail>(
+    `/admin/mentor-presence/${encodeURIComponent(mentorId)}?weeks=${weeks}`,
+  );
+}
+
+export interface AdminAnnouncementRow {
+  id: string;
+  title: string;
+  body: string;
+  recipient_count: number;
+  emails_sent: number;
+  created_at: string;
+  email_warning?: string | null;
+}
+
+export interface AdminAnnouncementList {
+  items: AdminAnnouncementRow[];
+  total: number;
+  skip: number;
+  limit: number;
+}
+
+export function fetchAdminAnnouncements(skip = 0, limit = 50) {
+  return apiFetch<AdminAnnouncementList>(`/admin/announcements?skip=${skip}&limit=${limit}`);
+}
+
+export function createAdminAnnouncement(body: {
+  title: string;
+  body: string;
+  send_email?: boolean;
+  mentor_id?: string | null;
+}) {
+  return apiFetch<AdminAnnouncementRow>(`/admin/announcements`, {
+    method: "POST",
+    body: JSON.stringify({
+      title: body.title,
+      body: body.body,
+      send_email: body.send_email ?? true,
+      mentor_id: body.mentor_id || null,
+    }),
+  });
+}

@@ -1,0 +1,476 @@
+from datetime import date, datetime, time, timezone
+from decimal import Decimal
+import logging
+
+from fastapi import APIRouter, HTTPException, Query, status
+from pydantic import BaseModel
+
+from sqlalchemy import or_, String, cast
+from sqlalchemy.exc import OperationalError, DBAPIError
+
+from api.deps import DbSession, RequestLang
+from core.config import settings
+from models.availability_slot import AvailabilitySlot
+from models.booking import Booking
+from models.mentor import Mentor
+from models.mentor_availability_window import MentorAvailabilityWindow
+from schemas.mentor import MentorDetailOut, MentorPublicOut, PlatformPricingPublicOut
+from schemas.availability_window import AvailabilityWindowPublicOut
+from schemas.unavailability import UnavailabilityPublicBlock
+from schemas.slot import SlotOut
+from services.mentor_card_visibility import apply_card_visibility_to_public, normalize_card_visibility
+from services.chat_service import mentor_ids_with_live_chat, mentor_chat_busy
+from services.i18n_service import resolve_i18n_text
+from services.presence_service import presence_service
+from services.pricing_service import PricingError, effective_chat_price_per_minute_eur, get_platform_pricing
+from services.mentor_ranking_service import availability_tier, rank_public_mentors
+from services.booking_slot_service import SLOT_BLOCKING_STATUSES
+from models.mentor_unavailability import MentorUnavailability
+from services.mentor_unavailability_service import is_unavailable_now, load_unavailability_by_mentor, public_block_for_rows
+
+
+router = APIRouter(prefix="/mentors", tags=["mentors-public"])
+logger = logging.getLogger(__name__)
+
+
+def _http_db_unavailable(exc: Exception) -> HTTPException:
+    logger.warning("Mentors/pricing database unavailable: %s", exc)
+    return HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Database temporarily unavailable. Please try again shortly.",
+    )
+
+
+def _http_pricing_error(exc: PricingError) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail=exc.message,
+    )
+
+
+class ChatAvailabilityOut(BaseModel):
+    available: bool
+    reason: str | None = None
+
+
+def _public_identity_key(row: MentorPublicOut) -> tuple[str, str, str]:
+    """Group records that look identical to end users on listing cards."""
+    return (
+        (row.full_name or "").strip().lower(),
+        (row.headline or "").strip().lower(),
+        (row.profile_image or "").strip().lower(),
+    )
+
+
+def _dedupe_public_rows(rows: list[MentorPublicOut]) -> list[MentorPublicOut]:
+    """
+    De-duplicate visually identical public cards.
+    Prefer currently-online entry, then most recently seen/created.
+    """
+    chosen: dict[tuple[str, str, str], MentorPublicOut] = {}
+
+    def score(row: MentorPublicOut) -> tuple[int, datetime, datetime]:
+        last_seen = row.last_seen_at or datetime.min
+        created = row.created_at or datetime.min
+        return (1 if row.is_online else 0, last_seen, created)
+
+    for row in rows:
+        key = _public_identity_key(row)
+        current = chosen.get(key)
+        if current is None or score(row) > score(current):
+            chosen[key] = row
+    return list(chosen.values())
+
+
+def _unavailability_block(snap) -> UnavailabilityPublicBlock | None:
+    if snap is None:
+        return None
+    return UnavailabilityPublicBlock(
+        kind=snap.kind,  # type: ignore[arg-type]
+        all_day=snap.all_day,
+        weekday=snap.weekday,
+        start_at=snap.start_at,
+        end_at=snap.end_at,
+        start_time=snap.start_time,
+        end_time=snap.end_time,
+    )
+
+
+def _load_next_availability_windows(
+    db: DbSession,
+    mentor_ids: list[str],
+) -> dict[str, MentorAvailabilityWindow]:
+    """Next future platform window per mentor (start ascending)."""
+    if not mentor_ids:
+        return {}
+    now = datetime.now(timezone.utc)
+    rows = (
+        db.query(MentorAvailabilityWindow)
+        .filter(
+            MentorAvailabilityWindow.mentor_id.in_(mentor_ids),
+            MentorAvailabilityWindow.end_at_utc > now,
+        )
+        .order_by(MentorAvailabilityWindow.start_at_utc.asc())
+        .all()
+    )
+    out: dict[str, MentorAvailabilityWindow] = {}
+    for row in rows:
+        if row.mentor_id not in out:
+            out[row.mentor_id] = row
+    return out
+
+
+def _mentor_public_out(
+    mentor: Mentor,
+    busy_mentor_ids: set[str],
+    *,
+    session_pricing_active: bool,
+    lang: str = "en",
+    unavailability_rows: list[MentorUnavailability] | None = None,
+    next_window: MentorAvailabilityWindow | None = None,
+) -> MentorPublicOut:
+    base = MentorPublicOut.model_validate(mentor)
+    is_online = presence_service.is_online(mentor.id, "mentor", last_seen_at=mentor.last_seen_at)
+    chat_rate = effective_chat_price_per_minute_eur(mentor)
+    unavailable_now, unavail_snap = public_block_for_rows(unavailability_rows or [])
+    from services.mentor_availability_service import compute_chat_available
+
+    occupied = bool(getattr(mentor, "manual_occupied", False))
+    # Free for live engagement (packages and/or chat). Talk-now still requires chat_rate > 0 in UI/API.
+    chat_available = compute_chat_available(
+        online=is_online,
+        busy=mentor.id in busy_mentor_ids,
+        unavailable_schedule=unavailable_now,
+        manual_occupied=occupied,
+    )
+
+    packages_ok = session_pricing_active and mentor.is_approved and mentor.status == "active"
+
+    # Calculate badges
+    badges = []
+    if mentor.is_verified:
+        badges.append("Verified")
+    if mentor.average_rating and mentor.average_rating >= 4.5 and mentor.total_reviews >= 5:
+        badges.append("Top Rated")
+    if mentor.total_sessions_completed >= 50:
+        badges.append("Expert")
+
+    out = base.model_copy(update={
+        "headline": resolve_i18n_text(getattr(mentor, "headline_i18n", None), mentor.headline, lang),
+        "chat_price_per_minute": chat_rate,
+        "chat_available": chat_available,
+        "is_online": is_online,
+        "last_seen_at": mentor.last_seen_at,
+        "badges": badges,
+        "session_packages_available": packages_ok,
+        "unavailable_now": unavailable_now,
+        "unavailability": _unavailability_block(unavail_snap),
+        "next_availability_at": next_window.start_at_utc if next_window else None,
+        "next_availability_end_at": next_window.end_at_utc if next_window else None,
+    })
+    visibility = normalize_card_visibility(getattr(mentor, "public_card_visibility", None))
+    return apply_card_visibility_to_public(out, visibility)
+
+
+def _listed_status_filter():
+    if settings.public_mentor_list_include_pending:
+        return Mentor.status.in_(["active", "pending"])
+    return Mentor.status == "active"
+
+
+def _mentor_visible_for_public(mentor: Mentor | None) -> bool:
+    if mentor is None:
+        return False
+    if mentor.status == "active":
+        return True
+    if settings.public_mentor_list_include_pending and mentor.status == "pending":
+        return True
+    return False
+
+
+@router.get("", response_model=list[MentorPublicOut])
+def list_mentors(
+    db: DbSession,
+    lang: RequestLang,
+    approved_only: bool = Query(default=True),
+    q: str | None = Query(default=None),
+    expertise: list[str] | None = Query(default=None),
+    languages: list[str] | None = Query(default=None),
+    min_price: float | None = Query(default=None),
+    max_price: float | None = Query(default=None),
+    min_rating: float | None = Query(default=None),
+    sort_by: str | None = Query(default="relevance"),
+) -> list[MentorPublicOut]:
+    try:
+        pricing = get_platform_pricing(db)
+        if min_price is not None and float(pricing.price_10_min) < min_price:
+            return []
+        if max_price is not None and float(pricing.price_10_min) > max_price:
+            return []
+        query = db.query(Mentor).filter(_listed_status_filter())
+        if approved_only:
+            query = query.filter(Mentor.is_approved.is_(True))
+            
+        if q:
+            query = query.filter(
+                or_(
+                    Mentor.full_name.ilike(f"%{q}%"),
+                    Mentor.headline.ilike(f"%{q}%"),
+                    Mentor.bio.ilike(f"%{q}%")
+                )
+            )
+            
+        if expertise:
+            for exp in expertise:
+                query = query.filter(cast(Mentor.expertise_areas, String).ilike(f'%"{exp}"%'))
+                
+        if languages:
+            for spoken in languages:
+                query = query.filter(cast(Mentor.languages_spoken, String).ilike(f'%"{spoken}"%'))
+                
+        if min_rating is not None:
+            query = query.filter(Mentor.average_rating >= min_rating)
+            
+        if sort_by == "rating_desc":
+            query = query.order_by(Mentor.average_rating.desc(), Mentor.total_reviews.desc())
+        elif sort_by == "sessions_desc":
+            query = query.order_by(Mentor.total_sessions_completed.desc(), Mentor.average_rating.desc())
+        else:
+            # Fetch newest-ish first; final order applied after presence/performance ranking.
+            query = query.order_by(Mentor.average_rating.desc(), Mentor.total_sessions_completed.desc())
+            
+        busy = mentor_ids_with_live_chat(db)
+        rows = query.all()
+        active_pricing = bool(pricing.is_active)
+        mentor_ids = [m.id for m in rows]
+        umap = load_unavailability_by_mentor(db, mentor_ids)
+        next_windows = _load_next_availability_windows(db, mentor_ids)
+        public_rows = [
+            _mentor_public_out(
+                m,
+                busy,
+                session_pricing_active=active_pricing,
+                lang=lang,
+                unavailability_rows=umap.get(m.id, []),
+                next_window=next_windows.get(m.id),
+            )
+            for m in rows
+        ]
+        deduped = _dedupe_public_rows(public_rows)
+        if sort_by in (None, "relevance", ""):
+            return rank_public_mentors(deduped)
+        if sort_by == "rating_desc":
+            return sorted(
+                deduped,
+                key=lambda r: (float(r.average_rating or 0), int(r.total_reviews or 0), availability_tier(r)),
+                reverse=True,
+            )
+        if sort_by == "sessions_desc":
+            return sorted(
+                deduped,
+                key=lambda r: (int(r.total_sessions_completed or 0), float(r.average_rating or 0), availability_tier(r)),
+                reverse=True,
+            )
+        if sort_by == "price_asc":
+            return sorted(
+                deduped,
+                key=lambda r: (float(r.chat_price_per_minute or 0), -availability_tier(r), -float(r.average_rating or 0)),
+            )
+        if sort_by == "price_desc":
+            return sorted(
+                deduped,
+                key=lambda r: (float(r.chat_price_per_minute or 0), availability_tier(r), float(r.average_rating or 0)),
+                reverse=True,
+            )
+        return rank_public_mentors(deduped)
+    except PricingError as e:
+        raise _http_pricing_error(e) from e
+    except (OperationalError, DBAPIError) as e:
+        raise _http_db_unavailable(e) from e
+
+
+@router.get("/pricing", response_model=PlatformPricingPublicOut)
+def get_pricing(db: DbSession) -> PlatformPricingPublicOut:
+    try:
+        pricing = get_platform_pricing(db)
+        return PlatformPricingPublicOut(
+            price_5_min=pricing.price_5_min,
+            price_10_min=pricing.price_10_min,
+            price_20_min=pricing.price_20_min,
+            price_30_min=pricing.price_30_min,
+            price_60_min=getattr(pricing, "price_60_min", None) or Decimal("0"),
+            currency=pricing.currency,
+            is_active=pricing.is_active,
+        )
+    except PricingError as e:
+        raise _http_pricing_error(e) from e
+    except (OperationalError, DBAPIError) as e:
+        raise _http_db_unavailable(e) from e
+
+
+@router.get("/{mentor_id}", response_model=MentorDetailOut)
+def get_mentor(mentor_id: str, db: DbSession, lang: RequestLang) -> MentorDetailOut:
+    mentor = db.query(Mentor).filter(Mentor.id == mentor_id).first()
+    if not mentor or not _mentor_visible_for_public(mentor):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Coach not found")
+    busy = mentor_ids_with_live_chat(db)
+    pricing = get_platform_pricing(db)
+    umap = load_unavailability_by_mentor(db, [mentor.id])
+    next_windows = _load_next_availability_windows(db, [mentor.id])
+    out = _mentor_public_out(
+        mentor,
+        busy,
+        session_pricing_active=bool(pricing.is_active),
+        lang=lang,
+        unavailability_rows=umap.get(mentor.id, []),
+        next_window=next_windows.get(mentor.id),
+    )
+
+    base_detail = MentorDetailOut.model_validate(mentor)
+    detail = {**base_detail.model_dump(), **out.model_dump()}
+    detail["bio"] = resolve_i18n_text(getattr(mentor, "bio_i18n", None), mentor.bio, lang)
+    detail["chat_price_per_minute"] = effective_chat_price_per_minute_eur(mentor)
+    # Never expose company / KVK on the public coach profile.
+    detail["current_company"] = None
+    detail["kvk_number"] = None
+    return MentorDetailOut.model_validate(detail)
+
+
+@router.get("/{mentor_id}/chat-availability", response_model=ChatAvailabilityOut)
+def mentor_chat_availability(mentor_id: str, db: DbSession) -> ChatAvailabilityOut:
+    mentor = db.query(Mentor).filter(Mentor.id == mentor_id).first()
+    if not mentor or not _mentor_visible_for_public(mentor):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Coach not found")
+    enabled = effective_chat_price_per_minute_eur(mentor) > 0
+    busy = mentor_chat_busy(db, mentor_id)
+    online = presence_service.is_online(mentor.id, "mentor", last_seen_at=mentor.last_seen_at)
+    umap = load_unavailability_by_mentor(db, [mentor_id])
+    unavailable = is_unavailable_now(umap.get(mentor_id, []))
+    from services.mentor_availability_service import compute_chat_available, mentor_manual_occupied
+
+    occupied = mentor_manual_occupied(db, mentor_id)
+    available = compute_chat_available(
+        online=online,
+        busy=busy,
+        unavailable_schedule=unavailable,
+        manual_occupied=occupied,
+    ) and enabled
+    reason: str | None = None
+    if not enabled:
+        reason = "chat_disabled"
+    elif occupied:
+        reason = "mentor_occupied"
+    elif unavailable:
+        reason = "mentor_unavailable"
+    elif not online:
+        reason = "mentor_offline"
+    elif busy:
+        reason = "mentor_busy"
+    return ChatAvailabilityOut(available=available, reason=reason)
+
+
+@router.get("/{mentor_id}/availability-windows", response_model=list[AvailabilityWindowPublicOut])
+def list_mentor_availability_windows(
+    mentor_id: str,
+    db: DbSession,
+    limit: int = Query(default=5, ge=1, le=20),
+) -> list[MentorAvailabilityWindow]:
+    mentor = db.query(Mentor).filter(Mentor.id == mentor_id).first()
+    if not mentor or not _mentor_visible_for_public(mentor):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Coach not found")
+    now = datetime.now(timezone.utc)
+    return (
+        db.query(MentorAvailabilityWindow)
+        .filter(
+            MentorAvailabilityWindow.mentor_id == mentor_id,
+            MentorAvailabilityWindow.end_at_utc > now,
+        )
+        .order_by(MentorAvailabilityWindow.start_at_utc.asc())
+        .limit(limit)
+        .all()
+    )
+
+
+@router.get("/{mentor_id}/slots", response_model=list[SlotOut])
+def list_mentor_slots(
+    mentor_id: str,
+    db: DbSession,
+    date_from: date | None = Query(default=None, alias="from"),
+    date_to: date | None = Query(default=None, alias="to"),
+) -> list[AvailabilitySlot]:
+    mentor = db.query(Mentor).filter(Mentor.id == mentor_id).first()
+    if not mentor or not _mentor_visible_for_public(mentor):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Coach not found")
+    # Profile can be visible (e.g. pending in dev) before booking is allowed — return [] instead of 404.
+    if not mentor.is_approved or mentor.status != "active":
+        return []
+    q = db.query(AvailabilitySlot).filter(
+        AvailabilitySlot.mentor_id == mentor_id,
+        AvailabilitySlot.is_booked.is_(False),
+        ~db.query(Booking.id)
+        .filter(
+            Booking.slot_id == AvailabilitySlot.id,
+            Booking.status.in_(SLOT_BLOCKING_STATUSES),
+        )
+        .exists(),
+    )
+    if date_from:
+        q = q.filter(AvailabilitySlot.start_at_utc >= datetime.combine(date_from, time.min).replace(tzinfo=timezone.utc))
+    if date_to:
+        q = q.filter(AvailabilitySlot.start_at_utc <= datetime.combine(date_to, time.max).replace(tzinfo=timezone.utc))
+    rows = q.order_by(AvailabilitySlot.start_at_utc).all()
+    for row in rows:
+        # Defensive fallback for legacy rows created before UTC columns existed.
+        if row.start_at_utc is None:
+            row.start_at_utc = datetime.combine(row.slot_date, row.start_time).replace(tzinfo=timezone.utc)
+        if row.end_at_utc is None:
+            row.end_at_utc = datetime.combine(row.slot_date, row.end_time).replace(tzinfo=timezone.utc)
+    return rows
+
+@router.get("/{mentor_id}/similar", response_model=list[MentorPublicOut])
+def get_similar_mentors(mentor_id: str, db: DbSession, lang: RequestLang, limit: int = 4) -> list[MentorPublicOut]:
+    mentor = db.query(Mentor).filter(Mentor.id == mentor_id).first()
+    if not mentor or not _mentor_visible_for_public(mentor):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Coach not found")
+        
+    query = db.query(Mentor).filter(
+        _listed_status_filter(),
+        Mentor.is_approved.is_(True),
+        Mentor.id != mentor_id
+    )
+    
+    # Try to find mentors with similar expertise
+    if mentor.expertise_areas and len(mentor.expertise_areas) > 0:
+        exp = mentor.expertise_areas[0]
+        query = query.filter(cast(Mentor.expertise_areas, String).ilike(f'%"{exp}"%'))
+        
+    busy = mentor_ids_with_live_chat(db)
+    pricing = get_platform_pricing(db)
+    active_pricing = bool(pricing.is_active)
+    rows = query.order_by(Mentor.average_rating.desc()).limit(limit).all()
+
+    # If not enough similar, just get top rated
+    if len(rows) < limit:
+        needed = limit - len(rows)
+        existing_ids = [m.id for m in rows] + [mentor_id]
+        more_rows = db.query(Mentor).filter(
+            _listed_status_filter(),
+            Mentor.is_approved.is_(True),
+            Mentor.id.notin_(existing_ids)
+        ).order_by(Mentor.average_rating.desc()).limit(needed).all()
+        rows.extend(more_rows)
+
+    umap = load_unavailability_by_mentor(db, [m.id for m in rows])
+    next_windows = _load_next_availability_windows(db, [m.id for m in rows])
+    public_rows = [
+        _mentor_public_out(
+            m,
+            busy,
+            session_pricing_active=active_pricing,
+            lang=lang,
+            unavailability_rows=umap.get(m.id, []),
+            next_window=next_windows.get(m.id),
+        )
+        for m in rows
+    ]
+    return rank_public_mentors(_dedupe_public_rows(public_rows))[: max(1, min(limit, 12))]

@@ -1,0 +1,61 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Secrets and local DB
+.env
+backend/.env
+.e2e-full-credentials.json
+.e2e-register-credentials.json
+.e2e-coach-credentials.json
+*.db
+backend/dumps/
+
+# Deploy secrets / keys
+scripts/deploy/config.env
+*.pem
+*.ppk
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+backend/session/
+backend/venv/
+.venv/
+
+# Build artifacts
+dist/
+*.tsbuildinfo
+backend.zip
+
+# Test / Playwright
+test-results/
+playwright-report/
+blob-report/
+
+# Local full DB dumps
+therapy_dump.sql
+*.dump.sql
+
