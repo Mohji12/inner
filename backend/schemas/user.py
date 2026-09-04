@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+    timezone: str | None = None
 
 
 class UserRegister(BaseModel):
@@ -15,6 +16,7 @@ class UserRegister(BaseModel):
     phone_number: str
     password: str = Field(min_length=8)
     preferred_language: str = "en"
+    timezone: str | None = None
 
 
 class UserOut(BaseModel):

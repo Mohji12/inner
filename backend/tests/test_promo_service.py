@@ -12,6 +12,7 @@ from services.promo_service import (
     PromoError,
     _chat_purchase_counts_as_prior_paid_session,
     apply_promo_code,
+    reverse_promo_redemption_for_booking,
     user_has_completed_paid_chat,
     validate_promo_code,
 )
@@ -171,6 +172,45 @@ def test_apply_promo_code_records_redemption():
     apply_promo_code(db, "WELCOME5", user_id="user-1", booking_id="booking-1", commit=False)
     assert db.add.called
     assert promo.current_uses == 1
+
+
+def test_reverse_promo_redemption_for_booking():
+    promo = _promo(first_time_only=True)
+    promo.current_uses = 1
+    redemption = PromoCodeRedemption(
+        id="red-1",
+        user_id="user-1",
+        promo_code_id=promo.id,
+        booking_id="booking-1",
+        created_at=datetime.now(timezone.utc),
+    )
+    db = MagicMock()
+
+    red_list_query = MagicMock()
+    red_list_query.filter.return_value.with_for_update.return_value.all.return_value = [redemption]
+    promo_query = MagicMock()
+    promo_query.filter.return_value.with_for_update.return_value.first.return_value = promo
+
+    def query_side_effect(model):
+        if model is PromoCodeRedemption:
+            return red_list_query
+        if model is PromoCode:
+            return promo_query
+        return MagicMock()
+
+    db.query.side_effect = query_side_effect
+    assert reverse_promo_redemption_for_booking(db, "booking-1", commit=False) is True
+    db.delete.assert_called_once_with(redemption)
+    assert promo.current_uses == 0
+
+
+def test_reverse_promo_redemption_noop_without_rows():
+    db = MagicMock()
+    red_list_query = MagicMock()
+    red_list_query.filter.return_value.with_for_update.return_value.all.return_value = []
+    db.query.return_value = red_list_query
+    assert reverse_promo_redemption_for_booking(db, "booking-missing", commit=False) is False
+    db.delete.assert_not_called()
 
 
 def _purchase(*, status="succeeded", amount="5.00", transaction_id="tr_live123") -> ChatPurchase:

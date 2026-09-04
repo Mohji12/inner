@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { ArrowRight, CalendarDays, Gift, MessageSquare, Receipt, Users } from "lucide-react";
+import { ArrowRight, CalendarDays, Gift, MessageSquare, Receipt, Users, Wallet } from "lucide-react";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { useDashboardPerson } from "@/hooks/useDashboardPerson";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,6 @@ const UserDashboardHomePage = () => {
   const { t } = useLanguage();
   const du = t.app.dashboardUser;
   const personName = useDashboardPerson(du.role);
-  const w = t.app.userWallet;
   const effectiveTimeZone = useEffectiveTimeZone();
 
   const { data: stats, isLoading } = useQuery({
@@ -133,16 +132,57 @@ const UserDashboardHomePage = () => {
           </CardHeader>
           <CardContent>
             <Button asChild variant="secondary" size="sm">
-              <Link to="/mentors">{du.welcomePromoCta}</Link>
+              <Link to="/user/mentors">{du.welcomePromoCta}</Link>
             </Button>
           </CardContent>
         </Card>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+        <Card className="border-primary/20 bg-primary/5 md:col-span-2 xl:col-span-2 hover:border-primary/50 transition-colors">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{du.kpiWallet}</CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {walletQ.isLoading ? (
+              <Skeleton className="h-8 w-28" />
+            ) : walletQ.data ? (
+              <div>
+                <p className="text-xs text-muted-foreground">{du.kpiWalletBalance}</p>
+                <div className="text-2xl font-bold">
+                  {walletQ.data.currency} {walletQ.data.balance.toFixed(2)}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-destructive">{du.kpiWalletError}</p>
+            )}
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground">{du.kpiQuickTopup}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[5, 10, 20, 50].map((amount) => (
+                  <Button key={amount} asChild size="sm" variant="secondary" className="h-7 px-2.5 text-xs">
+                    <Link to={`/user/wallet?amount=${amount}&returnTo=${encodeURIComponent("/user/dashboard")}`}>
+                      €{amount}
+                    </Link>
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild size="sm" className="gradient-cta text-white">
+                <Link to="/user/wallet">{du.kpiAddMoney}</Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link to="/user/mentors">{du.kpiBookAppointment}</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="hover:border-primary/50 transition-colors">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Next Session</CardTitle>
+            <CardTitle className="text-sm font-medium">{du.kpiNextAppointment}</CardTitle>
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -153,13 +193,17 @@ const UserDashboardHomePage = () => {
                 <div className="text-xl font-bold truncate">{stats.upcoming_session.mentor_name}</div>
                 <p className="text-xs text-muted-foreground">
                   {formatDateLocal(stats.upcoming_session.date, undefined, effectiveTimeZone)} at{" "}
-                  {formatTimeLocal(`${stats.upcoming_session.date}T${stats.upcoming_session.start_time}Z`, undefined, effectiveTimeZone)}
+                  {formatTimeLocal(
+                    `${stats.upcoming_session.date}T${stats.upcoming_session.start_time}Z`,
+                    undefined,
+                    effectiveTimeZone,
+                  )}
                 </p>
               </div>
             ) : (
               <div>
-                <div className="text-lg font-bold text-muted-foreground">None</div>
-                <p className="text-xs text-muted-foreground">No upcoming sessions</p>
+                <div className="text-lg font-bold text-muted-foreground">{du.kpiNextNone}</div>
+                <p className="text-xs text-muted-foreground">{du.kpiNextEmpty}</p>
               </div>
             )}
           </CardContent>
@@ -167,7 +211,7 @@ const UserDashboardHomePage = () => {
 
         <Card className="hover:border-primary/50 transition-colors">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
+            <CardTitle className="text-sm font-medium">{du.kpiTotalAppointments}</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -176,13 +220,13 @@ const UserDashboardHomePage = () => {
             ) : (
               <div className="text-2xl font-bold">{stats?.total_sessions || 0}</div>
             )}
-            <p className="text-xs text-muted-foreground mt-1">Sessions completed</p>
+            <p className="text-xs text-muted-foreground mt-1">{du.kpiTotalAppointmentsHint}</p>
           </CardContent>
         </Card>
 
         <Card className="hover:border-primary/50 transition-colors">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
+            <CardTitle className="text-sm font-medium">{du.kpiTotalSpent}</CardTitle>
             <Receipt className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -191,13 +235,13 @@ const UserDashboardHomePage = () => {
             ) : (
               <div className="text-2xl font-bold">€{stats?.total_spent?.toFixed(2) || "0.00"}</div>
             )}
-            <p className="text-xs text-muted-foreground mt-1">Lifetime investment</p>
+            <p className="text-xs text-muted-foreground mt-1">{du.kpiTotalSpentHint}</p>
           </CardContent>
         </Card>
 
         <Card className="hover:border-primary/50 transition-colors">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Chats</CardTitle>
+            <CardTitle className="text-sm font-medium">{du.kpiActiveChats}</CardTitle>
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -206,7 +250,7 @@ const UserDashboardHomePage = () => {
             ) : (
               <div className="text-2xl font-bold">{stats?.active_chats || 0}</div>
             )}
-            <p className="text-xs text-muted-foreground mt-1">Ongoing conversations</p>
+            <p className="text-xs text-muted-foreground mt-1">{du.kpiActiveChatsHint}</p>
           </CardContent>
         </Card>
       </div>
@@ -229,7 +273,7 @@ const UserDashboardHomePage = () => {
             <Button asChild className="w-full justify-between" variant="outline">
               <Link to="/user/appointments">
                 <span className="flex items-center gap-2">
-                  <CalendarDays className="h-4 w-4" /> View Appointments
+                  <CalendarDays className="h-4 w-4" /> {du.appointments}
                 </span>
                 <ArrowRight className="h-4 w-4" />
               </Link>
@@ -237,7 +281,15 @@ const UserDashboardHomePage = () => {
             <Button asChild className="w-full justify-between" variant="outline">
               <Link to="/user/messages">
                 <span className="flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4" /> Open Messages
+                  <MessageSquare className="h-4 w-4" /> {du.messages}
+                </span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button asChild className="w-full justify-between" variant="outline">
+              <Link to="/user/wallet">
+                <span className="flex items-center gap-2">
+                  <Wallet className="h-4 w-4" /> {du.kpiAddMoney}
                 </span>
                 <ArrowRight className="h-4 w-4" />
               </Link>
@@ -290,99 +342,51 @@ const UserDashboardHomePage = () => {
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Recent bookings</CardTitle>
-            <CardDescription>Your latest session requests and appointments.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {recentBookings.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No bookings yet.</p>
-            ) : (
-              <div className="space-y-2">
-                {recentBookings.map((b) => {
-                  const mentor = mentorMap.get(b.mentor_id);
-                  const amount = bookingAmountEur(b, pricing ? slotPriceForDuration(pricing, b.duration) : null);
-                  return (
-                    <div key={b.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/60 p-3">
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{mentor?.full_name ?? "Coach"}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDateLocal(b.start_at_utc, { year: "numeric", month: "2-digit", day: "2-digit" }, effectiveTimeZone)} ·{" "}
-                          {formatTimeLocal(b.start_at_utc, undefined, effectiveTimeZone)} · {b.duration} min
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline" className="capitalize">
-                          {b.status}
-                        </Badge>
-                        {amount != null ? (
-                          <span className="text-sm font-medium">
-                            EUR {amount.toFixed(2)}
-                            {b.promo_applied ? " · Promo" : ""}
-                          </span>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">—</span>
-                        )}
-                        <Button asChild size="sm" variant="outline">
-                          <Link to="/user/appointments">Open</Link>
-                        </Button>
-                      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent bookings</CardTitle>
+          <CardDescription>Your latest appointment requests.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {recentBookings.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No bookings yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {recentBookings.map((b) => {
+                const mentor = mentorMap.get(b.mentor_id);
+                const amount = bookingAmountEur(b, pricing ? slotPriceForDuration(pricing, b.duration) : null);
+                return (
+                  <div key={b.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/60 p-3">
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{mentor?.full_name ?? "Coach"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDateLocal(b.start_at_utc, { year: "numeric", month: "2-digit", day: "2-digit" }, effectiveTimeZone)} ·{" "}
+                        {formatTimeLocal(b.start_at_utc, undefined, effectiveTimeZone)} · {b.duration} min
+                      </p>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Wallet</CardTitle>
-            <CardDescription>Balance + last 5 transactions.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {walletQ.isLoading ? (
-              <p className="text-sm text-muted-foreground">Loading wallet…</p>
-            ) : walletQ.data ? (
-              <>
-                <div className="rounded-lg border border-border/60 p-3">
-                  <p className="text-xs uppercase tracking-widest text-muted-foreground">Balance</p>
-                  <p className="mt-1 font-serif text-2xl font-semibold">
-                    {walletQ.data.currency} {walletQ.data.balance.toFixed(2)}
-                  </p>
-                </div>
-                {walletQ.data.transactions.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No wallet transactions yet.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {walletQ.data.transactions.map((tx) => (
-                      <div key={tx.id} className="flex items-center justify-between gap-3 text-sm">
-                        <span className="truncate text-muted-foreground">{tx.description}</span>
-                        <span className={tx.type === "credit" ? "text-green-600" : "text-red-600"}>
-                          {tx.type === "credit" ? "+" : "-"}
-                          {walletQ.data.currency} {tx.amount.toFixed(2)}
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline" className="capitalize">
+                        {b.status}
+                      </Badge>
+                      {amount != null ? (
+                        <span className="text-sm font-medium">
+                          EUR {amount.toFixed(2)}
+                          {b.promo_applied ? " · Promo" : ""}
                         </span>
-                      </div>
-                    ))}
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
+                      <Button asChild size="sm" variant="outline">
+                        <Link to="/user/appointments">Open</Link>
+                      </Button>
+                    </div>
                   </div>
-                )}
-                <div className="flex gap-2">
-                  <Button asChild variant="outline" className="flex-1">
-                    <Link to="/user/wallet">Open wallet</Link>
-                  </Button>
-                  <Button asChild className="flex-1">
-                    <Link to="/user/wallet">{w.addMoney}</Link>
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-destructive">Failed to load wallet.</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="border-border/60">
         <CardHeader className="flex flex-row items-center justify-between">

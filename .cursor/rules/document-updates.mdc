@@ -1,0 +1,31 @@
+---
+description: Document every code change in update/CHANGELOG.md with today's date
+alwaysApply: true
+---
+
+# Document updates in `update/CHANGELOG.md`
+
+Whenever you finish meaningful code or config changes in this repo (features, fixes, refactors, i18n, tests, schema), **append a dated entry** to `update/CHANGELOG.md` before ending the turn.
+
+## Rules
+
+- Use the **user_info / today's date** (not guess). Format section heading: `## YYYY-MM-DD`
+- If that date section already exists, **append** under it (do not invent a second section for the same day)
+- If the file or folder is missing, create `update/CHANGELOG.md`
+- Keep entries short: goal + bullet list of what changed + key file paths
+- Skip documenting trivial-only edits (typo in a comment, formatting-only) unless the user asks
+- Do **not** put secrets, `.env` values, or credentials in the changelog
+- Do this in the **same turn** as the code change — do not wait for the user to ask
+
+## Entry template
+
+```markdown
+## YYYY-MM-DD
+
+### Short title
+**Goal:** one line
+
+- What changed
+- Key paths: `path/to/file`
+
+```

@@ -31,11 +31,13 @@ export interface TwoFactorLoginRequest {
   code: string;
   temp_token: string;
   role: 'user' | 'mentor';
+  timezone?: string;
 }
 
 export interface SocialLoginRequest {
   id_token: string;
   link_password?: string;
+  timezone?: string;
 }
 
 export interface UserOut {

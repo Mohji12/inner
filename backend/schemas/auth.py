@@ -46,11 +46,13 @@ class TwoFactorLoginRequest(BaseModel):
     code: str
     temp_token: str
     role: str
+    timezone: str | None = None
 
 
 class SocialLoginRequest(BaseModel):
     id_token: str
     link_password: str | None = Field(default=None, min_length=8, max_length=128)
+    timezone: str | None = None
 
 
 class LoginResponse(AccessTokenResponse):

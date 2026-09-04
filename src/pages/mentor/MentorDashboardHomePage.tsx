@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
+import { Video } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,8 @@ import {
   listMentorMonthlyInvoices,
   type AnalyticsPeriod,
 } from "@/api/mentors";
+import { listMentorBookings } from "@/api/bookings";
+import { getMentorActiveChatSession, listChatSessions } from "@/api/chat";
 import { syncMolliePaymentAfterCheckout } from "@/api/payments";
 import { getNotifications, markNotificationAsRead } from "@/api/notifications";
 import { CoachConnectStatusCard } from "@/components/mentor/CoachConnectStatusCard";
@@ -31,6 +34,7 @@ import { CoachWalletCard } from "@/components/mentor/CoachWalletCard";
 import { CoachPresenceBanner } from "@/components/CoachPresenceBanner";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { useDashboardPerson } from "@/hooks/useDashboardPerson";
+import { resolveMentorLiveJoinTarget } from "@/lib/bookingChatLinks";
 import {
   clearPendingMolliePaymentId,
   peekPendingMolliePaymentId,
@@ -116,6 +120,34 @@ export default function MentorDashboardHomePage() {
     refetchInterval: 30_000,
   });
 
+  const activeChatQ = useQuery({
+    queryKey: ["chat", "mentor-active"],
+    queryFn: getMentorActiveChatSession,
+    refetchInterval: 10_000,
+  });
+
+  const bookingsQ = useQuery({
+    queryKey: ["bookings", "mentor", "me"],
+    queryFn: listMentorBookings,
+    refetchInterval: 15_000,
+  });
+
+  const chatInboxQ = useQuery({
+    queryKey: ["chat", "sessions", "mentor", "dashboard-live"],
+    queryFn: listChatSessions,
+    refetchInterval: 10_000,
+  });
+
+  const liveJoin = useMemo(
+    () =>
+      resolveMentorLiveJoinTarget({
+        activeSession: activeChatQ.data ?? null,
+        bookings: bookingsQ.data ?? [],
+        inbox: chatInboxQ.data?.sessions ?? [],
+      }),
+    [activeChatQ.data, bookingsQ.data, chatInboxQ.data?.sessions],
+  );
+
   const adminMessages = useMemo(
     () =>
       (announcementsQ.data?.notifications ?? []).filter(
@@ -187,6 +219,45 @@ export default function MentorDashboardHomePage() {
           <p className="mt-1 text-sm text-muted-foreground">{d.subheading}</p>
         </div>
       </div>
+
+      {liveJoin ? (
+        <Card className="border-emerald-500/50 bg-emerald-500/10 shadow-sm">
+          <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
+                  {d.liveSessionTitle}
+                </Badge>
+                {liveJoin.waitingForCoach ? (
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                  </span>
+                ) : null}
+              </div>
+              <p className="text-base font-medium text-foreground">
+                {liveJoin.partnerName
+                  ? (liveJoin.waitingForCoach ? d.liveSessionWaiting : d.liveSessionActive).replace(
+                      "{name}",
+                      liveJoin.partnerName,
+                    )
+                  : d.liveSessionGeneric}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild size="lg" className="gradient-cta text-white">
+                <Link to={liveJoin.path}>
+                  <Video className="mr-2 h-4 w-4" />
+                  {d.joinLiveSession}
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="outline">
+                <Link to="/mentor/appointments">{d.viewAppointments}</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {adminMessages.length > 0 ? (
         <Card className="border-accent/40 bg-accent/5">

@@ -11,6 +11,7 @@ from schemas.booking import BookingCreate, BookingOut, BookingUpdate
 from services.booking_service import BookingError, create_booking_request
 from services.booking_slot_service import release_booking_slot
 from services.i18n_service import resolve_i18n_text, to_i18n_map
+from services.no_show_service import mark_booking_unattended
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
@@ -180,6 +181,13 @@ def update_booking_as_mentor(
     if payload.status == STATUS_CANCELLED:
         booking.status = STATUS_CANCELLED
         release_booking_slot(db, booking)
+    if payload.status == "unattended":
+        if booking.status not in ("confirmed", "unattended"):
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Only confirmed bookings can be marked unattended",
+            )
+        mark_booking_unattended(db, booking)
     db.commit()
     db.refresh(booking)
     return _booking_out(db, booking, lang)

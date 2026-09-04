@@ -82,8 +82,9 @@ export const useChatWebSocket = ({ sessionId, token, onMessage, role }: UseChatW
           const msg = parsed.data as ChatMessage;
           const msgKey = ["chat", "messages", sessionId] as const;
           const prev = queryClient.getQueryData<ChatMessage[]>(msgKey);
-          if (!prev?.length) {
-            void queryClient.invalidateQueries({ queryKey: msgKey });
+          if (!prev) {
+            // Seed cache with the live message instead of forcing a full refetch.
+            queryClient.setQueryData<ChatMessage[]>(msgKey, [msg]);
           } else if (!prev.some((m) => m.id === msg.id)) {
             queryClient.setQueryData<ChatMessage[]>(
               msgKey,
@@ -104,7 +105,13 @@ export const useChatWebSocket = ({ sessionId, token, onMessage, role }: UseChatW
         }
         if (parsed.type === "read_receipt") {
           if (parsed.data?.role !== role) {
-            void queryClient.invalidateQueries({ queryKey: ["chat", "messages", sessionId] });
+            const readAt = typeof parsed.data?.read_at === "string" ? parsed.data.read_at : new Date().toISOString();
+            queryClient.setQueryData<ChatMessage[]>(["chat", "messages", sessionId], (prev) => {
+              if (!prev?.length) return prev;
+              return prev.map((m) =>
+                m.sender_role === role && !m.read_at ? { ...m, read_at: readAt } : m,
+              );
+            });
           }
         }
 

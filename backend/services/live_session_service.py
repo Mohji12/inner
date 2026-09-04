@@ -102,6 +102,51 @@ def booking_for_chat_session(db: Session, session_id: str) -> Booking | None:
     )
 
 
+def chat_session_id_from_booking(booking: Booking) -> str | None:
+    link = (booking.meeting_link or "").strip()
+    needle = "/chat/"
+    if needle not in link:
+        return None
+    return link.split(needle, 1)[1].split("?", 1)[0] or None
+
+
+def chat_session_for_booking(db: Session, booking: Booking) -> ChatSession | None:
+    session_id = chat_session_id_from_booking(booking)
+    if not session_id:
+        return None
+    return db.query(ChatSession).filter(ChatSession.id == session_id).first()
+
+
+def classify_booking_no_show(db: Session, booking: Booking) -> Literal["mentor", "user", "both"] | None:
+    """
+    Infer who missed a live booking from join timestamps.
+
+    - mentor: user joined, coach never joined, billed timer never started
+    - user: coach joined, user never joined, billed timer never started
+    - both: neither joined before the window ended
+    - None: both joined (timer started) or no join telemetry available
+    """
+    session = chat_session_for_booking(db, booking)
+    if not session:
+        return None
+    if session.timer_started_at is not None:
+        return None
+    user_in = session.user_joined_at is not None
+    mentor_in = session.mentor_joined_at is not None
+    if user_in and not mentor_in:
+        return "mentor"
+    if mentor_in and not user_in:
+        return "user"
+    if not user_in and not mentor_in:
+        return "both"
+    return None
+
+
+def booking_was_coach_no_show(db: Session, booking: Booking) -> bool:
+    """True when the user showed up but the coach never joined the live session."""
+    return classify_booking_no_show(db, booking) == "mentor"
+
+
 def session_booking_meta(db: Session, session_id: str) -> dict | None:
     booking = booking_for_chat_session(db, session_id)
     if not booking:

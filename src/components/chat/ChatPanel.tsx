@@ -74,14 +74,15 @@ export function ChatPanel({ sessionId, session }: Props) {
     onMessage: handleWsMessage,
   });
 
-  const { data: messages = [] } = useQuery({
+  const { data: messages = [], isLoading: messagesLoading } = useQuery({
     queryKey: ["chat", "messages", sessionId],
-    queryFn: () => listChatMessages(sessionId, { limit: 200 }),
-    enabled: Boolean(sessionId) && Boolean(session),
+    queryFn: () => listChatMessages(sessionId, { limit: 50 }),
+    enabled: Boolean(sessionId),
+    staleTime: 5_000,
     refetchInterval: () => {
       if (!session || session.status === "ended") return false;
       if (wsStatus === "connected") return false;
-      return 7000;
+      return 10_000;
     },
   });
 
@@ -245,13 +246,17 @@ export function ChatPanel({ sessionId, session }: Props) {
           {sortedMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center space-y-2">
               <p className="text-sm font-medium">
-                {needsPayment ? "Payment required" : "Start the conversation"}
+                {messagesLoading ? "Loading messages…" : needsPayment ? "Payment required" : "Start the conversation"}
               </p>
-              <p className="text-xs text-muted-foreground max-w-[220px]">
-                {needsPayment
-                  ? "Complete payment to unlock messaging in this conversation."
-                  : "Send a message or share an image to begin."}
-              </p>
+              {!messagesLoading ? (
+                <p className="text-xs text-muted-foreground max-w-[220px]">
+                  {needsPayment
+                    ? "Complete payment to unlock messaging in this conversation."
+                    : "Send a message or share an image to begin."}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground animate-pulse">Fetching recent conversation…</p>
+              )}
             </div>
           ) : (
             sortedMessages.map((m) => {

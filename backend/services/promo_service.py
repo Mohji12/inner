@@ -191,3 +191,48 @@ def apply_promo_code(
         db.commit()
     else:
         db.flush()
+
+
+def reverse_promo_redemption_for_booking(
+    db: Session,
+    booking_id: str,
+    *,
+    commit: bool = False,
+) -> bool:
+    """
+    Undo a checkout redemption for a booking (e.g. coach no-show).
+
+    Deletes the per-user redemption row and decrements promo.current_uses so
+    first-time codes like WELCOME5 become usable again.
+    """
+    if not booking_id:
+        return False
+
+    redemptions = (
+        db.query(PromoCodeRedemption)
+        .filter(PromoCodeRedemption.booking_id == booking_id)
+        .with_for_update()
+        .all()
+    )
+    if not redemptions:
+        return False
+
+    reversed_any = False
+    for redemption in redemptions:
+        promo = (
+            db.query(PromoCode)
+            .filter(PromoCode.id == redemption.promo_code_id)
+            .with_for_update()
+            .first()
+        )
+        db.delete(redemption)
+        if promo and promo.current_uses > 0:
+            promo.current_uses -= 1
+        reversed_any = True
+
+    if reversed_any:
+        if commit:
+            db.commit()
+        else:
+            db.flush()
+    return reversed_any

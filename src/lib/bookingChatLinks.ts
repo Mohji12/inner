@@ -120,3 +120,84 @@ export function chatSessionById(sessions: ChatInboxSession[]): Map<string, ChatI
   }
   return map;
 }
+
+export type MentorLiveJoinTarget = {
+  sessionId: string;
+  path: string;
+  partnerName?: string;
+  /** True when the client is waiting for the coach to enter. */
+  waitingForCoach: boolean;
+};
+
+/**
+ * Best live room for a coach dashboard “Join session” CTA.
+ * Prefers API active/me, then joinable paid bookings, then live instant chat.
+ */
+export function resolveMentorLiveJoinTarget(opts: {
+  activeSession: Pick<
+    ChatInboxSession,
+    "id" | "status" | "remaining_seconds" | "timer_started" | "waiting_for" | "allocated_duration_minutes"
+  > | null;
+  bookings: Booking[];
+  inbox: ChatInboxSession[];
+  now?: Date;
+}): MentorLiveJoinTarget | null {
+  const now = opts.now ?? new Date();
+  const map = chatSessionById(opts.inbox);
+
+  const waitingForCoach = (
+    session: Pick<ChatInboxSession, "waiting_for" | "timer_started" | "allocated_duration_minutes" | "status"> | null | undefined,
+  ) => {
+    if (!session) return false;
+    if (session.timer_started) return false;
+    return session.waiting_for === "mentor" || session.waiting_for === "both";
+  };
+
+  if (opts.activeSession?.id) {
+    const inboxHit = map.get(opts.activeSession.id);
+    return {
+      sessionId: opts.activeSession.id,
+      path: `/mentor/chat/${opts.activeSession.id}`,
+      partnerName: inboxHit?.partner_name,
+      waitingForCoach: waitingForCoach(opts.activeSession) || waitingForCoach(inboxHit),
+    };
+  }
+
+  for (const booking of sortBookingsForDisplay(opts.bookings, now)) {
+    const sessionId = meetingLinkSessionId(booking.meeting_link);
+    if (!sessionId) continue;
+    const linked = map.get(sessionId);
+    if (!canOpenBookingChat(booking, linked, now)) continue;
+    return {
+      sessionId,
+      path: `/mentor/chat/${sessionId}`,
+      partnerName: linked?.partner_name,
+      waitingForCoach: waitingForCoach(linked) || !linked?.timer_started,
+    };
+  }
+
+  for (const session of standaloneChatSessions(opts.inbox, opts.bookings)) {
+    if (session.status === "ended") continue;
+    if (sessionNeedsInitialPayment(session) || sessionJoinWindowExpired(session) || sessionTimeExpired(session)) {
+      continue;
+    }
+    if (session.status === "active" && session.remaining_seconds > 0) {
+      return {
+        sessionId: session.id,
+        path: `/mentor/chat/${session.id}`,
+        partnerName: session.partner_name,
+        waitingForCoach: false,
+      };
+    }
+    if (sessionWaitingForParticipants(session)) {
+      return {
+        sessionId: session.id,
+        path: `/mentor/chat/${session.id}`,
+        partnerName: session.partner_name,
+        waitingForCoach: waitingForCoach(session),
+      };
+    }
+  }
+
+  return null;
+}

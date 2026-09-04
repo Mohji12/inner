@@ -42,11 +42,23 @@ const WalletPage = () => {
   const [customAmount, setCustomAmount] = useState("");
   const [paying, setPaying] = useState(false);
   const returnTo = safeAppReturnPath(searchParams.get("returnTo"));
+  const amountPrefillApplied = useRef(false);
 
   const { data: wallet, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ["wallet", "me"],
     queryFn: () => getMyWallet(),
   });
+
+  useEffect(() => {
+    if (amountPrefillApplied.current) return;
+    const raw = searchParams.get("amount");
+    if (!raw) return;
+    const parsed = parseAmount(raw);
+    if (parsed == null || parsed < MIN_EUR || parsed > MAX_EUR) return;
+    amountPrefillApplied.current = true;
+    setCustomAmount(String(parsed));
+    setSelectedPreset((PRESETS as readonly number[]).includes(parsed) ? parsed : null);
+  }, [searchParams]);
 
   const amount = useMemo(() => parseAmount(customAmount), [customAmount]);
   const amountError = useMemo(() => {

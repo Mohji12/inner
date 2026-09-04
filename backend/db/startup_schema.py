@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 # MySQL / MariaDB: ER_DUP_FIELDNAME (column already exists)
 _DUP_COLUMN_ERRNO = 1060
+_DUP_KEY_ERRNO = 1061
 _LOCK_WAIT_TIMEOUT_ERRNO = 1205
 # Server gone away / lost connection during query (common on remote MySQL over flaky networks)
 _LOST_CONNECTION_ERRNOS = {2006, 2013}
@@ -83,6 +84,26 @@ def _safe_add_column(ddl_sql: str) -> None:
         if code == _DUP_COLUMN_ERRNO:
             return
         raise
+
+
+def _safe_add_index(ddl_sql: str) -> None:
+    try:
+        _execute_ddl(ddl_sql)
+    except DBAPIError as e:
+        code = _db_error_code(e)
+        if code in (_DUP_KEY_ERRNO, _DUP_COLUMN_ERRNO):
+            return
+        msg = str(e).lower()
+        if "duplicate key name" in msg or "already exists" in msg:
+            return
+        raise
+
+
+def ensure_chat_messages_session_created_index() -> None:
+    """Speeds up newest-message fetches for a chat room."""
+    _safe_add_index(
+        "CREATE INDEX ix_chat_messages_session_created ON chat_messages (session_id, created_at)"
+    )
 
 
 def ensure_mentors_banner_image_column() -> None:

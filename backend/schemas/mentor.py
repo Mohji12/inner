@@ -10,6 +10,7 @@ from schemas.unavailability import UnavailabilityPublicBlock
 class MentorLogin(BaseModel):
     email: EmailStr
     password: str
+    timezone: str | None = None
 
 
 class PublicCardVisibility(BaseModel):
@@ -28,6 +29,7 @@ class MentorRegister(BaseModel):
     phone_number: str
     password: str = Field(min_length=8)
     country_code: str | None = Field(default=None, max_length=2)
+    timezone: str | None = None
     headline: str | None = None
     bio: str | None = None
     headline_i18n: dict[str, str] | None = None

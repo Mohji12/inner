@@ -47,6 +47,7 @@ from services.mollie_service import resolve_mollie_webhook_url
 from services.token_service import revoke_refresh_token, rotate_refresh_token, store_refresh_token
 from services.two_factor_service import two_factor_service
 from services.social_auth_service import social_auth_service
+from services.timezone_service import apply_client_timezone, resolve_account_timezone
 from core.coach_agreement import COACH_AGREEMENT_TEXT, COACH_AGREEMENT_VERSION
 from services.i18n_service import to_i18n_map
 from services.meta_capi_service import track_mentor_registration_verified
@@ -173,7 +174,7 @@ def register_mentor(request: Request, db: DbSession, payload: MentorRegister) ->
         email=email,
         phone_number=payload.phone_number,
         country_code=(payload.country_code.strip().upper()[:2] if payload.country_code else None),
-        timezone="UTC",
+        timezone=resolve_account_timezone(payload.timezone),
         password_hash=hash_password(payload.password),
         profile_image=(
             (payload.profile_image.strip()[:512] or None) if payload.profile_image else None
@@ -447,6 +448,7 @@ def login_mentor(request: Request, db: DbSession, payload: MentorLogin, response
         )
 
     mentor.last_seen_at = datetime.now(timezone.utc)
+    apply_client_timezone(mentor, payload.timezone)
     db.commit()
     raw_refresh = store_refresh_token(db, subject_id=mentor.id, role="mentor")
     _set_refresh_cookie(response, raw_refresh)
@@ -507,6 +509,7 @@ def login_mentor_2fa(db: DbSession, payload: TwoFactorLoginRequest, response: Re
     
     if two_factor_service.verify_otp(mentor.totp_secret, payload.code):
         mentor.last_seen_at = datetime.now(timezone.utc)
+        apply_client_timezone(mentor, payload.timezone)
         db.commit()
         raw_refresh = store_refresh_token(db, subject_id=mentor.id, role="mentor")
         _set_refresh_cookie(response, raw_refresh)
@@ -579,6 +582,7 @@ def login_mentor_google(db: DbSession, payload: SocialLoginRequest, response: Re
         )
     
     mentor.last_seen_at = datetime.now(timezone.utc)
+    apply_client_timezone(mentor, payload.timezone)
     db.commit()
     
     if mentor.is_totp_enabled:

@@ -33,6 +33,7 @@ from services.two_factor_service import two_factor_service
 from services.social_auth_service import social_auth_service
 from services.meta_capi_service import track_user_lead, track_user_registration_verified
 from services.welcome_promo_service import get_welcome_promo_row, send_user_welcome_promo_email
+from services.timezone_service import apply_client_timezone, resolve_account_timezone
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/auth/user", tags=["auth-user"])
@@ -97,7 +98,7 @@ def register_user(request: Request, db: DbSession, payload: UserRegister) -> Use
         date_of_birth=None,
         location=None,
         country_code=None,
-        timezone="UTC",
+        timezone=resolve_account_timezone(payload.timezone),
         preferred_language=payload.preferred_language,
         interests=None,
         goals=None,
@@ -219,6 +220,7 @@ def login_user(request: Request, db: DbSession, payload: UserLogin, response: Re
         )
 
     user.last_login = datetime.now(timezone.utc)
+    apply_client_timezone(user, payload.timezone)
     db.commit()
     raw_refresh = store_refresh_token(db, subject_id=user.id, role="user")
     _set_refresh_cookie(response, raw_refresh)
@@ -281,6 +283,7 @@ def login_user_2fa(db: DbSession, payload: TwoFactorLoginRequest, response: Resp
     
     if two_factor_service.verify_otp(user.totp_secret, payload.code):
         user.last_login = datetime.now(timezone.utc)
+        apply_client_timezone(user, payload.timezone)
         db.commit()
         raw_refresh = store_refresh_token(db, subject_id=user.id, role="user")
         _set_refresh_cookie(response, raw_refresh)
@@ -334,7 +337,7 @@ def login_user_google(db: DbSession, payload: SocialLoginRequest, response: Resp
             email=email,
             phone_number=f"google_{google_id}", # Placeholder since Google doesn't always provide phone
             country_code=None,
-            timezone="UTC",
+            timezone=resolve_account_timezone(payload.timezone),
             password_hash="social_login", # No password
             google_id=google_id,
             email_verified=True,
@@ -363,6 +366,7 @@ def login_user_google(db: DbSession, payload: SocialLoginRequest, response: Resp
         user.email_verified = True
     
     user.last_login = now
+    apply_client_timezone(user, payload.timezone)
     db.commit()
     
     # If social user has 2FA enabled, they still need to pass it

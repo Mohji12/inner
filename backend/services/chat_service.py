@@ -344,10 +344,10 @@ def get_session_for_participant(db: Session, session_id: str, user_id: str | Non
     if not (ok_user or ok_mentor):
         raise ChatError("Forbidden", "forbidden")
     sync_session_time_state(session)
-    # Automatically mark as read when grabbing the session details? 
-    # Actually better to have a separate endpoint for explicit "Read" trigger.
-    db.commit()
-    db.refresh(session)
+    # Avoid write+refresh on every poll when nothing changed.
+    if session in db.dirty:
+        db.commit()
+        db.refresh(session)
     return session
 
 
@@ -475,12 +475,37 @@ def list_messages(
     after_id: str | None,
     limit: int = 50,
 ) -> list[ChatMessage]:
-    q = db.query(ChatMessage).filter(ChatMessage.session_id == session_id).order_by(ChatMessage.created_at.asc())
+    """
+    Return messages for a session.
+
+    - With after_id: forward sync (messages newer than the pivot), oldest→newest.
+    - Without after_id: newest `limit` messages (for fast room open), oldest→newest.
+    """
+    cap = min(max(1, limit), 200)
     if after_id:
-        pivot = db.query(ChatMessage).filter(ChatMessage.id == after_id, ChatMessage.session_id == session_id).first()
+        pivot = (
+            db.query(ChatMessage)
+            .filter(ChatMessage.id == after_id, ChatMessage.session_id == session_id)
+            .first()
+        )
+        q = (
+            db.query(ChatMessage)
+            .filter(ChatMessage.session_id == session_id)
+            .order_by(ChatMessage.created_at.asc())
+        )
         if pivot:
             q = q.filter(ChatMessage.created_at > pivot.created_at)
-    return q.limit(min(limit, 200)).all()
+        return q.limit(cap).all()
+
+    newest = (
+        db.query(ChatMessage)
+        .filter(ChatMessage.session_id == session_id)
+        .order_by(ChatMessage.created_at.desc())
+        .limit(cap)
+        .all()
+    )
+    newest.reverse()
+    return newest
 
 
 def list_all_messages_for_session(
@@ -526,8 +551,9 @@ def end_session(
 
 
 def get_active_session_for_mentor(db: Session, mentor_id: str) -> ChatSession | None:
+    """Return the coach's live room, including paid booking sessions still in the join window."""
     now = _utcnow()
-    return (
+    active = (
         db.query(ChatSession)
         .filter(
             ChatSession.mentor_id == mentor_id,
@@ -537,3 +563,22 @@ def get_active_session_for_mentor(db: Session, mentor_id: str) -> ChatSession | 
         .order_by(ChatSession.ends_at.desc())
         .first()
     )
+    if active is not None:
+        return active
+
+    waiting = (
+        db.query(ChatSession)
+        .filter(
+            ChatSession.mentor_id == mentor_id,
+            ChatSession.status == CHAT_SESSION_PAUSED,
+            ChatSession.allocated_duration_minutes.isnot(None),
+            ChatSession.timer_started_at.is_(None),
+            ChatSession.ends_at > now,
+        )
+        .order_by(ChatSession.ends_at.asc())
+        .all()
+    )
+    for row in waiting:
+        if not join_deadline_expired(row):
+            return row
+    return None

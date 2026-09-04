@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/auth/AuthContext";
-import { endChatSession, getChatSession, joinChatSession } from "@/api/chat";
+import { endChatSession, getChatSession, joinChatSession, listChatMessages } from "@/api/chat";
 import { syncMolliePaymentAfterCheckout } from "@/api/payments";
 import { getMeeting } from "@/api/meetings";
 import type { MeetingCommunicationMode } from "@/api/meetings";
@@ -70,14 +70,23 @@ const ChatSessionPage = () => {
     queryKey: ["chat", "session", sid],
     queryFn: () => getChatSession(sid),
     enabled: Boolean(sid),
+    staleTime: 2_000,
     refetchInterval: (q) => {
       const d = q.state.data as ChatSession | undefined;
-      if (!d) return 1000;
+      if (!d) return 2_000;
       // Keep polling after end so a paid "Continue chat" can refresh the UI.
-      if (d.status === "ended") return 8000;
-      if (!d.timer_started && d.waiting_for) return 2000;
-      return 5000;
+      if (d.status === "ended") return 12_000;
+      if (!d.timer_started && d.waiting_for) return 4_000;
+      return 8_000;
     },
+  });
+
+  // Prefetch recent messages in parallel with session so the thread is warm when ChatPanel mounts.
+  useQuery({
+    queryKey: ["chat", "messages", sid],
+    queryFn: () => listChatMessages(sid, { limit: 50 }),
+    enabled: Boolean(sid),
+    staleTime: 5_000,
   });
 
   useEffect(() => {
@@ -159,11 +168,12 @@ const ChatSessionPage = () => {
     queryKey: ["meeting", "session", sid],
     queryFn: () => getMeeting(sid),
     enabled: Boolean(sid),
+    staleTime: 3_000,
     refetchInterval: (q) => {
       const d = q.state.data;
-      if (!d) return 1000;
+      if (!d) return 2_000;
       if (d.status === "ended") return false;
-      return 5000;
+      return 10_000;
     },
   });
 

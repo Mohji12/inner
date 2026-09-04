@@ -13,6 +13,7 @@ import {
   sessionJoinWindowExpired,
 } from "@/lib/chatSessionTiming";
 import { useEffectiveTimeZone } from "@/hooks/useEffectiveTimeZone";
+import { useLanguage } from "@/i18n/LanguageContext";
 import { SessionBookingDetails } from "@/components/SessionBookingDetails";
 import {
   canOpenBookingChat,
@@ -40,6 +41,8 @@ function normalizeMentorMeetingLink(link: string | null): string | null {
 }
 
 const MentorAppointmentsPage = () => {
+  const { t } = useLanguage();
+  const m = t.app.mentorAppointments;
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const [downloadingInvoiceId, setDownloadingInvoiceId] = useState<string | null>(null);
@@ -63,7 +66,7 @@ const MentorAppointmentsPage = () => {
     mutationFn: ({ id, status }: { id: string; status: string }) => patchBookingAsMentor(id, { status }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bookings", "mentor", "me"] });
-      toast.success("Booking updated");
+      toast.success(m.bookingUpdatedToast);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -72,9 +75,9 @@ const MentorAppointmentsPage = () => {
     setDownloadingInvoiceId(bookingId);
     try {
       await saveMentorBookingInvoicePdf(bookingId);
-      toast.success("Invoice downloaded");
+      toast.success(m.invoiceDownloadedToast);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not download invoice");
+      toast.error(e instanceof Error ? e.message : m.invoiceDownloadError);
     } finally {
       setDownloadingInvoiceId(null);
     }
@@ -113,7 +116,7 @@ const MentorAppointmentsPage = () => {
           void queryClient.invalidateQueries({ queryKey: ["chat", "sessions", "mentor", "appointments"] });
           if (!sessionReadyToastShownRef.current) {
             sessionReadyToastShownRef.current = true;
-            toast.success("Live session is ready to join.");
+            toast.success(m.sessionReadyToast);
           }
           return;
         }
@@ -133,18 +136,18 @@ const MentorAppointmentsPage = () => {
     return () => {
       disposed = true;
     };
-  }, [highlightedSessionId, highlightedSession?.status, queryClient]);
+  }, [highlightedSessionId, highlightedSession?.status, queryClient, m.sessionReadyToast]);
 
   if (isLoading) {
-    return <p className="text-muted-foreground">Loading appointments…</p>;
+    return <p className="text-muted-foreground">{m.loading}</p>;
   }
 
   if (bookings.length === 0 && instantChatSessions.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="font-serif text-2xl">No sessions yet</CardTitle>
-          <CardDescription>Sessions appear after a user pays for a booking or starts a live chat.</CardDescription>
+          <CardTitle className="font-serif text-2xl">{m.emptyTitle}</CardTitle>
+          <CardDescription>{m.emptyDescription}</CardDescription>
         </CardHeader>
       </Card>
     );
@@ -153,26 +156,22 @@ const MentorAppointmentsPage = () => {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-sm uppercase tracking-widest text-accent">Appointments</p>
-        <h1 className="font-serif text-3xl">Your sessions</h1>
-        <p className="mt-1 max-w-xl text-xs text-muted-foreground">
-          Each paid booking appears once. Instant chat (Talk now) history is listed separately when applicable.
-        </p>
+        <p className="text-sm uppercase tracking-widest text-accent">{m.label}</p>
+        <h1 className="font-serif text-3xl">{m.heading}</h1>
+        <p className="mt-1 max-w-xl text-xs text-muted-foreground">{m.subheading}</p>
       </div>
 
       {highlightedSessionId && isConfirmingSession ? (
         <Card className="border-border/60">
-          <CardContent className="p-4 text-sm text-muted-foreground">
-            Confirming payment and activating live session. This may take a few seconds after Mollie redirect.
-          </CardContent>
+          <CardContent className="p-4 text-sm text-muted-foreground">{m.confirmingPayment}</CardContent>
         </Card>
       ) : null}
 
       {instantChatSessions.length > 0 ? (
         <div className="space-y-4">
           <div>
-            <p className="text-sm uppercase tracking-widest text-accent">Instant chat</p>
-            <h2 className="font-serif text-2xl">Talk now sessions</h2>
+            <p className="text-sm uppercase tracking-widest text-accent">{m.instantChatLabel}</p>
+            <h2 className="font-serif text-2xl">{m.talkNowHeading}</h2>
           </div>
           {instantChatSessions.map((s: ChatInboxSession) => {
             const canJoin = s.status === "active" && s.remaining_seconds > 0;
@@ -182,13 +181,13 @@ const MentorAppointmentsPage = () => {
             const timeUp = sessionTimeExpired(s);
             const joinDead = sessionJoinWindowExpired(s);
             const statusLabel = unpaid
-              ? "Awaiting payment"
+              ? m.awaitingPayment
               : joinDead
-                ? "Join expired"
+                ? m.joinExpired
                 : timeUp
-                  ? "Time up"
+                  ? m.timeUp
                   : s.waiting_for
-                    ? "Waiting"
+                    ? m.waiting
                     : s.status;
             const cap = chatSessionCardCaption(
               {
@@ -207,7 +206,7 @@ const MentorAppointmentsPage = () => {
                 <CardContent className="space-y-3 p-6">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="font-semibold">{s.partner_name || "User"}</p>
+                      <p className="font-semibold">{s.partner_name || m.userFallback}</p>
                       <p className="text-sm text-muted-foreground">{cap.primaryLine}</p>
                       {cap.secondaryLine ? (
                         <p className="mt-1 text-xs text-muted-foreground">{cap.secondaryLine}</p>
@@ -221,12 +220,12 @@ const MentorAppointmentsPage = () => {
                   <div className="flex flex-wrap gap-2">
                     {canJoin ? (
                       <Button size="sm" className="gradient-cta text-white" asChild>
-                        <Link to={toMentorChatPath(s.id)}>Join session</Link>
+                        <Link to={toMentorChatPath(s.id)}>{m.joinSession}</Link>
                       </Button>
                     ) : null}
                     {s.status === "ended" && !unpaid && !timeUp && !joinDead ? (
                       <Button size="sm" variant="outline" asChild>
-                        <Link to={toMentorChatPath(s.id)}>View history</Link>
+                        <Link to={toMentorChatPath(s.id)}>{m.viewHistory}</Link>
                       </Button>
                     ) : (
                       <Button size="sm" variant="outline" asChild>
@@ -263,9 +262,11 @@ const MentorAppointmentsPage = () => {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm text-muted-foreground">Booking {b.id.slice(0, 8)}...</p>
+                      <p className="text-sm text-muted-foreground">
+                        {m.bookingId.replace("{id}", b.id.slice(0, 8))}
+                      </p>
                       {isLiveSession ? (
-                        <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">Current session</Badge>
+                        <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">{m.currentSession}</Badge>
                       ) : null}
                     </div>
                     <p className="font-medium">
@@ -277,33 +278,38 @@ const MentorAppointmentsPage = () => {
                     {b.problem_description ? <p className="mt-1 text-sm text-muted-foreground">{b.problem_description}</p> : null}
                     {b.goals_expected ? (
                       <p className="mt-1 text-sm text-muted-foreground">
-                        <span className="font-medium text-foreground">Goals: </span>
+                        <span className="font-medium text-foreground">{m.goalsLabel}</span>
                         {b.goals_expected}
                       </p>
                     ) : null}
                     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      {b.experience_level ? <span>Level: {b.experience_level}</span> : null}
-                      {b.urgency_level ? <span>Urgency: {b.urgency_level}</span> : null}
-                      {b.communication_mode ? <span>Mode: {b.communication_mode}</span> : null}
-                      {b.preferred_language ? <span>Language: {b.preferred_language}</span> : null}
+                      {b.experience_level ? <span>{m.levelLabel.replace("{value}", b.experience_level)}</span> : null}
+                      {b.urgency_level ? <span>{m.urgencyLabel.replace("{value}", b.urgency_level)}</span> : null}
+                      {b.communication_mode ? <span>{m.modeLabel.replace("{value}", b.communication_mode)}</span> : null}
+                      {b.preferred_language ? <span>{m.languageLabel.replace("{value}", b.preferred_language)}</span> : null}
                     </div>
                   </div>
                   <div className="text-right">
                     <Badge>{b.status}</Badge>
-                    <p className="mt-1 text-sm text-muted-foreground">Payment: {b.payment_status}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {m.paymentLabel.replace("{status}", b.payment_status)}
+                    </p>
                   </div>
                 </div>
 
                 {linkedChat && isLiveSession ? (
                   <p className="text-xs text-muted-foreground">
-                    Live chat: {linkedChat.status === "active" ? "ready to join" : linkedChat.status}
+                    {m.liveChatLabel.replace(
+                      "{status}",
+                      linkedChat.status === "active" ? m.liveChatReady : linkedChat.status,
+                    )}
                   </p>
                 ) : null}
 
                 {normalizedMeetingLink && isLiveSession ? (
                   <p className="text-sm">
                     <Link to={normalizedMeetingLink} className="text-accent underline-offset-4 hover:underline">
-                      Open meeting room
+                      {m.openMeetingRoom}
                     </Link>
                   </p>
                 ) : null}
@@ -312,7 +318,7 @@ const MentorAppointmentsPage = () => {
                   {canJoinSession && normalizedMeetingLink ? (
                     <Button size="sm" className="gradient-cta text-white" asChild>
                       <Link to={normalizedMeetingLink}>
-                        {linkedChat?.status === "active" ? "Join session" : "Open chatroom"}
+                        {linkedChat?.status === "active" ? m.joinSession : m.openChatroom}
                       </Link>
                     </Button>
                   ) : null}
@@ -323,7 +329,7 @@ const MentorAppointmentsPage = () => {
                       disabled={downloadingInvoiceId === b.id}
                       onClick={() => void handleDownloadInvoice(b.id)}
                     >
-                      Download invoice
+                      {m.downloadInvoice}
                     </Button>
                   ) : null}
                   {b.status === "confirmed" ? (
@@ -334,7 +340,7 @@ const MentorAppointmentsPage = () => {
                         onClick={() => patchMut.mutate({ id: b.id, status: "completed" })}
                         disabled={patchMut.isPending}
                       >
-                        Mark completed
+                        {m.markCompleted}
                       </Button>
                       <Button
                         size="sm"
@@ -342,7 +348,7 @@ const MentorAppointmentsPage = () => {
                         onClick={() => patchMut.mutate({ id: b.id, status: "unattended" })}
                         disabled={patchMut.isPending}
                       >
-                        Mark no-show
+                        {m.markNoShow}
                       </Button>
                     </>
                   ) : null}
@@ -353,7 +359,7 @@ const MentorAppointmentsPage = () => {
                       onClick={() => patchMut.mutate({ id: b.id, status: "cancelled" })}
                       disabled={patchMut.isPending}
                     >
-                      Cancel
+                      {m.cancel}
                     </Button>
                   ) : null}
                 </div>

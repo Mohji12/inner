@@ -10,6 +10,7 @@ import type {
   TwoFactorDisableRequest,
   UserRegisterResult 
 } from "./types";
+import { resolveBrowserTimeZone } from "@/lib/timeZone";
 
 export interface UserRegisterBody {
   full_name: string;
@@ -17,11 +18,13 @@ export interface UserRegisterBody {
   phone_number: string;
   password: string;
   preferred_language?: string;
+  timezone?: string;
 }
 
 export interface UserLoginBody {
   email: string;
   password: string;
+  timezone?: string;
 }
 
 export interface MentorRegisterBody {
@@ -30,6 +33,7 @@ export interface MentorRegisterBody {
   phone_number: string;
   password: string;
   country_code?: string | null;
+  timezone?: string;
   headline?: string | null;
   bio?: string | null;
   profile_image?: string | null;
@@ -55,6 +59,7 @@ export interface MentorRegisterBody {
 export interface MentorLoginBody {
   email: string;
   password: string;
+  timezone?: string;
 }
 
 export interface VerifyEmailBody {
@@ -62,10 +67,14 @@ export interface VerifyEmailBody {
   code: string;
 }
 
+function withBrowserTimezone<T extends object>(body: T): T & { timezone: string } {
+  return { ...body, timezone: resolveBrowserTimeZone() };
+}
+
 export function registerUser(body: UserRegisterBody): Promise<UserRegisterResult> {
   return apiFetch<UserRegisterResult>("/auth/user/register", {
     method: "POST",
-    body: JSON.stringify(body),
+    body: JSON.stringify(withBrowserTimezone(body)),
     skipAuth: true,
   });
 }
@@ -73,7 +82,7 @@ export function registerUser(body: UserRegisterBody): Promise<UserRegisterResult
 export function loginUser(body: UserLoginBody): Promise<LoginResponse> {
   return apiFetch<LoginResponse>("/auth/user/login", {
     method: "POST",
-    body: JSON.stringify(body),
+    body: JSON.stringify(withBrowserTimezone(body)),
     skipAuth: true,
   });
 }
@@ -81,7 +90,7 @@ export function loginUser(body: UserLoginBody): Promise<LoginResponse> {
 export function loginUser2FA(body: TwoFactorLoginRequest): Promise<LoginResponse> {
   return apiFetch<LoginResponse>("/auth/user/2fa/login", {
     method: "POST",
-    body: JSON.stringify(body),
+    body: JSON.stringify(withBrowserTimezone(body)),
     skipAuth: true,
   });
 }
@@ -89,7 +98,7 @@ export function loginUser2FA(body: TwoFactorLoginRequest): Promise<LoginResponse
 export function loginUserGoogle(body: SocialLoginRequest): Promise<LoginResponse> {
   return apiFetch<LoginResponse>("/auth/user/google", {
     method: "POST",
-    body: JSON.stringify(body),
+    body: JSON.stringify(withBrowserTimezone(body)),
     skipAuth: true,
   });
 }
@@ -121,7 +130,7 @@ export function logoutUser(): Promise<void> {
 export function registerMentor(body: MentorRegisterBody): Promise<MentorRegisterResult> {
   return apiFetch<MentorRegisterResult>("/auth/mentor/register", {
     method: "POST",
-    body: JSON.stringify(body),
+    body: JSON.stringify(withBrowserTimezone(body)),
     skipAuth: true,
   });
 }
@@ -238,7 +247,7 @@ export function getMentorOnboardingPlans(): Promise<{
 export function loginMentor(body: MentorLoginBody): Promise<LoginResponse> {
   return apiFetch<LoginResponse>("/auth/mentor/login", {
     method: "POST",
-    body: JSON.stringify(body),
+    body: JSON.stringify(withBrowserTimezone(body)),
     skipAuth: true,
   });
 }
@@ -246,7 +255,7 @@ export function loginMentor(body: MentorLoginBody): Promise<LoginResponse> {
 export function loginMentor2FA(body: TwoFactorLoginRequest): Promise<LoginResponse> {
   return apiFetch<LoginResponse>("/auth/mentor/2fa/login", {
     method: "POST",
-    body: JSON.stringify(body),
+    body: JSON.stringify(withBrowserTimezone(body)),
     skipAuth: true,
   });
 }
@@ -254,7 +263,7 @@ export function loginMentor2FA(body: TwoFactorLoginRequest): Promise<LoginRespon
 export function loginMentorGoogle(body: SocialLoginRequest): Promise<LoginResponse> {
   return apiFetch<LoginResponse>("/auth/mentor/google", {
     method: "POST",
-    body: JSON.stringify(body),
+    body: JSON.stringify(withBrowserTimezone(body)),
     skipAuth: true,
   });
 }

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { canDownloadBookingInvoice, canOpenBookingChat, isBookingSessionEnded } from "./bookingChatLinks";
+import {
+  canDownloadBookingInvoice,
+  canOpenBookingChat,
+  isBookingSessionEnded,
+  resolveMentorLiveJoinTarget,
+} from "./bookingChatLinks";
+import type { Booking, ChatInboxSession } from "@/api/types";
 
 const baseBooking = {
   status: "confirmed" as const,
@@ -73,5 +79,93 @@ describe("canDownloadBookingInvoice", () => {
         new Date("2026-05-24T11:00:00.000Z"),
       ),
     ).toBe(true);
+  });
+});
+
+describe("resolveMentorLiveJoinTarget", () => {
+  const now = new Date("2026-05-24T11:30:00.000Z");
+
+  it("prefers active/me session", () => {
+    const target = resolveMentorLiveJoinTarget({
+      activeSession: {
+        id: "live-1",
+        status: "active",
+        remaining_seconds: 200,
+        timer_started: true,
+        waiting_for: null,
+        allocated_duration_minutes: 5,
+      },
+      bookings: [],
+      inbox: [
+        {
+          id: "live-1",
+          user_id: "u1",
+          mentor_id: "m1",
+          status: "active",
+          ends_at: "2026-05-24T12:00:00.000Z",
+          remaining_seconds: 200,
+          timer_started: true,
+          waiting_for: null,
+          allocated_duration_minutes: 5,
+          created_at: "",
+          updated_at: "",
+          last_message_at: null,
+          unread_count_user: 0,
+          unread_count_mentor: 0,
+          partner_name: "Alex",
+          partner_profile_image: null,
+          partner_is_online: true,
+          last_message_body: null,
+          last_message_role: null,
+        } satisfies ChatInboxSession,
+      ],
+      now,
+    });
+    expect(target).toEqual({
+      sessionId: "live-1",
+      path: "/mentor/chat/live-1",
+      partnerName: "Alex",
+      waitingForCoach: false,
+    });
+  });
+
+  it("falls back to joinable paid booking waiting for coach", () => {
+    const booking = {
+      ...baseBooking,
+      id: "b1",
+      meeting_link: "/user/chat/sess-wait?mode=video",
+    } as Booking;
+    const target = resolveMentorLiveJoinTarget({
+      activeSession: null,
+      bookings: [booking],
+      inbox: [
+        {
+          id: "sess-wait",
+          user_id: "u1",
+          mentor_id: "m1",
+          status: "paused",
+          ends_at: "2026-05-24T12:00:00.000Z",
+          remaining_seconds: 900,
+          timer_started: false,
+          waiting_for: "mentor",
+          allocated_duration_minutes: 5,
+          created_at: "",
+          updated_at: "",
+          last_message_at: null,
+          unread_count_user: 0,
+          unread_count_mentor: 0,
+          partner_name: "Sam",
+          partner_profile_image: null,
+          partner_is_online: true,
+          last_message_body: null,
+          last_message_role: null,
+        } satisfies ChatInboxSession,
+      ],
+      now,
+    });
+    expect(target?.sessionId).toBe("sess-wait");
+    expect(target?.path).toBe("/mentor/chat/sess-wait");
+    expect(target?.partnerName).toBe("Sam");
+    expect(target?.waitingForCoach).toBe(true);
   });
 });
