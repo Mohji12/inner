@@ -86,7 +86,7 @@ const ChatSessionPage = () => {
     queryKey: ["chat", "messages", sid],
     queryFn: () => listChatMessages(sid, { limit: 50 }),
     enabled: Boolean(sid),
-    staleTime: 5_000,
+    staleTime: 0,
   });
 
   useEffect(() => {

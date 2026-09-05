@@ -115,14 +115,18 @@ async def _ws_push_session(session_id: str, session) -> None:
     await chat_hub.broadcast(session_id, {"type": "session", "data": payload})
 
 
-async def _ws_push_message(session_id: str, msg) -> None:
-    db = SessionLocal()
-    try:
-        user, mentor = _session_participants(db, session_id)
-        out = _chat_message_out(msg, "en", user=user, mentor=mentor)
-        await chat_hub.broadcast(session_id, {"type": "new_message", "data": out.model_dump(mode="json")})
-    finally:
-        db.close()
+async def _ws_push_message(session_id: str, msg_or_payload: Any) -> None:
+    if isinstance(msg_or_payload, dict):
+        payload = msg_or_payload
+    else:
+        db = SessionLocal()
+        try:
+            user, mentor = _session_participants(db, session_id)
+            out = _chat_message_out(msg_or_payload, "en", user=user, mentor=mentor)
+            payload = out.model_dump(mode="json")
+        finally:
+            db.close()
+    await chat_hub.broadcast(session_id, {"type": "new_message", "data": payload})
 
 
 def _session_participants(db: Session, session_id: str) -> tuple[User | None, Mentor | None]:
@@ -866,9 +870,10 @@ def send_chat_message(
         db.refresh(msg)
     except ChatError as e:
         raise _chat_http(e) from e
-    background_tasks.add_task(_ws_push_message, session_id, msg)
     user, mentor = _session_participants(db, session_id)
-    return _chat_message_out(msg, lang, user=user, mentor=mentor)
+    out = _chat_message_out(msg, lang, user=user, mentor=mentor)
+    background_tasks.add_task(_ws_push_message, session_id, out.model_dump(mode="json"))
+    return out
 
 
 @router.post(
@@ -914,9 +919,10 @@ async def send_chat_image_message(
             db.refresh(msg)
     except ChatError as e:
         raise _chat_http(e) from e
-    background_tasks.add_task(_ws_push_message, session_id, msg)
     user, mentor = _session_participants(db, session_id)
-    return _chat_message_out(msg, lang, user=user, mentor=mentor)
+    out = _chat_message_out(msg, lang, user=user, mentor=mentor)
+    background_tasks.add_task(_ws_push_message, session_id, out.model_dump(mode="json"))
+    return out
 
 
 @router.get("/sessions/{session_id}/messages", response_model=list[ChatMessageOut])

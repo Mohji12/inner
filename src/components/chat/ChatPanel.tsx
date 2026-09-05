@@ -78,11 +78,11 @@ export function ChatPanel({ sessionId, session }: Props) {
     queryKey: ["chat", "messages", sessionId],
     queryFn: () => listChatMessages(sessionId, { limit: 50 }),
     enabled: Boolean(sessionId),
-    staleTime: 5_000,
+    staleTime: 0,
     refetchInterval: () => {
       if (!session || session.status === "ended") return false;
-      if (wsStatus === "connected") return false;
-      return 10_000;
+      // Fast polling (1.5s) when disconnected; 3s backup poll when connected
+      return wsStatus === "connected" ? 3_000 : 1_500;
     },
   });
 
