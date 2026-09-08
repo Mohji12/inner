@@ -7,6 +7,20 @@ Living log of work done on this project.
 
 ## 2026-09-08
 
+### Coach no-show alert after 5 minutes
+**Goal:** If the coach never joins, after 5 minutes the user gets an alert to end the session, get a wallet refund, and find another coach.
+
+- Dialog + banner when user has been waiting for coach for 5 minutes
+- End session triggers existing wallet refund; navigates to `/mentors`
+- Key paths: `src/components/chat/CoachNoShowDialog.tsx`, `src/pages/chat/ChatSessionPage.tsx`, `src/i18n/appBase.ts`, `src/i18n/chatOverrides.ts`
+
+### Point local frontend at production API
+**Goal:** Local Vite SPA talks to the production backend instead of the local `:8001` proxy.
+
+- Set root `.env` `VITE_API_URL=https://life.mijnlevenspad.com`
+- Restart `npm run dev` for the change to apply
+- Key path: `.env`
+
 ### Fix 5-min session showing a 30-min time range
 **Goal:** Session cards show start–end matching the booked duration (e.g. 5 min), not the 30-minute join window.
 

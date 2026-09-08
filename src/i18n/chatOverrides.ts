@@ -75,6 +75,14 @@ export const chatOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
         "Je coach is nog niet toegetreden. Als je de sessie nu beëindigt, wordt je betaling teruggestort op je portemonneesaldo en wordt een gebruikte promocode hersteld. Sessie nu beëindigen?",
       confirmEndNormal:
         "Deze sessie voor jullie beiden beëindigen? Je kunt deze chat later opnieuw openen door meer minuten te kopen.",
+      coachNoShowTitle: "Coach is niet toegetreden",
+      coachNoShowBody:
+        "Je coach is na 5 minuten nog niet toegetreden. Je kunt de sessie nu beëindigen — je betaling wordt teruggestort op je portemonnee — en een andere coach zoeken.",
+      coachNoShowKeepWaiting: "Blijf wachten",
+      coachNoShowEndAndFind: "Sessie beëindigen & coach zoeken",
+      coachNoShowEnding: "Beëindigen…",
+      coachNoShowBanner:
+        "Je coach is na 5 minuten niet toegetreden. Beëindig de sessie voor een portemonnee-terugstorting en zoek een andere coach.",
       refundBanner:
         "Deze sessie is beëindigd omdat de coach niet is toegetreden. Je betaling is teruggestort op je portemonneesaldo en een gebruikte promocode is hersteld.",
       needsPaymentUser:
@@ -283,6 +291,14 @@ export const chatOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
         "Votre coach n'a pas encore rejoint. Si vous terminez la session maintenant, votre paiement sera remboursé sur le solde de votre portefeuille et tout code promo utilisé sera rétabli. Terminer la session maintenant ?",
       confirmEndNormal:
         "Terminer cette session pour vous deux ? Vous pourrez rouvrir ce chat plus tard en achetant plus de minutes.",
+      coachNoShowTitle: "Le coach n'a pas rejoint",
+      coachNoShowBody:
+        "Votre coach n'a toujours pas rejoint après 5 minutes. Vous pouvez terminer cette session maintenant — votre paiement sera remboursé sur votre portefeuille — et chercher un autre coach.",
+      coachNoShowKeepWaiting: "Continuer d'attendre",
+      coachNoShowEndAndFind: "Terminer et trouver un coach",
+      coachNoShowEnding: "Fin…",
+      coachNoShowBanner:
+        "Votre coach n'a pas rejoint depuis 5 minutes. Terminez la session pour un remboursement portefeuille, puis cherchez un autre coach.",
       refundBanner:
         "Cette session a été terminée car le coach n'a pas rejoint. Votre paiement a été remboursé sur le solde de votre portefeuille et tout code promo utilisé a été rétabli.",
       needsPaymentUser:

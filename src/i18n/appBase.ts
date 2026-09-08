@@ -1410,6 +1410,14 @@ export const appEn = {
       "Your coach has not joined yet. If you end the session now, your payment will be refunded to your wallet balance and any promo code used will be restored. End session now?",
     confirmEndNormal:
       "End this session for both of you? You can still reopen this chat later by buying more minutes.",
+    coachNoShowTitle: "Coach has not joined",
+    coachNoShowBody:
+      "Your coach still has not joined after 5 minutes. You can end this session now — your payment will be refunded to your wallet — and search for another coach.",
+    coachNoShowKeepWaiting: "Keep waiting",
+    coachNoShowEndAndFind: "End session & find a coach",
+    coachNoShowEnding: "Ending…",
+    coachNoShowBanner:
+      "Your coach has not joined for 5 minutes. End the session to get a wallet refund, then find another coach.",
     refundBanner:
       "This session was ended because the coach did not join. Your payment has been refunded to your wallet balance and any promo code used has been restored.",
     needsPaymentUser:

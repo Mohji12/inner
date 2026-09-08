@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/auth/AuthContext";
 import { endChatSession, getChatSession, joinChatSession, listChatMessages } from "@/api/chat";
@@ -8,6 +8,7 @@ import { getMeeting } from "@/api/meetings";
 import type { MeetingCommunicationMode } from "@/api/meetings";
 import type { ChatSession } from "@/api/types";
 import { ChatPanel } from "@/components/chat/ChatPanel";
+import { CoachNoShowDialog, COACH_NO_SHOW_ALERT_MS } from "@/components/chat/CoachNoShowDialog";
 import { SessionExtendDialog } from "@/components/chat/SessionExtendDialog";
 import { SessionExpiryWarningDialog } from "@/components/chat/SessionExpiryWarningDialog";
 import { LiveClock } from "@/components/LiveClock";
@@ -59,6 +60,7 @@ function waitingLabel(
 const ChatSessionPage = () => {
   const { sessionId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { role } = useAuth();
   const { t } = useLanguage();
   const c = t.app.chatSession;
@@ -68,9 +70,15 @@ const ChatSessionPage = () => {
   const [expiryWarningOpen, setExpiryWarningOpen] = useState(false);
   const [warningUrgency, setWarningUrgency] = useState<"initial" | "final">("initial");
   const [localRemaining, setLocalRemaining] = useState<number | null>(null);
+  const [coachNoShowOpen, setCoachNoShowOpen] = useState(false);
+  const [coachWaitAlertReady, setCoachWaitAlertReady] = useState(false);
+  const [endingForNewCoach, setEndingForNewCoach] = useState(false);
   const firstWarningAt = useRef<number | null>(null);
   const secondWarningShown = useRef(false);
   const mollieSyncedRef = useRef(false);
+  const coachWaitStartedAt = useRef<number | null>(null);
+  const coachNoShowAlertShown = useRef(false);
+  const endingForNewCoachRef = useRef(false);
 
   const sid = sessionId ?? "";
 
@@ -203,8 +211,18 @@ const ChatSessionPage = () => {
       void queryClient.invalidateQueries({ queryKey: ["wallet"] });
       void queryClient.invalidateQueries({ queryKey: ["user-transactions"] });
       void queryClient.invalidateQueries({ queryKey: ["welcome-promo"] });
+      setCoachNoShowOpen(false);
+      if (endingForNewCoachRef.current) {
+        endingForNewCoachRef.current = false;
+        setEndingForNewCoach(false);
+        navigate("/mentors");
+      }
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      endingForNewCoachRef.current = false;
+      setEndingForNewCoach(false);
+      toast.error(e.message);
+    },
   });
 
   useEffect(() => {
@@ -212,6 +230,40 @@ const ChatSessionPage = () => {
       setLocalRemaining(session.remaining_seconds);
     }
   }, [session?.remaining_seconds]);
+
+  const waitingForCoachOnly =
+    role === "user" &&
+    Boolean(session && session.status !== "ended" && !session.timer_started && session.waiting_for === "mentor");
+
+  useEffect(() => {
+    if (session?.timer_started || session?.status === "ended") {
+      coachWaitStartedAt.current = null;
+      coachNoShowAlertShown.current = false;
+      setCoachWaitAlertReady(false);
+      setCoachNoShowOpen(false);
+      return;
+    }
+    if (!waitingForCoachOnly) {
+      setCoachNoShowOpen(false);
+      return;
+    }
+    if (coachWaitStartedAt.current == null) {
+      coachWaitStartedAt.current = Date.now();
+    }
+    const tick = () => {
+      const started = coachWaitStartedAt.current;
+      if (started == null) return;
+      if (Date.now() - started < COACH_NO_SHOW_ALERT_MS) return;
+      setCoachWaitAlertReady(true);
+      if (!coachNoShowAlertShown.current) {
+        coachNoShowAlertShown.current = true;
+        setCoachNoShowOpen(true);
+      }
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [waitingForCoachOnly, session?.timer_started, session?.status]);
 
   useEffect(() => {
     if (!session?.timer_started || session.status === "ended") return;
@@ -457,6 +509,27 @@ const ChatSessionPage = () => {
         </div>
       ) : null}
 
+      {waitingForCoachOnly && coachWaitAlertReady ? (
+        <div className="rounded-lg border border-amber-600/40 bg-amber-500/15 px-4 py-3 text-sm text-amber-950 dark:text-amber-50 flex flex-wrap items-center justify-between gap-3">
+          <span>{c.coachNoShowBanner}</span>
+          <div className="flex flex-wrap gap-2 shrink-0">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={endMut.isPending}
+              onClick={() => {
+                endingForNewCoachRef.current = true;
+                setEndingForNewCoach(true);
+                endMut.mutate();
+              }}
+            >
+              {endingForNewCoach && endMut.isPending ? c.coachNoShowEnding : c.coachNoShowEndAndFind}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       {role === "mentor" && (timeUp || isEnded || needsPayment || joinWindowExpired) ? (
         <div className="rounded-lg border border-border/60 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
           {isEnded
@@ -506,6 +579,17 @@ const ChatSessionPage = () => {
           ) : null}
         </>
       ) : null}
+
+      <CoachNoShowDialog
+        open={coachNoShowOpen && waitingForCoachOnly}
+        ending={endingForNewCoach && endMut.isPending}
+        onKeepWaiting={() => setCoachNoShowOpen(false)}
+        onEndAndFindCoach={() => {
+          endingForNewCoachRef.current = true;
+          setEndingForNewCoach(true);
+          endMut.mutate();
+        }}
+      />
     </div>
   );
 };
