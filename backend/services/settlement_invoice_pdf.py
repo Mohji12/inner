@@ -12,6 +12,8 @@ from xml.sax.saxutils import escape as xml_escape
 
 from models.mentor import Mentor
 from models.mentor_settlement import MentorSettlement, MentorSettlementItem
+from services.invoice_pdf_fonts import style_with_invoice_font, table_font_names
+from services.invoice_pdf_i18n import t_invoice
 from services.pdf_branding import BRAND_NAME, brand_header_story, branded_pdf_callbacks
 
 
@@ -31,6 +33,7 @@ def build_settlement_invoice_pdf(
     settlement: MentorSettlement,
     mentor: Mentor | None,
     items: list[MentorSettlementItem],
+    lang: str | None = None,
 ) -> bytes:
     buf = BytesIO()
     doc = SimpleDocTemplate(
@@ -43,10 +46,20 @@ def build_settlement_invoice_pdf(
     )
     on_first, on_later = branded_pdf_callbacks()
     styles = getSampleStyleSheet()
-    title = ParagraphStyle(name="InvTitle", parent=styles["Heading1"], fontSize=18, spaceAfter=12)
-    h2 = ParagraphStyle(name="InvH2", parent=styles["Heading2"], fontSize=11, spaceBefore=10, spaceAfter=6)
-    body = styles["Normal"]
-    foot = ParagraphStyle(name="Foot", parent=styles["Normal"], fontSize=8, textColor=colors.grey)
+    font_reg, font_bold = table_font_names(lang)
+    title = style_with_invoice_font(
+        ParagraphStyle(name="InvTitle", parent=styles["Heading1"], fontSize=18, spaceAfter=12),
+        lang,
+    )
+    h2 = style_with_invoice_font(
+        ParagraphStyle(name="InvH2", parent=styles["Heading2"], fontSize=11, spaceBefore=10, spaceAfter=6),
+        lang,
+    )
+    body = style_with_invoice_font(styles["Normal"], lang)
+    foot = style_with_invoice_font(
+        ParagraphStyle(name="Foot", parent=styles["Normal"], fontSize=8, textColor=colors.grey),
+        lang,
+    )
 
     inv_no = settlement_invoice_number(settlement)
     mentor_name = mentor.full_name if mentor else settlement.mentor_id
@@ -56,22 +69,38 @@ def build_settlement_invoice_pdf(
 
     story: list = []
     story.extend(brand_header_story())
-    story.append(Paragraph(f"<b>{BRAND_NAME} — Settlement Invoice</b>", title))
     story.append(
         Paragraph(
-            f"Invoice: <b>{_esc(inv_no)}</b> &nbsp;|&nbsp; Status: <b>{_esc(settlement.status)}</b> "
-            f"&nbsp;|&nbsp; Currency: <b>{_esc(settlement.currency)}</b>",
+            f"<b>{BRAND_NAME} — {_esc(t_invoice(lang, 'settlement_invoice'))}</b>",
+            title,
+        )
+    )
+    story.append(
+        Paragraph(
+            f"{_esc(t_invoice(lang, 'invoice'))}: <b>{_esc(inv_no)}</b> &nbsp;|&nbsp; "
+            f"{_esc(t_invoice(lang, 'status'))}: <b>{_esc(settlement.status)}</b> "
+            f"&nbsp;|&nbsp; {_esc(t_invoice(lang, 'currency'))}: <b>{_esc(settlement.currency)}</b>",
             body,
         )
     )
-    story.append(Paragraph(f"Cycle: <b>{_esc(cycle)}</b>", body))
+    story.append(Paragraph(f"{_esc(t_invoice(lang, 'cycle'))}: <b>{_esc(cycle)}</b>", body))
     if settlement.paid_at:
-        story.append(Paragraph(f"Paid at: {_esc(settlement.paid_at.isoformat())}", body))
+        story.append(
+            Paragraph(
+                f"{_esc(t_invoice(lang, 'paid_at'))}: {_esc(settlement.paid_at.isoformat())}",
+                body,
+            )
+        )
     if settlement.provider_batch_ref:
-        story.append(Paragraph(f"Provider reference: {_esc(settlement.provider_batch_ref)}", body))
+        story.append(
+            Paragraph(
+                f"{_esc(t_invoice(lang, 'provider_reference'))}: {_esc(settlement.provider_batch_ref)}",
+                body,
+            )
+        )
     story.append(Spacer(1, 8 * mm))
 
-    story.append(Paragraph("<b>Coach</b>", h2))
+    story.append(Paragraph(f"<b>{_esc(t_invoice(lang, 'coach'))}</b>", h2))
     story.append(
         Paragraph(
             f"{_esc(mentor_name)}<br/>{_esc(mentor_email)}<br/>KVK: {_esc(mentor_kvk)}",
@@ -84,10 +113,10 @@ def build_settlement_invoice_pdf(
     fee = Decimal(str(settlement.fee_amount)).quantize(Decimal("0.01"))
     net = Decimal(str(settlement.net_amount)).quantize(Decimal("0.01"))
 
-    story.append(Paragraph("<b>Settlement summary</b>", h2))
+    story.append(Paragraph(f"<b>{_esc(t_invoice(lang, 'settlement_summary'))}</b>", h2))
     summary = Table(
         [
-            ["Gross", "Fee", "Net payout"],
+            [t_invoice(lang, "gross"), t_invoice(lang, "fee"), t_invoice(lang, "net_payout")],
             [f"{gross} {settlement.currency}", f"{fee} {settlement.currency}", f"{net} {settlement.currency}"],
         ],
         colWidths=[55 * mm, 55 * mm, 55 * mm],
@@ -96,7 +125,8 @@ def build_settlement_invoice_pdf(
         TableStyle(
             [
                 ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f0f0f0")),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTNAME", (0, 0), (-1, 0), font_bold),
+                ("FONTNAME", (0, 1), (-1, -1), font_reg),
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
                 ("FONTSIZE", (0, 0), (-1, -1), 9),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
@@ -110,11 +140,18 @@ def build_settlement_invoice_pdf(
     story.append(summary)
     story.append(Spacer(1, 8 * mm))
 
-    story.append(Paragraph("<b>Line items</b>", h2))
+    story.append(Paragraph(f"<b>{_esc(t_invoice(lang, 'line_items'))}</b>", h2))
     if not items:
-        story.append(Paragraph("No line items.", body))
+        story.append(Paragraph(_esc(t_invoice(lang, "no_line_items")), body))
     else:
-        rows = [["#", "Source", "Source ID", "Amount"]]
+        rows = [
+            [
+                t_invoice(lang, "col_num"),
+                t_invoice(lang, "source"),
+                t_invoice(lang, "source_id"),
+                t_invoice(lang, "amount"),
+            ]
+        ]
         for idx, item in enumerate(items, start=1):
             amt = Decimal(str(item.amount)).quantize(Decimal("0.01"))
             rows.append(
@@ -130,7 +167,8 @@ def build_settlement_invoice_pdf(
             TableStyle(
                 [
                     ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f0f0f0")),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTNAME", (0, 0), (-1, 0), font_bold),
+                    ("FONTNAME", (0, 1), (-1, -1), font_reg),
                     ("GRID", (0, 0), (-1, -1), 0.4, colors.grey),
                     ("FONTSIZE", (0, 0), (-1, -1), 8),
                     ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
@@ -146,7 +184,7 @@ def build_settlement_invoice_pdf(
     story.append(Spacer(1, 10 * mm))
     story.append(
         Paragraph(
-            f"<i>Settlement id: {_esc(settlement.id)} &nbsp;|&nbsp; Coach id: {_esc(settlement.mentor_id)}</i>",
+            f"<i>{_esc(t_invoice(lang, 'settlement_footer', settlement_id=settlement.id, mentor_id=settlement.mentor_id))}</i>",
             foot,
         )
     )

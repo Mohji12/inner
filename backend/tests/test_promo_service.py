@@ -159,7 +159,9 @@ def test_apply_promo_code_records_redemption():
     promo_query = MagicMock()
     promo_query.filter.return_value.with_for_update.return_value.first.return_value = promo
     redemption_query = MagicMock()
+    redemption_query.filter.return_value.with_for_update.return_value.first.return_value = None
     redemption_query.filter.return_value.first.return_value = None
+    redemption_query.filter.return_value.all.return_value = []
 
     def query_side_effect(model):
         if model is PromoCode:
@@ -172,6 +174,36 @@ def test_apply_promo_code_records_redemption():
     apply_promo_code(db, "WELCOME5", user_id="user-1", booking_id="booking-1", commit=False)
     assert db.add.called
     assert promo.current_uses == 1
+
+
+def test_apply_promo_code_rebinds_existing_redemption():
+    promo = _promo(first_time_only=True)
+    promo.current_uses = 1
+    existing = PromoCodeRedemption(
+        id="red-1",
+        user_id="user-1",
+        promo_code_id=promo.id,
+        booking_id="old-booking",
+        created_at=datetime.now(timezone.utc),
+    )
+    db = MagicMock()
+    promo_query = MagicMock()
+    promo_query.filter.return_value.with_for_update.return_value.first.return_value = promo
+    redemption_query = MagicMock()
+    redemption_query.filter.return_value.with_for_update.return_value.first.return_value = existing
+
+    def query_side_effect(model):
+        if model is PromoCode:
+            return promo_query
+        if model is PromoCodeRedemption:
+            return redemption_query
+        return MagicMock()
+
+    db.query.side_effect = query_side_effect
+    apply_promo_code(db, "WELCOME5", user_id="user-1", booking_id="new-booking", commit=False)
+    assert existing.booking_id == "new-booking"
+    assert promo.current_uses == 1
+    assert not db.add.called
 
 
 def test_reverse_promo_redemption_for_booking():

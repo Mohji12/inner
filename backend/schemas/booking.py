@@ -1,7 +1,9 @@
-from datetime import date, datetime, time
+from datetime import date, time
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, model_validator
+
+from schemas.utc_datetime import UtcDateTime
 
 
 class BookingCreate(BaseModel):
@@ -39,8 +41,8 @@ class BookingOut(BaseModel):
     booking_date: date
     start_time: time
     end_time: time
-    start_at_utc: datetime
-    end_at_utc: datetime
+    start_at_utc: UtcDateTime
+    end_at_utc: UtcDateTime
     duration: int
     session_topic: str | None
     problem_description: str | None
@@ -58,7 +60,7 @@ class BookingOut(BaseModel):
     meeting_link: str | None
     notes_by_user: str | None
     notes_by_mentor: str | None
-    created_at: datetime
+    created_at: UtcDateTime
 
 
 class BookingUpdate(BaseModel):

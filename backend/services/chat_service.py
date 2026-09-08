@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
@@ -20,6 +21,7 @@ from services.i18n_service import to_i18n_map
 from services.pricing_service import effective_chat_price_per_minute_eur
 from services.chat_payment_service import create_chat_purchase_checkout
 from services.promo_service import PromoError
+from services.refund_service import refund_session_to_user_wallet
 from services.session_billing_service import finalize_session_billing
 from services.live_session_service import (
     communication_mode_for_session,
@@ -30,6 +32,8 @@ from services.live_session_service import (
     sync_session_time_state,
 )
 from services.presence_service import presence_service
+
+logger = logging.getLogger(__name__)
 
 MAX_MESSAGE_BODY_LEN = 8000
 
@@ -545,6 +549,12 @@ def end_session(
     except Exception:
         # Legacy purchases-only sessions may not have holds; ending should still succeed.
         pass
+
+    try:
+        refund_session_to_user_wallet(db, session=session, actor_user_id=user_id, commit=False)
+    except Exception as e:
+        logger.warning("Refund on session end failed for session %s: %s", session.id, e)
+
     db.commit()
     db.refresh(session)
     return session

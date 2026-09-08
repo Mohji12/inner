@@ -26,6 +26,8 @@ export const adminDashboardOverrides: Partial<Record<Language, DeepPartial<AppCo
         "Het bericht in de app is opgeslagen, maar er zijn geen e-mails bezorgd. {detail}",
       announcementEmailPartial:
         "Bericht in de app opgeslagen. Slechts {emails} van {recipients} e-mails zijn bezorgd.",
+      viewWebsite: "Website bekijken",
+      viewWebsiteHint: "Bekijk de homepage zonder uit te loggen",
       logOut: "Uitloggen",
       hub: "Beheerdersconsole",
       language: "Taal",

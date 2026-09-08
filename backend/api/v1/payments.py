@@ -40,7 +40,7 @@ from services.marketplace_service import (
     record_webhook_event,
     verify_generic_hmac_signature,
 )
-from services.promo_service import validate_promo_code, calculate_discount, apply_promo_code
+from services.promo_service import validate_promo_code, calculate_discount, apply_promo_code, PromoError
 from services.mollie_service import _mark_booking_paid
 from services.pricing_service import PricingError, booking_base_eur_amount, booking_transaction_fee_eur
 from core.config import settings
@@ -419,7 +419,10 @@ def create_intent(
         _mark_booking_paid(db, payment)
 
         if req.promo_code:
-            apply_promo_code(db, req.promo_code, user_id=current_user.id, booking_id=booking.id)
+            try:
+                apply_promo_code(db, req.promo_code, user_id=current_user.id, booking_id=booking.id)
+            except PromoError as e:
+                raise HTTPException(status_code=400, detail=str(e)) from e
 
         db.commit()
 

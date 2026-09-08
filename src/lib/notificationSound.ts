@@ -26,6 +26,8 @@ const COOLDOWN_MS: Record<NotificationSoundKind, number> = {
 };
 
 let audioCtx: AudioContext | null = null;
+/** True after a user gesture successfully unlocked Web Audio / HTMLAudio. */
+let audioUnlocked = false;
 const lastPlayedAt: Record<NotificationSoundKind, number> = {
   default: 0,
   booking: 0,
@@ -36,12 +38,21 @@ export function isBookingNotificationType(type: string | undefined | null): bool
   return Boolean(type && BOOKING_NOTIFICATION_TYPES.has(type));
 }
 
-function getAudioContext(): AudioContext | null {
+function createAudioContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
-  if (audioCtx) return audioCtx;
   const AC = window.AudioContext || (window as WindowWithWebkitAudio).webkitAudioContext;
   if (!AC) return null;
-  audioCtx = new AC();
+  try {
+    return new AC();
+  } catch {
+    return null;
+  }
+}
+
+function getAudioContext(options?: { create?: boolean }): AudioContext | null {
+  if (audioCtx) return audioCtx;
+  if (!options?.create) return null;
+  audioCtx = createAudioContext();
   return audioCtx;
 }
 
@@ -66,18 +77,12 @@ function emitGeneratedChime(ctx: AudioContext) {
   playTone(ctx, 1175, t0 + 0.11, 0.18);
 }
 
+/** Generated chime only when Web Audio is already unlocked and running. */
 function playGeneratedFallback() {
-  const ctx = getAudioContext();
-  if (!ctx) return;
-  if (ctx.state === "running") {
-    emitGeneratedChime(ctx);
-    return;
-  }
-  void ctx.resume().then(() => {
-    if (ctx.state === "running" && Date.now() - lastPlayedAt.default >= COOLDOWN_MS.default) {
-      emitGeneratedChime(ctx);
-    }
-  });
+  if (!audioUnlocked) return;
+  const ctx = getAudioContext({ create: false });
+  if (!ctx || ctx.state !== "running") return;
+  emitGeneratedChime(ctx);
 }
 
 function getCustomAudio(kind: NotificationSoundKind): HTMLAudioElement | null {
@@ -99,6 +104,7 @@ async function playCustomFile(kind: NotificationSoundKind): Promise<boolean> {
     el.currentTime = 0;
     await el.play();
     lastPlayedAt[kind] = Date.now();
+    audioUnlocked = true;
     return true;
   } catch {
     return false;
@@ -114,9 +120,10 @@ function unlockElement(el: HTMLAudioElement) {
     .then(() => {
       el.pause();
       el.currentTime = 0;
+      audioUnlocked = true;
     })
     .catch(() => {
-      // Autoplay still blocked until a later gesture.
+      // Still blocked — wait for a later gesture.
     })
     .finally(() => {
       el.muted = false;
@@ -125,10 +132,23 @@ function unlockElement(el: HTMLAudioElement) {
 }
 
 export function unlockNotificationAudio(options?: { includeBooking?: boolean }) {
-  const ctx = getAudioContext();
-  if (ctx?.state === "suspended") {
-    void ctx.resume();
+  // Create / resume Web Audio only inside this gesture-driven path.
+  const ctx = getAudioContext({ create: true });
+  if (ctx) {
+    if (ctx.state === "running") {
+      audioUnlocked = true;
+    } else if (ctx.state === "suspended") {
+      void ctx
+        .resume()
+        .then(() => {
+          if (ctx.state === "running") audioUnlocked = true;
+        })
+        .catch(() => {
+          // Ignore — browser may still block until a stronger gesture.
+        });
+    }
   }
+
   for (const kind of Object.keys(SOURCES) as NotificationSoundKind[]) {
     if (kind === "booking" && !options?.includeBooking) continue;
     const el = getCustomAudio(kind);
@@ -139,22 +159,34 @@ export function unlockNotificationAudio(options?: { includeBooking?: boolean }) 
 let coachBookingGestureBound = false;
 let defaultNotificationGestureBound = false;
 
-/** Unlocks chat/notification audio after gesture (default sound only). */
+function bindUnlockOnce(
+  flag: "default" | "coach",
+  handler: () => void,
+) {
+  if (typeof window === "undefined") return;
+  if (flag === "default" && defaultNotificationGestureBound) return;
+  if (flag === "coach" && coachBookingGestureBound) return;
+
+  if (flag === "default") defaultNotificationGestureBound = true;
+  else coachBookingGestureBound = true;
+
+  const onGesture = () => {
+    handler();
+    window.removeEventListener("pointerdown", onGesture);
+    window.removeEventListener("keydown", onGesture);
+  };
+  window.addEventListener("pointerdown", onGesture, { passive: true });
+  window.addEventListener("keydown", onGesture, { passive: true });
+}
+
+/** Unlocks chat/notification audio after the first gesture (default sound only). */
 export function bindDefaultNotificationAudioUnlock() {
-  if (typeof window === "undefined" || defaultNotificationGestureBound) return;
-  defaultNotificationGestureBound = true;
-  const unlock = () => unlockNotificationAudio({ includeBooking: false });
-  window.addEventListener("pointerdown", unlock, { passive: true });
-  window.addEventListener("keydown", unlock, { passive: true });
+  bindUnlockOnce("default", () => unlockNotificationAudio({ includeBooking: false }));
 }
 
 /** Unlocks booking alert audio after gesture — coach dashboard only. */
 export function bindCoachBookingAudioUnlock() {
-  if (typeof window === "undefined" || coachBookingGestureBound) return;
-  coachBookingGestureBound = true;
-  const unlock = () => unlockNotificationAudio({ includeBooking: true });
-  window.addEventListener("pointerdown", unlock, { passive: true });
-  window.addEventListener("keydown", unlock, { passive: true });
+  bindUnlockOnce("coach", () => unlockNotificationAudio({ includeBooking: true }));
 }
 
 /** Plays a bundled clip. Coalesces bursts so poll + websocket do not stack. */
@@ -163,11 +195,15 @@ export function playNotificationChime(kind: NotificationSoundKind = "default") {
   if (now - lastPlayedAt[kind] < COOLDOWN_MS[kind]) return;
 
   void playCustomFile(kind).then((played) => {
-    if (!played && kind === "default") playGeneratedFallback();
-    if (!played && kind !== "default") {
-      void playCustomFile("default").then((fallbackPlayed) => {
-        if (!fallbackPlayed) playGeneratedFallback();
-      });
+    if (played) return;
+    // HTMLAudio blocked by autoplay — only fall back after a user unlock.
+    if (!audioUnlocked) return;
+    if (kind === "default") {
+      playGeneratedFallback();
+      return;
     }
+    void playCustomFile("default").then((fallbackPlayed) => {
+      if (!fallbackPlayed) playGeneratedFallback();
+    });
   });
 }

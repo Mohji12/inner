@@ -18,6 +18,8 @@ from models.chat_session import ChatSession
 from models.mentor import Mentor
 from models.user import User
 from services.chat_invoice_service import aggregate_purchases
+from services.invoice_pdf_fonts import style_with_invoice_font, table_font_names
+from services.invoice_pdf_i18n import format_invoice_duration, t_invoice
 from services.pdf_branding import BRAND_NAME, brand_header_story, branded_pdf_callbacks
 
 
@@ -37,17 +39,6 @@ def _wall_seconds(session: ChatSession) -> int:
     return max(0, int((ua - ca).total_seconds()))
 
 
-def _fmt_duration(seconds: int) -> str:
-    h = seconds // 3600
-    m = (seconds % 3600) // 60
-    s = seconds % 60
-    if h:
-        return f"{h}h {m}m {s}s"
-    if m:
-        return f"{m}m {s}s"
-    return f"{s}s"
-
-
 def _esc(s: str | None) -> str:
     if s is None:
         return ""
@@ -62,6 +53,7 @@ def build_chat_invoice_pdf(
     mentor: Mentor,
     purchases: list[ChatPurchase],
     messages: list[ChatMessage] | None = None,
+    lang: str | None = None,
 ) -> bytes:
     total, minutes, currency = aggregate_purchases(purchases)
     issued = max(p.created_at for p in purchases)
@@ -79,41 +71,61 @@ def build_chat_invoice_pdf(
     )
     on_first, on_later = branded_pdf_callbacks()
     styles = getSampleStyleSheet()
-    title = ParagraphStyle(name="InvTitle", parent=styles["Heading1"], fontSize=18, spaceAfter=12)
-    h2 = ParagraphStyle(name="InvH2", parent=styles["Heading2"], fontSize=11, spaceBefore=10, spaceAfter=6)
-    body = styles["Normal"]
+    font_reg, font_bold = table_font_names(lang)
+    title = style_with_invoice_font(
+        ParagraphStyle(name="InvTitle", parent=styles["Heading1"], fontSize=18, spaceAfter=12),
+        lang,
+    )
+    h2 = style_with_invoice_font(
+        ParagraphStyle(name="InvH2", parent=styles["Heading2"], fontSize=11, spaceBefore=10, spaceAfter=6),
+        lang,
+    )
+    body = style_with_invoice_font(styles["Normal"], lang)
     story: list = []
     story.extend(brand_header_story())
-    story.append(Paragraph(f"<b>{BRAND_NAME} — Invoice {_esc(invoice_number)}</b>", title))
     story.append(
         Paragraph(
-            f"Issued: {_esc(_fmt_dt(issued))} &nbsp;|&nbsp; Payment: <b>paid</b>",
+            f"<b>{BRAND_NAME} — {_esc(t_invoice(lang, 'invoice'))} {_esc(invoice_number)}</b>",
+            title,
+        )
+    )
+    story.append(
+        Paragraph(
+            f"{_esc(t_invoice(lang, 'issued'))}: {_esc(_fmt_dt(issued))} &nbsp;|&nbsp; "
+            f"{_esc(t_invoice(lang, 'payment'))}: <b>{_esc(t_invoice(lang, 'paid'))}</b>",
             body,
         )
     )
     story.append(Spacer(1, 8 * mm))
 
-    story.append(Paragraph("<b>Bill to</b>", h2))
+    story.append(Paragraph(f"<b>{_esc(t_invoice(lang, 'bill_to'))}</b>", h2))
     story.append(Paragraph(f"{_esc(user.full_name)}<br/>{_esc(user.email)}<br/>{_esc(user.phone_number)}", body))
     story.append(Spacer(1, 4 * mm))
 
-    story.append(Paragraph("<b>Service provider</b>", h2))
+    story.append(Paragraph(f"<b>{_esc(t_invoice(lang, 'service_provider'))}</b>", h2))
     story.append(Paragraph(f"{_esc(mentor.full_name)}<br/>{_esc(mentor.email)}", body))
     story.append(Spacer(1, 6 * mm))
 
-    story.append(Paragraph("<b>Session</b>", h2))
+    story.append(Paragraph(f"<b>{_esc(t_invoice(lang, 'session'))}</b>", h2))
     story.append(
         Paragraph(
-            f"Minutes purchased (total): <b>{minutes} min</b><br/>"
-            f"Session window: <b>{_esc(_fmt_duration(wall_s))}</b><br/>"
-            f"{_esc(_fmt_dt(session.created_at))} to {_esc(_fmt_dt(session.updated_at))}",
+            f"{_esc(t_invoice(lang, 'minutes_purchased_total'))}: <b>{minutes} {_esc(t_invoice(lang, 'min_unit'))}</b><br/>"
+            f"{_esc(t_invoice(lang, 'session_window'))}: <b>{_esc(format_invoice_duration(wall_s, lang))}</b><br/>"
+            f"{_esc(_fmt_dt(session.created_at))} {_esc(t_invoice(lang, 'to'))} {_esc(_fmt_dt(session.updated_at))}",
             body,
         )
     )
     story.append(Spacer(1, 6 * mm))
 
-    story.append(Paragraph("<b>Line items</b>", h2))
-    table_data = [["Minutes", "Amount", "Reference", "Date"]]
+    story.append(Paragraph(f"<b>{_esc(t_invoice(lang, 'line_items'))}</b>", h2))
+    table_data = [
+        [
+            t_invoice(lang, "minutes"),
+            t_invoice(lang, "amount"),
+            t_invoice(lang, "reference"),
+            t_invoice(lang, "date"),
+        ]
+    ]
     for p in purchases:
         table_data.append(
             [
@@ -129,7 +141,8 @@ def build_chat_invoice_pdf(
             [
                 ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f0f0f0")),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTNAME", (0, 0), (-1, 0), font_bold),
+                ("FONTNAME", (0, 1), (-1, -1), font_reg),
                 ("FONTSIZE", (0, 0), (-1, -1), 9),
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
@@ -143,19 +156,22 @@ def build_chat_invoice_pdf(
     story.append(t)
     story.append(Spacer(1, 8 * mm))
 
-    story.append(Paragraph("<b>Conversation transcript</b>", h2))
-    msg_style = ParagraphStyle(
-        name="MsgTrans",
-        parent=body,
-        fontSize=8,
-        leading=10,
-        spaceAfter=4,
+    story.append(Paragraph(f"<b>{_esc(t_invoice(lang, 'conversation_transcript'))}</b>", h2))
+    msg_style = style_with_invoice_font(
+        ParagraphStyle(
+            name="MsgTrans",
+            parent=styles["Normal"],
+            fontSize=8,
+            leading=10,
+            spaceAfter=4,
+        ),
+        lang,
     )
     if not messages:
-        story.append(Paragraph("<i>No messages were exchanged in this session.</i>", body))
+        story.append(Paragraph(f"<i>{_esc(t_invoice(lang, 'no_messages'))}</i>", body))
     else:
         for m in messages:
-            role_label = "User" if m.sender_role == CHAT_SENDER_USER else "Mentor"
+            role_label = t_invoice(lang, "role_user") if m.sender_role == CHAT_SENDER_USER else t_invoice(lang, "role_mentor")
             who = user.full_name if m.sender_role == CHAT_SENDER_USER else mentor.full_name
             body_html = _esc(m.body).replace("\n", "<br/>")
             story.append(
@@ -169,15 +185,21 @@ def build_chat_invoice_pdf(
     total_str = str(total.quantize(Decimal("0.01")))
     story.append(
         Paragraph(
-            f"<b>Total due: {_esc(total_str)} {_esc(currency)}</b>",
-            ParagraphStyle(name="Total", parent=styles["Normal"], fontSize=12, textColor=colors.black),
+            f"<b>{_esc(t_invoice(lang, 'total_due'))}: {_esc(total_str)} {_esc(currency)}</b>",
+            style_with_invoice_font(
+                ParagraphStyle(name="Total", parent=styles["Normal"], fontSize=12, textColor=colors.black),
+                lang,
+            ),
         )
     )
     story.append(Spacer(1, 4 * mm))
     story.append(
         Paragraph(
-            f"<i>Paid text chat - session {_esc(session.id)}</i>",
-            ParagraphStyle(name="Foot", parent=styles["Normal"], fontSize=8, textColor=colors.grey),
+            f"<i>{_esc(t_invoice(lang, 'chat_footer', session_id=session.id))}</i>",
+            style_with_invoice_font(
+                ParagraphStyle(name="Foot", parent=styles["Normal"], fontSize=8, textColor=colors.grey),
+                lang,
+            ),
         )
     )
 

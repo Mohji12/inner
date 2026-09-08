@@ -29,6 +29,7 @@ export function MeetingPanel({
   mentorProfilePath = null,
 }: Props) {
   const { t } = useLanguage();
+  const p = t.app.chatCallPanel;
   const {
     isVoiceMeeting,
     isVideoMeeting,
@@ -62,41 +63,41 @@ export function MeetingPanel({
 
   const notConfigured = lastError?.toLowerCase().includes("not configured");
 
-  const title = isVoiceMeeting ? "Voice meeting" : isVideoMeeting ? "Video meeting" : t.app.chatCallPanel.title;
+  const title = isVoiceMeeting ? p.voiceMeeting : isVideoMeeting ? p.videoMeeting : p.title;
 
   const description = !meetingReady
-    ? "Loading meeting…"
+    ? p.loadingMeeting
     : sessionEnded
-      ? "This conversation has ended. You can buy more time to continue the same chat, or book a new session."
+      ? p.descEnded
       : needsPayment
-        ? "Payment is required to start. Complete checkout to unlock chat, call, and video for this conversation."
+        ? p.descNeedsPayment
         : joinWindowExpired
-          ? "The join window expired before both of you connected. Pay to continue this same chat, or book a new session."
+          ? p.descJoinExpired
           : timeExpired
-            ? "Paid time has run out. Buy more minutes to continue this chat, call, or video — same conversation."
+            ? p.descTimeExpired
             : isVoiceMeeting
-              ? "Talk through your device microphone in the meeting room. Video is disabled for this session."
+              ? p.descVoice
               : isVideoMeeting
-                ? "Talk with microphone and camera in the meeting room. Chat works alongside the call."
-                : t.app.chatCallPanel.descriptionStart;
+                ? p.descVideo
+                : p.descriptionStart;
 
   const joinLabel =
     phase === "connecting"
-      ? t.app.chatCallPanel.connecting
+      ? p.connecting
       : isBookedMeeting
-        ? "Join meeting"
-        : t.app.chatCallPanel.joinCall;
+        ? p.joinMeeting
+        : p.joinCall;
 
   const remoteVideoPlaceholder =
     phase === "connected" && !hasRemoteParticipant
-      ? "Waiting for the other participant to join the meeting…"
+      ? p.waitingForParticipant
       : phase === "connected" && hasRemoteParticipant && !hasRemoteVideo
         ? isVideoMeeting
-          ? "Other participant is connected — waiting for their camera…"
-          : t.app.chatCallPanel.waitingForRemoteVideo
+          ? p.waitingForTheirCamera
+          : p.waitingForRemoteVideo
         : isVideoMeeting
-          ? "Join the meeting to connect video and audio."
-          : t.app.chatCallPanel.joinToConnect;
+          ? p.joinMeetingToConnect
+          : p.joinToConnect;
 
   return (
     <Card className="border-border/60">
@@ -107,12 +108,12 @@ export function MeetingPanel({
       <CardContent className="space-y-3">
         {meetingReady && sessionEnded ? (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
-            Session ended. Continue this conversation anytime by buying more minutes, or book a new session with the coach.
+            {p.bannerEnded}
             <div className="mt-2 flex flex-wrap gap-2">
               {continueControl}
               {mentorProfilePath ? (
                 <Button asChild type="button" size="sm" variant="outline">
-                  <Link to={mentorProfilePath}>Book again</Link>
+                  <Link to={mentorProfilePath}>{p.bookAgain}</Link>
                 </Button>
               ) : null}
             </div>
@@ -120,19 +121,19 @@ export function MeetingPanel({
         ) : null}
         {meetingReady && needsPayment && !sessionEnded ? (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
-            Payment not completed. Pay to start this same chat / call / video.
+            {p.bannerNeedsPayment}
             <div className="mt-2 flex flex-wrap gap-2">{continueControl ?? extendControl}</div>
           </div>
         ) : null}
         {meetingReady && joinWindowExpired && !sessionEnded ? (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
-            Join window expired. Pay to continue this same chat / call / video.
+            {p.bannerJoinExpired}
             <div className="mt-2 flex flex-wrap gap-2">{continueControl ?? extendControl}</div>
           </div>
         ) : null}
         {meetingReady && timeExpired && !sessionEnded ? (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
-            Time is up. Pay to continue this same chat / call / video.
+            {p.bannerTimeUp}
             <div className="mt-2 flex flex-wrap gap-2">{continueControl ?? extendControl}</div>
           </div>
         ) : null}
@@ -155,7 +156,7 @@ export function MeetingPanel({
               />
               {!cameraOn ? (
                 <span className="absolute px-2 text-center text-xs text-muted-foreground">
-                  {phase === "connected" ? "Your camera is off — tap Video on to share." : t.app.chatCallPanel.cameraOff}
+                  {phase === "connected" ? p.cameraOffTap : p.cameraOff}
                 </span>
               ) : null}
             </div>
@@ -171,16 +172,16 @@ export function MeetingPanel({
             </div>
             <p className="text-sm text-muted-foreground">
               {sessionEnded
-                ? "Session ended."
+                ? p.statusSessionEnded
                 : timeExpired
-                  ? "Call paused — buy more time to continue."
+                  ? p.statusCallPaused
                   : phase === "connected" && !hasRemoteParticipant
-                    ? "You are in the meeting — waiting for the other participant to join."
+                    ? p.statusWaitingParticipant
                     : phase === "connected"
                       ? muted
-                        ? "Microphone muted — unmute to speak in the meeting."
-                        : "In voice meeting — your microphone is live. Video is off."
-                      : "Join the meeting to talk with your microphone. Video is disabled."}
+                        ? p.statusMicMuted
+                        : p.statusVoiceLive
+                      : p.statusJoinToTalk}
             </p>
           </div>
         )}
@@ -188,8 +189,8 @@ export function MeetingPanel({
 
         {notConfigured ? (
           <p className="text-sm text-muted-foreground">
-            {t.app.chatCallPanel.notConfigured} (<code className="text-xs">LIVEKIT_URL</code>
-            , API key, and secret). {t.app.chatCallPanel.see} <code className="text-xs">backend/README.md</code>.
+            {p.notConfigured} (<code className="text-xs">LIVEKIT_URL</code>
+            , API key, and secret). {p.see} <code className="text-xs">backend/README.md</code>.
           </p>
         ) : null}
 
@@ -229,24 +230,22 @@ export function MeetingPanel({
             <>
               <Button type="button" size="sm" variant="secondary" onClick={() => void toggleMute()}>
                 {muted ? <MicOff className="mr-1 h-4 w-4" /> : <Mic className="mr-1 h-4 w-4" />}
-                {muted ? t.app.chatCallPanel.unmute : t.app.chatCallPanel.mute}
+                {muted ? p.unmute : p.mute}
               </Button>
               {videoEnabled && isVideoMeeting ? (
                 <Button type="button" size="sm" variant="secondary" onClick={() => void toggleCamera()}>
                   {cameraOn ? <VideoOff className="mr-1 h-4 w-4" /> : <Video className="mr-1 h-4 w-4" />}
-                  {cameraOn ? t.app.chatCallPanel.videoOff : t.app.chatCallPanel.videoOn}
+                  {cameraOn ? p.videoOff : p.videoOn}
                 </Button>
               ) : null}
               <Button type="button" size="sm" variant="outline" onClick={() => void disconnect({ userInitiated: true })}>
                 <PhoneOff className="mr-1 h-4 w-4" />
-                Leave call
+                {p.leaveCall}
               </Button>
             </>
           )}
         </div>
-        <p className="text-[11px] text-muted-foreground">
-          Leave call only disconnects audio/video. End chat (above) ends the session for both of you.
-        </p>
+        <p className="text-[11px] text-muted-foreground">{p.leaveCallHint}</p>
       </CardContent>
     </Card>
   );

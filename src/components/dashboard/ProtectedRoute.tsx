@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth, type AuthRole } from "@/auth/AuthContext";
 
@@ -8,7 +8,7 @@ type Props = {
 };
 
 export function ProtectedRoute({ role, children }: Props) {
-  const { role: current, userAccessToken, mentorAccessToken, adminAccessToken } = useAuth();
+  const { role: current, userAccessToken, mentorAccessToken, adminAccessToken, setActiveRole } = useAuth();
   const location = useLocation();
 
   const tokenOk =
@@ -18,9 +18,13 @@ export function ProtectedRoute({ role, children }: Props) {
         ? Boolean(mentorAccessToken)
         : Boolean(adminAccessToken);
 
-  const ok = current === role && tokenOk;
+  useEffect(() => {
+    if (tokenOk && current !== role) {
+      setActiveRole(role);
+    }
+  }, [tokenOk, current, role, setActiveRole]);
 
-  if (!ok) {
+  if (!tokenOk) {
     const to =
       role === "user" ? "/login?role=user" : role === "mentor" ? "/login?role=mentor" : "/login?role=admin";
     const returnTo = `${location.pathname}${location.search}`;

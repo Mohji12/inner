@@ -1,10 +1,14 @@
 import { WifiOff } from "lucide-react";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 interface ConnectionStatusBarProps {
   status: "connected" | "reconnecting" | "disconnected";
 }
 
 export const ConnectionStatusBar = ({ status }: ConnectionStatusBarProps) => {
+  const { t } = useLanguage();
+  const c = t.app.chatSession;
+
   if (status === "connected") return null;
 
   const isReconnecting = status === "reconnecting";
@@ -20,12 +24,12 @@ export const ConnectionStatusBar = ({ status }: ConnectionStatusBarProps) => {
       {isReconnecting ? (
         <>
           <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-          <span>Connection lost. Reconnecting...</span>
+          <span>{c.reconnecting}</span>
         </>
       ) : (
         <>
           <WifiOff className="h-3 w-3" />
-          <span>Live sync unavailable — messages still refresh every few seconds.</span>
+          <span>{c.syncUnavailable}</span>
         </>
       )}
     </div>

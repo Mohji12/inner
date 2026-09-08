@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
+import time
 
 from sqlalchemy import func
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
 from core.config import settings
@@ -70,8 +71,14 @@ def get_or_create_wallet_account(
     owner_id: str,
     account_kind: str,
     currency: str,
+    lock: bool = True,
 ) -> WalletAccount:
-    """Create wallet row if missing. Avoid FOR UPDATE on a miss — that locks index gaps and deadlocks with concurrent INSERTs."""
+    """Create wallet row if missing.
+
+    Avoid FOR UPDATE on a miss — that locks index gaps and deadlocks with concurrent INSERTs.
+    Pass ``lock=False`` for read-only endpoints (earnings / wallet balance) so dashboard polls
+    do not contend with billing writers.
+    """
     currency_code = (currency or "EUR").upper()
     filt = (
         WalletAccount.owner_type == owner_type,
@@ -79,8 +86,17 @@ def get_or_create_wallet_account(
         WalletAccount.account_kind == account_kind,
         WalletAccount.currency == currency_code,
     )
-    existing = db.query(WalletAccount).filter(*filt).first()
+
+    def _load_existing(*, for_update: bool) -> WalletAccount | None:
+        q = db.query(WalletAccount).filter(*filt)
+        if for_update:
+            q = q.with_for_update()
+        return q.first()
+
+    existing = _load_existing(for_update=False)
     if existing:
+        if not lock:
+            return existing
         return (
             db.query(WalletAccount)
             .filter(WalletAccount.id == existing.id)
@@ -89,29 +105,43 @@ def get_or_create_wallet_account(
         )
 
     now = _utcnow()
-    try:
-        with db.begin_nested():
-            account = WalletAccount(
-                id=new_uuid(),
-                owner_type=owner_type,
-                owner_id=owner_id,
-                account_kind=account_kind,
-                currency=currency_code,
-                status="active",
-                created_at=now,
-                updated_at=now,
-            )
-            db.add(account)
-            db.flush()
-    except IntegrityError:
-        account = None
-    else:
-        return account
+    last_err: Exception | None = None
+    for attempt in range(3):
+        try:
+            with db.begin_nested():
+                account = WalletAccount(
+                    id=new_uuid(),
+                    owner_type=owner_type,
+                    owner_id=owner_id,
+                    account_kind=account_kind,
+                    currency=currency_code,
+                    status="active",
+                    created_at=now,
+                    updated_at=now,
+                )
+                db.add(account)
+                db.flush()
+            return account
+        except IntegrityError:
+            # Concurrent create won the unique key — load that row.
+            locked = _load_existing(for_update=lock)
+            if locked:
+                return locked
+            last_err = None
+        except OperationalError as exc:
+            # MySQL 1205 lock wait timeout — brief backoff then retry.
+            err_code = getattr(getattr(exc, "orig", None), "args", (None,))[0]
+            if err_code != 1205 or attempt >= 2:
+                raise
+            last_err = exc
+            time.sleep(0.15 * (attempt + 1))
+            recovered = _load_existing(for_update=lock)
+            if recovered:
+                return recovered
 
-    locked = db.query(WalletAccount).filter(*filt).with_for_update().first()
-    if not locked:
-        raise LedgerError("Could not create or load wallet account")
-    return locked
+    if last_err:
+        raise last_err
+    raise LedgerError("Could not create or load wallet account")
 
 
 def get_account_balance(db: Session, account_id: str) -> Decimal:
@@ -331,6 +361,90 @@ def spend_user_available_for_booking(
         metadata={"user_id": user_id, "booking_id": booking_id},
         debit_memo="Booking paid from wallet",
         credit_memo="Platform cash from wallet booking",
+    )
+
+
+def refund_user_wallet_for_booking(
+    db: Session,
+    *,
+    user_id: str,
+    amount: Decimal,
+    currency: str,
+    booking_id: str,
+    reason: str = "coach_no_show",
+) -> LedgerTransaction:
+    """Move platform_cash back to user_available (reverse of spend_user_available_for_booking). Idempotent per booking."""
+    amt = q2(amount)
+    if amt <= 0:
+        raise LedgerError("Amount must be greater than zero")
+    idempotency_key = f"booking_wallet_refund:{booking_id}"
+    existing = db.query(LedgerTransaction).filter(LedgerTransaction.idempotency_key == idempotency_key).first()
+    if existing:
+        return existing
+    revenue, cash = ensure_platform_accounts(db, currency=currency)
+    _ = revenue
+    user_available = get_or_create_wallet_account(
+        db,
+        owner_type=OWNER_USER,
+        owner_id=user_id,
+        account_kind=ACCOUNT_USER_AVAILABLE,
+        currency=currency,
+    )
+    return post_double_entry(
+        db,
+        txn_type="booking_wallet_refund",
+        amount=amt,
+        currency=currency,
+        debit_account=cash,
+        credit_account=user_available,
+        reference_type="booking",
+        reference_id=booking_id,
+        idempotency_key=idempotency_key,
+        metadata={"user_id": user_id, "booking_id": booking_id, "reason": reason},
+        debit_memo="Platform cash refund",
+        credit_memo=f"User wallet refunded for booking ({reason})",
+    )
+
+
+def refund_user_wallet_for_chat(
+    db: Session,
+    *,
+    user_id: str,
+    amount: Decimal,
+    currency: str,
+    session_id: str,
+    reason: str = "coach_no_show",
+) -> LedgerTransaction:
+    """Move platform_cash to user_available for chat purchase refund. Idempotent per session."""
+    amt = q2(amount)
+    if amt <= 0:
+        raise LedgerError("Amount must be greater than zero")
+    idempotency_key = f"chat_wallet_refund:{session_id}"
+    existing = db.query(LedgerTransaction).filter(LedgerTransaction.idempotency_key == idempotency_key).first()
+    if existing:
+        return existing
+    revenue, cash = ensure_platform_accounts(db, currency=currency)
+    _ = revenue
+    user_available = get_or_create_wallet_account(
+        db,
+        owner_type=OWNER_USER,
+        owner_id=user_id,
+        account_kind=ACCOUNT_USER_AVAILABLE,
+        currency=currency,
+    )
+    return post_double_entry(
+        db,
+        txn_type="chat_wallet_refund",
+        amount=amt,
+        currency=currency,
+        debit_account=cash,
+        credit_account=user_available,
+        reference_type="chat_session",
+        reference_id=session_id,
+        idempotency_key=idempotency_key,
+        metadata={"user_id": user_id, "session_id": session_id, "reason": reason},
+        debit_memo="Platform cash refund",
+        credit_memo=f"User wallet refunded for chat session ({reason})",
     )
 
 

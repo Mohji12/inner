@@ -21,9 +21,9 @@ import {
   sessionJoinWindowExpired,
   sessionWaitingForParticipants,
 } from "@/lib/chatSessionTiming";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
-const IMAGE_TOO_LARGE_MESSAGE = "Image is more than 2 MB.";
 
 type Props = {
   sessionId: string;
@@ -43,6 +43,8 @@ function appendMessage(list: ChatMessage[] | undefined, newMsg: ChatMessage): Ch
 }
 
 export function ChatPanel({ sessionId, session }: Props) {
+  const { t } = useLanguage();
+  const c = t.app.chatSession;
   const effectiveTimeZone = useEffectiveTimeZone();
   const { role, userAccessToken, mentorAccessToken } = useAuth();
   const queryClient = useQueryClient();
@@ -181,11 +183,11 @@ export function ChatPanel({ sessionId, session }: Props) {
     if (!file) return;
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (!file.type.startsWith("image/")) {
-      toast.error("Please choose an image file.");
+      toast.error(c.chooseImageFile);
       return;
     }
     if (file.size > MAX_IMAGE_BYTES) {
-      toast.error(IMAGE_TOO_LARGE_MESSAGE);
+      toast.error(c.imageTooLarge);
       return;
     }
     setPendingImage(file);
@@ -195,7 +197,7 @@ export function ChatPanel({ sessionId, session }: Props) {
     const caption = draft.trim();
     if (pendingImage) {
       if (pendingImage.size > MAX_IMAGE_BYTES) {
-        toast.error(IMAGE_TOO_LARGE_MESSAGE);
+        toast.error(c.imageTooLarge);
         clearPendingImage();
         return;
       }
@@ -204,7 +206,7 @@ export function ChatPanel({ sessionId, session }: Props) {
     }
     if (!caption) return;
     sendTextMut.mutate(caption);
-  }, [draft, pendingImage, sendImageMut, sendTextMut]);
+  }, [draft, pendingImage, sendImageMut, sendTextMut, c.imageTooLarge]);
 
   const canSend = sessionAllowsMessaging(session);
   const canSubmit = canSend && !isSending && (Boolean(pendingImage) || Boolean(draft.trim()));
@@ -214,19 +216,19 @@ export function ChatPanel({ sessionId, session }: Props) {
   const waiting = sessionWaitingForParticipants(session);
   const inputPlaceholder = canSend
     ? pendingImage
-      ? "Add a caption (optional)…"
-      : "Type a message…"
+      ? c.placeholderCaption
+      : c.placeholderType
     : needsPayment
-      ? "Pay to start chatting…"
+      ? c.placeholderPayToStart
       : joinDead
-        ? "Join window expired — pay to continue…"
+        ? c.placeholderJoinExpired
       : timeExpired
-        ? "Time expired — pay to continue…"
+        ? c.placeholderTimeExpired
         : session.status === "ended"
-          ? "Chat ended — pay to continue…"
+          ? c.placeholderEnded
           : waiting
-            ? "Waiting for both of you — you can still message…"
-            : "Messaging paused…";
+            ? c.placeholderWaiting
+            : c.placeholderPaused;
 
   const wsBarStatus =
     wsStatus === "reconnecting" || wsStatus === "disconnected" || wsStatus === "connected"
@@ -246,16 +248,16 @@ export function ChatPanel({ sessionId, session }: Props) {
           {sortedMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center space-y-2">
               <p className="text-sm font-medium">
-                {messagesLoading ? "Loading messages…" : needsPayment ? "Payment required" : "Start the conversation"}
+                {messagesLoading ? c.loadingMessages : needsPayment ? c.paymentRequired : c.startConversation}
               </p>
               {!messagesLoading ? (
                 <p className="text-xs text-muted-foreground max-w-[220px]">
                   {needsPayment
-                    ? "Complete payment to unlock messaging in this conversation."
-                    : "Send a message or share an image to begin."}
+                    ? c.completePaymentToUnlock
+                    : c.sendMessageOrImage}
                 </p>
               ) : (
-                <p className="text-xs text-muted-foreground animate-pulse">Fetching recent conversation…</p>
+                <p className="text-xs text-muted-foreground animate-pulse">{c.fetchingConversation}</p>
               )}
             </div>
           ) : (
@@ -265,7 +267,7 @@ export function ChatPanel({ sessionId, session }: Props) {
                 (role === "mentor" && m.sender_role === "mentor");
               const senderLabel =
                 m.sender_display_name?.trim() ||
-                (m.sender_role === "user" ? "User" : "Coach");
+                (m.sender_role === "user" ? c.senderUser : c.senderCoach);
               const imageUrl = isImageMessage(m) ? mediaUrlFromApi(m.attachment_url) : undefined;
               return (
                 <div key={m.id} className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
@@ -287,7 +289,7 @@ export function ChatPanel({ sessionId, session }: Props) {
                       <a href={imageUrl} target="_blank" rel="noopener noreferrer" className="block">
                         <img
                           src={imageUrl}
-                          alt={m.attachment_filename ?? "Shared image"}
+                          alt={m.attachment_filename ?? c.sharedImageAlt}
                           className="max-h-64 max-w-full rounded-lg object-contain"
                           loading="lazy"
                         />
@@ -328,16 +330,16 @@ export function ChatPanel({ sessionId, session }: Props) {
             <div className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/20 p-3">
               <img
                 src={pendingPreviewUrl}
-                alt="Selected image preview"
+                alt={c.selectedImagePreviewAlt}
                 className="h-20 w-20 rounded-md object-cover"
               />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{pendingImage.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {(pendingImage.size / 1024).toFixed(0)} KB · add an optional caption below
+                  {(pendingImage.size / 1024).toFixed(0)} KB · {c.optionalCaptionHint}
                 </p>
               </div>
-              <Button type="button" variant="ghost" size="icon" onClick={clearPendingImage} aria-label="Remove image">
+              <Button type="button" variant="ghost" size="icon" onClick={clearPendingImage} aria-label={c.removeImageAria}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -356,7 +358,7 @@ export function ChatPanel({ sessionId, session }: Props) {
               size="icon"
               disabled={!canSend || isSending}
               onClick={onPickImage}
-              aria-label="Share image"
+              aria-label={c.shareImageAria}
               className="shrink-0"
             >
               <ImagePlus className="h-4 w-4" />
@@ -390,7 +392,7 @@ export function ChatPanel({ sessionId, session }: Props) {
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
               </svg>
-              Send
+              {c.send}
             </Button>
           </div>
         </div>

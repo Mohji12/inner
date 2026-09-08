@@ -36,12 +36,15 @@ const AUTH_SUCCESS_DELAY_MS = 1200;
 const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const returnTo = (location.state as { from?: string } | null)?.from;
   const { loginUserSession, loginMentorSession, loginAdminSession, setUserSession, setMentorSession } = useAuth();
   const { t } = useLanguage();
   const a = t.app.login;
-  const [role, setRole] = useState<Role>("user");
+  const [role, setRole] = useState<Role>(() => {
+    const r = searchParams.get("role");
+    return r === "mentor" || r === "user" || r === "admin" ? r : "user";
+  });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -58,6 +61,24 @@ const LoginPage = () => {
     const r = searchParams.get("role");
     if (r === "mentor" || r === "user" || r === "admin") setRole(r);
   }, [searchParams]);
+
+  const selectRole = (next: Role) => {
+    setRole(next);
+    setError("");
+    setIs2FARequired(false);
+    setEmailVerifyRequired(false);
+    setTwoFactorCode("");
+    setEmailOtp("");
+    setTempToken("");
+    setSearchParams(
+      (prev) => {
+        const nextParams = new URLSearchParams(prev);
+        nextParams.set("role", next);
+        return nextParams;
+      },
+      { replace: true },
+    );
+  };
 
   useEffect(() => {
     if (!authSuccess) return;
@@ -319,21 +340,21 @@ const LoginPage = () => {
                       <button
                         type="button"
                         className={`rounded-md border px-2 py-3 text-sm transition-all ${role === "user" ? "border-primary bg-primary/5 text-primary font-semibold ring-1 ring-primary" : "border-border hover:bg-muted"}`}
-                        onClick={() => setRole("user")}
+                        onClick={() => selectRole("user")}
                       >
                         {a.user}
                       </button>
                       <button
                         type="button"
                         className={`rounded-md border px-2 py-3 text-sm transition-all ${role === "mentor" ? "border-primary bg-primary/5 text-primary font-semibold ring-1 ring-primary" : "border-border hover:bg-muted"}`}
-                        onClick={() => setRole("mentor")}
+                        onClick={() => selectRole("mentor")}
                       >
                         {a.mentor}
                       </button>
                       <button
                         type="button"
                         className={`rounded-md border px-2 py-3 text-sm transition-all ${role === "admin" ? "border-primary bg-primary/5 text-primary font-semibold ring-1 ring-primary" : "border-border hover:bg-muted"}`}
-                        onClick={() => setRole("admin")}
+                        onClick={() => selectRole("admin")}
                       >
                         {a.admin}
                       </button>

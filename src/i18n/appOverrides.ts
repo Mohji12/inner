@@ -4,6 +4,7 @@ import type { DeepPartial } from "./mergeDeep";
 import { coachDashboardOverrides } from "./coachDashboardOverrides";
 import { adminDashboardOverrides } from "./adminDashboardOverrides";
 import { phase3Overrides } from "./phase3Overrides";
+import { chatOverrides } from "./chatOverrides";
 import { mergeDeep } from "./mergeDeep";
 
 const baseOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
@@ -17,6 +18,9 @@ const baseOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
       findMentors: "Trouver des coachs",
       userHub: "Espace utilisateur",
       mentorHub: "Espace coach",
+      adminHub: "Espace admin",
+      loginAnotherRole: "Se connecter avec un autre rôle",
+      accountMenu: "Compte",
     },
     shell: {
       mentors: "Coachs",
@@ -476,6 +480,9 @@ const baseOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
       findMentors: "Coaches zoeken",
       userHub: "Gebruikershub",
       mentorHub: "Coachhub",
+      adminHub: "Adminhub",
+      loginAnotherRole: "Inloggen als andere rol",
+      accountMenu: "Account",
     },
     shell: {
       mentors: "Coaches",
@@ -982,9 +989,9 @@ Je erkent en accepteert deze voorwaarden op het moment van registratie.
       presenceOnlineHint: "Gebruikers kunnen je zien en afspraken boeken",
       presenceBusy: "In een afspraak",
       presenceBusyHint: "Je bent bezig tot je de live afspraak verlaat",
-      presenceOccupied: "Bezet",
+      presenceOccupied: "Gepauzeerd",
       presenceOccupiedHint:
-        "Je bent ingelogd, maar gebruikers kunnen geen live chat starten of boeken tot je weer beschikbaar bent.",
+        "Je bent ingelogd, maar je status is gepauzeerd. Gebruikers kunnen geen live chat starten of boeken tot je weer beschikbaar bent.",
       presenceUnavailable: "Niet beschikbaar (planning)",
       presenceUnavailableHint:
         "Je bent ingelogd, maar gebruikers kunnen je niet boeken tot je afwezigheidsperiode voorbij is. Controleer Beschikbaarheid in het menu.",
@@ -995,7 +1002,7 @@ Je erkent en accepteert deze voorwaarden op het moment van registratie.
       presenceToastOnline: "Je bent nu online — gebruikers kunnen je op het platform zien",
       presenceAvailableSwitchLabel: "Beschikbaar voor afspraken",
       presenceAvailableSwitchOn: "Beschikbaar voor afspraken",
-      presenceAvailableSwitchOff: "Bezet",
+      presenceAvailableSwitchOff: "Gepauzeerd",
       presenceToggleDisabledBusy: "Beëindig je live afspraak voordat je beschikbaarheid wijzigt.",
       presenceToggleFailed: "Beschikbaarheid kon niet worden bijgewerkt. Probeer het opnieuw.",
       presenceHeartbeatFailed:
@@ -1147,6 +1154,7 @@ Je erkent en accepteert deze voorwaarden op het moment van registratie.
     mentorBrowseCard: {
       available: "Beschikbaar",
       inSession: "In sessie",
+      paused: "Gepauzeerd",
       offline: "Offline",
       years: "jaar",
       reviews: "beoordelingen",
@@ -1382,6 +1390,9 @@ Je erkent en accepteert deze voorwaarden op het moment van registratie.
       findMentors: "Buscar coaches",
       userHub: "Área de usuario",
       mentorHub: "Área de coach",
+      adminHub: "Área de admin",
+      loginAnotherRole: "Iniciar sesión con otro rol",
+      accountMenu: "Cuenta",
     },
     shell: { mentors: "Coaches", login: "Iniciar sesión", register: "Registrarse", language: "Idioma" },
     login: {
@@ -1699,6 +1710,9 @@ Je erkent en accepteert deze voorwaarden op het moment van registratie.
       findMentors: "البحث عن مدربين",
       userHub: "منطقة المستخدم",
       mentorHub: "منطقة المدرب",
+      adminHub: "منطقة المسؤول",
+      loginAnotherRole: "تسجيل الدخول بدور آخر",
+      accountMenu: "الحساب",
     },
     login: {
       title: "تسجيل الدخول",
@@ -1995,6 +2009,9 @@ Je erkent en accepteert deze voorwaarden op het moment van registratie.
       findMentors: "查找教练",
       userHub: "用户中心",
       mentorHub: "教练中心",
+      adminHub: "管理中心",
+      loginAnotherRole: "以其他身份登录",
+      accountMenu: "账户",
     },
     login: {
       title: "登录",
@@ -2290,6 +2307,9 @@ Je erkent en accepteert deze voorwaarden op het moment van registratie.
       findMentors: "Найти коучей",
       userHub: "Кабинет пользователя",
       mentorHub: "Кабинет коуча",
+      adminHub: "Кабинет администратора",
+      loginAnotherRole: "Войти под другой ролью",
+      accountMenu: "Аккаунт",
     },
     login: {
       title: "Вход",
@@ -2588,6 +2608,9 @@ Je erkent en accepteert deze voorwaarden op het moment van registratie.
       findMentors: "Cerca coach",
       userHub: "Area utente",
       mentorHub: "Area coach",
+      adminHub: "Area admin",
+      loginAnotherRole: "Accedi con un altro ruolo",
+      accountMenu: "Account",
     },
     shell: { mentors: "Coach", login: "Accedi", register: "Registrati", language: "Lingua" },
     login: {
@@ -2915,6 +2938,9 @@ Je erkent en accepteert deze voorwaarden op het moment van registratie.
       findMentors: "Coaches finden",
       userHub: "Benutzerbereich",
       mentorHub: "Coach-Bereich",
+      adminHub: "Admin-Bereich",
+      loginAnotherRole: "Mit anderer Rolle anmelden",
+      accountMenu: "Konto",
     },
     shell: { mentors: "Coaches", login: "Anmelden", register: "Registrieren", language: "Sprache" },
     login: {
@@ -3266,6 +3292,9 @@ Je erkent en accepteert deze voorwaarden op het moment van registratie.
       findMentors: "Găsește coach-i",
       userHub: "Zona utilizator",
       mentorHub: "Zona coach",
+      adminHub: "Zona admin",
+      loginAnotherRole: "Autentificare cu alt rol",
+      accountMenu: "Cont",
     },
     shell: { mentors: "Coach-i", login: "Autentificare", register: "Înregistrare", language: "Limbă" },
     login: {
@@ -3600,6 +3629,8 @@ function withLocaleExtras(
   if (admin) merged = mergeDeep(merged as AppCopy, admin) as DeepPartial<AppCopy>;
   const phase3 = phase3Overrides[locale];
   if (phase3) merged = mergeDeep(merged as AppCopy, phase3) as DeepPartial<AppCopy>;
+  const chat = chatOverrides[locale];
+  if (chat) merged = mergeDeep(merged as AppCopy, chat) as DeepPartial<AppCopy>;
   return merged;
 }
 

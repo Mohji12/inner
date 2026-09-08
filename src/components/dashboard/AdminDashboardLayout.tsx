@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   BarChart3,
   CalendarDays,
@@ -7,6 +7,7 @@ import {
   CreditCard,
   FileText,
   FileUser,
+  Home,
   Landmark,
   LayoutDashboard,
   LogOut,
@@ -57,6 +58,10 @@ function AdminDashboardSidebar() {
     if (isMobile) setOpenMobile(false);
     await logoutAdminSession();
     navigate("/login?role=admin", { replace: true });
+  };
+
+  const closeMobile = () => {
+    if (isMobile) setOpenMobile(false);
   };
 
   return (
@@ -210,7 +215,13 @@ function AdminDashboardSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
-        <SidebarFooter className="border-t border-sidebar-border/60 p-2">
+        <SidebarFooter className="border-t border-sidebar-border/60 p-2 space-y-1">
+          <Button variant="ghost" className={dashboardLogoutButtonClass} asChild>
+            <Link to="/" title={d.viewWebsiteHint} onClick={closeMobile}>
+              <Home className="h-4 w-4" />
+              {d.viewWebsite}
+            </Link>
+          </Button>
           <Button variant="ghost" className={dashboardLogoutButtonClass} onClick={() => void onLogout()}>
             <LogOut className="h-4 w-4" />
             {d.logOut}
@@ -223,8 +234,14 @@ function AdminDashboardSidebar() {
         <header className={dashboardChromeHeaderClass}>
           <SidebarTrigger className="shrink-0 transition-transform duration-200 hover:scale-105 active:scale-95" />
           <Separator orientation="vertical" className="hidden h-6 sm:block" />
-          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{d.hub}</span>
+          <span className="hidden min-w-0 flex-1 truncate text-sm text-muted-foreground sm:inline">{d.hub}</span>
           <div className="ml-auto flex min-w-0 shrink items-center gap-1 sm:gap-2">
+            <Button variant="outline" size="sm" className="hidden sm:inline-flex gap-1.5" asChild>
+              <Link to="/" title={d.viewWebsiteHint}>
+                <Home className="h-3.5 w-3.5" />
+                {d.viewWebsite}
+              </Link>
+            </Button>
             <LanguageSwitcher compact />
             <NotificationBell />
           </div>

@@ -8,6 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 type Props = {
   open: boolean;
@@ -31,24 +32,27 @@ export function SessionExpiryWarningDialog({
   onExtend,
   onDismiss,
 }: Props) {
+  const { t } = useLanguage();
+  const c = t.app.chatSession;
   const isFinal = urgency === "final";
+  const time = formatCountdown(remainingSeconds);
 
   return (
     <AlertDialog open={open} onOpenChange={(next) => !next && onDismiss()}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="font-serif">
-            {isFinal ? "Session about to end" : "Session ending soon"}
+            {isFinal ? c.expiryTitleFinal : c.expiryTitleInitial}
           </AlertDialogTitle>
           <AlertDialogDescription>
             {isFinal
-              ? `Your session is about to end (${formatCountdown(remainingSeconds)} left). If you want to extend, you can extend it now.`
-              : `Your session expires in ${formatCountdown(remainingSeconds)}. Would you like to extend?`}
+              ? c.expiryBodyFinal.replace("{time}", time)
+              : c.expiryBodyInitial.replace("{time}", time)}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onDismiss}>Continue without extending</AlertDialogCancel>
-          <AlertDialogAction onClick={onExtend}>Extend session</AlertDialogAction>
+          <AlertDialogCancel onClick={onDismiss}>{c.continueWithoutExtending}</AlertDialogCancel>
+          <AlertDialogAction onClick={onExtend}>{c.extendSession}</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

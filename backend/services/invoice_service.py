@@ -5,13 +5,13 @@ from services.invoice_errors import InvoiceError
 from services.platform_invoice_service import load_booking_invoice
 
 
-def generate_invoice_pdf(db: Session, booking_id: str, user_id: str) -> bytes:
+def generate_invoice_pdf(db: Session, booking_id: str, user_id: str, lang: str | None = None) -> bytes:
     """Generates a PDF invoice for a given booking (customer copy)."""
-    data = load_booking_invoice(db, booking_id=booking_id, user_id=user_id)
-    return build_booking_invoice_pdf_from_out(data)
+    data = load_booking_invoice(db, booking_id=booking_id, user_id=user_id, lang=lang)
+    return build_booking_invoice_pdf_from_out(data, lang=lang)
 
 
-def generate_invoice_pdf_for_mentor(db: Session, booking_id: str, mentor_id: str) -> bytes:
+def generate_invoice_pdf_for_mentor(db: Session, booking_id: str, mentor_id: str, lang: str | None = None) -> bytes:
     """Generates a PDF invoice for a given booking (coach copy — same totals, coach-facing)."""
-    data = load_booking_invoice(db, booking_id=booking_id, mentor_id=mentor_id)
-    return build_booking_invoice_pdf_from_out(data)
+    data = load_booking_invoice(db, booking_id=booking_id, mentor_id=mentor_id, lang=lang)
+    return build_booking_invoice_pdf_from_out(data, lang=lang)

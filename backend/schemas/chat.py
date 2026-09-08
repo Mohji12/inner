@@ -1,6 +1,6 @@
-from datetime import datetime
-
 from pydantic import BaseModel, ConfigDict, Field
+
+from schemas.utc_datetime import UtcDateTime
 
 
 class ChatSessionExtendIn(BaseModel):
@@ -21,9 +21,9 @@ class ChatSessionStartIn(BaseModel):
 class SessionBookingMetaOut(BaseModel):
     booking_id: str
     duration_minutes: int
-    booked_at: datetime
-    start_at_utc: datetime
-    end_at_utc: datetime
+    booked_at: UtcDateTime
+    start_at_utc: UtcDateTime
+    end_at_utc: UtcDateTime
     communication_mode: str | None = None
 
 
@@ -46,16 +46,16 @@ class ChatSessionOut(BaseModel):
     user_id: str
     mentor_id: str
     status: str
-    ends_at: datetime
+    ends_at: UtcDateTime
     remaining_seconds: int
     timer_started: bool = False
     waiting_for: str | None = None
     allocated_duration_minutes: int | None = None
     partner_is_online: bool | None = None
     booking: SessionBookingMetaOut | None = None
-    created_at: datetime
-    updated_at: datetime
-    last_message_at: datetime | None = None
+    created_at: UtcDateTime
+    updated_at: UtcDateTime
+    last_message_at: UtcDateTime | None = None
     unread_count_user: int = 0
     unread_count_mentor: int = 0
 
@@ -127,8 +127,8 @@ class ChatMessageOut(BaseModel):
     attachment_type: str | None = None
     attachment_filename: str | None = None
     attachment_size_bytes: int | None = None
-    read_at: datetime | None = None
-    created_at: datetime
+    read_at: UtcDateTime | None = None
+    created_at: UtcDateTime
 
 
 class ChatInvoiceLineOut(BaseModel):
@@ -140,7 +140,7 @@ class ChatInvoiceLineOut(BaseModel):
     currency: str
     status: str
     transaction_id: str | None
-    created_at: datetime
+    created_at: UtcDateTime
 
 
 class ChatInvoiceSummaryOut(BaseModel):
@@ -154,9 +154,9 @@ class ChatInvoiceSummaryOut(BaseModel):
     currency: str
     total_minutes_purchased: int
     payment_status: str
-    session_started_at: datetime
-    session_ended_at: datetime
-    issued_at: datetime
+    session_started_at: UtcDateTime
+    session_ended_at: UtcDateTime
+    issued_at: UtcDateTime
 
 
 class ChatInvoiceConversationLineOut(BaseModel):
@@ -166,19 +166,19 @@ class ChatInvoiceConversationLineOut(BaseModel):
     sender_role: str
     sender_display_name: str
     body: str
-    created_at: datetime
+    created_at: UtcDateTime
 
 
 class ChatInvoiceDetailOut(BaseModel):
     """Full invoice for print / detail view."""
 
     invoice_number: str
-    issued_at: datetime
+    issued_at: UtcDateTime
     payment_status: str
     session_id: str
     session_status: str
-    session_started_at: datetime
-    session_ended_at: datetime
+    session_started_at: UtcDateTime
+    session_ended_at: UtcDateTime
     session_duration_seconds: int
     total_minutes_purchased: int
     total_amount: str

@@ -11,7 +11,7 @@ if (-not (Test-Path ".\.venv\Scripts\python.exe")) {
 }
 
 if (-not (Test-Path ".\.env")) {
-    Write-Error "Missing backend\.env — copy from .env.example and fill values."
+    Write-Error "Missing backend\.env - copy from .env.example and fill values."
 }
 
 Write-Host "API: http://127.0.0.1:8001  (health: /health)"

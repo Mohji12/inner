@@ -514,6 +514,7 @@ def mentor_earnings(db: DbSession, me: CurrentMentor) -> EarningsSummary:
         owner_id=me.id,
         account_kind=ACCOUNT_COACH_PENDING,
         currency="EUR",
+        lock=False,
     )
     withdrawable = get_or_create_wallet_account(
         db,
@@ -521,6 +522,7 @@ def mentor_earnings(db: DbSession, me: CurrentMentor) -> EarningsSummary:
         owner_id=me.id,
         account_kind=ACCOUNT_COACH_WITHDRAWABLE,
         currency="EUR",
+        lock=False,
     )
     # Keep dashboard earnings consistent with payout wallet balances.
     total = get_account_balance(db, pending.id) + get_account_balance(db, withdrawable.id)
@@ -651,7 +653,9 @@ def mentor_list_settlements(db: DbSession, me: CurrentMentor) -> list[MentorSett
 
 
 @router.get("/settlements/{settlement_id}/pdf")
-def mentor_settlement_invoice_pdf(settlement_id: str, db: DbSession, me: CurrentMentor) -> Response:
+def mentor_settlement_invoice_pdf(
+    settlement_id: str, db: DbSession, me: CurrentMentor, lang: RequestLang
+) -> Response:
     s = (
         db.query(MentorSettlement)
         .filter(MentorSettlement.id == settlement_id, MentorSettlement.mentor_id == me.id)
@@ -665,9 +669,12 @@ def mentor_settlement_invoice_pdf(settlement_id: str, db: DbSession, me: Current
         .order_by(MentorSettlementItem.created_at.asc())
         .all()
     )
-    pdf_bytes = build_settlement_invoice_pdf(settlement=s, mentor=me, items=items)
+    pdf_bytes = build_settlement_invoice_pdf(settlement=s, mentor=me, items=items, lang=lang)
     inv_no = settlement_invoice_number(s)
-    safe_name = f"settlement-invoice-{inv_no}.pdf"
+    from services.invoice_pdf_i18n import t_invoice
+
+    prefix = t_invoice(lang, "filename_settlement_invoice")
+    safe_name = f"{prefix}-{inv_no}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -684,7 +691,9 @@ def mentor_monthly_invoice_detail(invoice_id: str, db: DbSession, me: CurrentMen
 
 
 @router.get("/monthly-invoices/{invoice_id}/pdf")
-def mentor_monthly_invoice_pdf(invoice_id: str, db: DbSession, me: CurrentMentor) -> Response:
+def mentor_monthly_invoice_pdf(
+    invoice_id: str, db: DbSession, me: CurrentMentor, lang: RequestLang
+) -> Response:
     inv = (
         db.query(MentorMonthlyInvoice)
         .filter(MentorMonthlyInvoice.id == invoice_id, MentorMonthlyInvoice.mentor_id == me.id)
@@ -692,8 +701,11 @@ def mentor_monthly_invoice_pdf(invoice_id: str, db: DbSession, me: CurrentMentor
     )
     if not inv:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
-    pdf_bytes = build_mentor_monthly_invoice_pdf(invoice=inv, mentor=me)
-    safe_name = f"coach-monthly-invoice-{str(inv.invoice_month)}-{inv.id[:8]}.pdf"
+    pdf_bytes = build_mentor_monthly_invoice_pdf(invoice=inv, mentor=me, lang=lang)
+    from services.invoice_pdf_i18n import t_invoice
+
+    prefix = t_invoice(lang, "filename_monthly_invoice")
+    safe_name = f"{prefix}-{str(inv.invoice_month)}-{inv.id[:8]}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

@@ -13,7 +13,7 @@ const LABELS: Record<PresenceStatus, string> = {
   offline: "Offline",
   busy: "In session",
   unavailable: "Unavailable",
-  occupied: "Occupied",
+  occupied: "Paused",
 };
 
 const DOT: Record<PresenceStatus, string> = {

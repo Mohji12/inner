@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { guessCheckoutCurrencyFromLocale } from "@/lib/checkoutCurrencyGuess";
 import { stashPendingMolliePaymentId } from "@/lib/molliePendingPayment";
 import { toast } from "sonner";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 type Props = {
   sessionId: string;
@@ -41,6 +42,8 @@ export function SessionExtendDialog({
   resumeMode = false,
   communicationMode = null,
 }: Props) {
+  const { t } = useLanguage();
+  const c = t.app.chatSession;
   const [minutes, setMinutes] = useState(defaultMinutes);
   const [checkoutCurrency, setCheckoutCurrency] = useState("EUR");
 
@@ -88,7 +91,7 @@ export function SessionExtendDialog({
         communication_mode: communicationMode,
       }),
     onSuccess: (out) => {
-      toast.success("Redirecting to Mollie checkout");
+      toast.success(c.redirectingCheckout);
       onOpenChange(false);
       stashPendingMolliePaymentId(out.mollie_payment_id);
       window.location.href = out.checkout_url;
@@ -98,16 +101,15 @@ export function SessionExtendDialog({
 
   const checkoutCcy = quote?.checkout_currency ?? checkoutCurrency;
   const showCheckoutTotal = checkoutCcy !== "EUR" && quote?.checkout_amount;
+  const payAction = resumeMode ? c.payAndContinue : c.payAndExtend;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{resumeMode ? "Pay for this chat" : "Add time"}</DialogTitle>
+          <DialogTitle>{resumeMode ? c.extendTitleResume : c.extendTitleAdd}</DialogTitle>
           <DialogDescription>
-            {resumeMode
-              ? "Choose how many minutes to buy. After payment, this same conversation unlocks for chat, call, and video."
-              : "Pay per minute at your coach's rate plus a transaction fee. Minutes are added after successful payment."}
+            {resumeMode ? c.extendDescResume : c.extendDescAdd}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
@@ -121,7 +123,7 @@ export function SessionExtendDialog({
             />
           ) : null}
           <div className="space-y-2">
-            <Label htmlFor="extMin">Minutes to add</Label>
+            <Label htmlFor="extMin">{c.minutesToAdd}</Label>
             <Input
               id="extMin"
               type="number"
@@ -132,35 +134,39 @@ export function SessionExtendDialog({
               disabled={extendMut.isPending}
             />
             {quote?.min_minutes && quote.min_minutes > 1 ? (
-              <p className="text-xs text-muted-foreground">Minimum purchase: {quote.min_minutes} minutes</p>
+              <p className="text-xs text-muted-foreground">
+                {c.minimumPurchase.replace("{minutes}", String(quote.min_minutes))}
+              </p>
             ) : null}
           </div>
 
           <div className="rounded-lg border border-border/70 bg-muted/30 px-3 py-3 text-sm">
             {quoteQuery.isLoading ? (
-              <p className="text-muted-foreground">Calculating price…</p>
+              <p className="text-muted-foreground">{c.calculatingPrice}</p>
             ) : quoteError ? (
               <p className="text-destructive">{quoteError.message}</p>
             ) : quote ? (
               <div className="space-y-1">
                 <p className="flex justify-between gap-4">
                   <span className="text-muted-foreground">
-                    {quote.minutes} min × EUR {formatEur(quote.rate_per_minute_eur)}/min
+                    {c.rateLine
+                      .replace("{minutes}", String(quote.minutes))
+                      .replace("{rate}", formatEur(quote.rate_per_minute_eur))}
                   </span>
                   <span>EUR {formatEur(quote.session_amount_eur)}</span>
                 </p>
                 <p className="flex justify-between gap-4">
-                  <span className="text-muted-foreground">Transaction fee</span>
+                  <span className="text-muted-foreground">{c.transactionFee}</span>
                   <span>EUR {formatEur(quote.transaction_fee_eur)}</span>
                 </p>
                 <hr className="my-2 border-border/70" />
                 <p className="flex justify-between gap-4 font-semibold">
-                  <span>Total due</span>
+                  <span>{c.totalDue}</span>
                   <span>EUR {formatEur(quote.total_eur)}</span>
                 </p>
                 {showCheckoutTotal ? (
                   <p className="flex justify-between gap-4 text-xs text-muted-foreground">
-                    <span>Mollie checkout ({checkoutCcy})</span>
+                    <span>{c.mollieCheckout.replace("{currency}", checkoutCcy)}</span>
                     <span>
                       {checkoutCcy} {formatEur(quote.checkout_amount)}
                     </span>
@@ -172,19 +178,19 @@ export function SessionExtendDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={extendMut.isPending}>
-            Cancel
+            {c.cancel}
           </Button>
           <Button
             onClick={() => extendMut.mutate()}
             disabled={extendMut.isPending || quoteQuery.isLoading || Boolean(quoteError) || !quote}
           >
             {extendMut.isPending
-              ? "Redirecting…"
+              ? c.redirecting
               : quote
-                ? `${resumeMode ? "Pay & continue" : "Pay & extend"} — EUR ${formatEur(quote.total_eur)}`
-                : resumeMode
-                  ? "Pay & continue"
-                  : "Pay & extend"}
+                ? c.payWithAmount
+                    .replace("{action}", payAction)
+                    .replace("{amount}", formatEur(quote.total_eur))
+                : payAction}
           </Button>
         </DialogFooter>
       </DialogContent>

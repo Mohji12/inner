@@ -13,26 +13,34 @@ import {
   sessionWaitingForParticipants,
 } from "@/lib/chatSessionTiming";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 interface ChatInboxListProps {
   sessions: ChatInboxSession[];
   role: "user" | "mentor";
 }
 
-function inboxStateBadge(session: ChatInboxSession, role: "user" | "mentor"): string | null {
-  if (sessionNeedsInitialPayment(session)) return role === "user" ? "Pay to start" : "Awaiting payment";
-  if (sessionJoinWindowExpired(session)) return "Join expired";
-  if (sessionTimeExpired(session)) return role === "user" ? "Continue anytime" : "Time up";
-  if (session.status === "ended") return role === "user" ? "Continue anytime" : "Ended";
-  if (sessionWaitingForParticipants(session)) return "Waiting";
+function inboxStateBadge(
+  session: ChatInboxSession,
+  role: "user" | "mentor",
+  c: ReturnType<typeof useLanguage>["t"]["app"]["chatInbox"],
+): string | null {
+  if (sessionNeedsInitialPayment(session)) return role === "user" ? c.payToStart : c.awaitingPayment;
+  if (sessionJoinWindowExpired(session)) return c.joinExpired;
+  if (sessionTimeExpired(session)) return role === "user" ? c.continueAnytime : c.timeUp;
+  if (session.status === "ended") return role === "user" ? c.continueAnytime : c.ended;
+  if (sessionWaitingForParticipants(session)) return c.waiting;
   return null;
 }
 
 const ChatInboxList = ({ sessions, role }: ChatInboxListProps) => {
+  const { t } = useLanguage();
+  const c = t.app.chatInbox;
+
   if (sessions.length === 0) {
     return (
       <div className="text-center py-12 border rounded-xl border-dashed">
-        <p className="text-muted-foreground">No conversations yet.</p>
+        <p className="text-muted-foreground">{c.empty}</p>
       </div>
     );
   }
@@ -82,8 +90,8 @@ const ChatInboxList = ({ sessions, role }: ChatInboxListProps) => {
                   "text-sm truncate pr-4",
                   unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground"
                 )}>
-                  {session.last_message_role === role ? "You: " : ""}
-                  {session.last_message_body || "No messages yet"}
+                  {session.last_message_role === role ? c.youPrefix : ""}
+                  {session.last_message_body || c.noMessagesYet}
                 </p>
                 {unreadCount > 0 && (
                   <Badge variant="default" className="bg-accent text-accent-foreground h-5 min-w-5 flex items-center justify-center rounded-full p-0 text-[10px]">
@@ -91,7 +99,7 @@ const ChatInboxList = ({ sessions, role }: ChatInboxListProps) => {
                   </Badge>
                 )}
                 {(() => {
-                  const state = inboxStateBadge(session, role);
+                  const state = inboxStateBadge(session, role, c);
                   return state ? (
                     <Badge variant="outline" className="text-[10px]">
                       {state}

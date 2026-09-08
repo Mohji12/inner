@@ -1,6 +1,7 @@
 import logging
 from datetime import timezone
 from decimal import Decimal
+from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import Response
@@ -1063,7 +1064,7 @@ def list_my_chat_invoices(db: DbSession, me: CurrentUser, lang: RequestLang) -> 
 
 
 @router.get("/invoices/{session_id}/pdf")
-def download_chat_invoice_pdf(session_id: str, db: DbSession, me: CurrentUser) -> Response:
+def download_chat_invoice_pdf(session_id: str, db: DbSession, me: CurrentUser, lang: RequestLang) -> Response:
     row = get_user_chat_invoice_detail(db, user_id=me.id, session_id=session_id)
     if not row:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
@@ -1080,8 +1081,12 @@ def download_chat_invoice_pdf(session_id: str, db: DbSession, me: CurrentUser) -
         mentor=mentor,
         purchases=purchases,
         messages=messages,
+        lang=lang,
     )
-    safe_name = f"invoice-{inv.replace(' ', '_')}.pdf"
+    from services.invoice_pdf_i18n import t_invoice
+
+    prefix = t_invoice(lang, "filename_invoice")
+    safe_name = f"{prefix}-{inv.replace(' ', '_')}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -1132,7 +1137,9 @@ def list_mentor_chat_invoices(db: DbSession, me: CurrentMentor, lang: RequestLan
 
 
 @router.get("/mentor/invoices/{session_id}/pdf")
-def download_mentor_chat_invoice_pdf(session_id: str, db: DbSession, me: CurrentMentor) -> Response:
+def download_mentor_chat_invoice_pdf(
+    session_id: str, db: DbSession, me: CurrentMentor, lang: RequestLang
+) -> Response:
     row = get_mentor_chat_invoice_detail(db, mentor_id=me.id, session_id=session_id)
     if not row:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
@@ -1149,8 +1156,12 @@ def download_mentor_chat_invoice_pdf(session_id: str, db: DbSession, me: Current
         mentor=mentor,
         purchases=purchases,
         messages=messages,
+        lang=lang,
     )
-    safe_name = f"coach-chat-invoice-{inv.replace(' ', '_')}.pdf"
+    from services.invoice_pdf_i18n import t_invoice
+
+    prefix = t_invoice(lang, "filename_coach_chat_invoice")
+    safe_name = f"{prefix}-{inv.replace(' ', '_')}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

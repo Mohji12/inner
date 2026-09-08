@@ -96,6 +96,8 @@ export interface MentorPublic {
   chat_min_purchase_minutes: number;
   chat_available: boolean;
   is_online: boolean;
+  /** Coach paused live sessions from dashboard (still connected / heartbeat online) */
+  manual_occupied?: boolean;
   last_seen_at: string | null;
   /** Next planned platform window start (UTC ISO), if coach posted one */
   next_availability_at?: string | null;
@@ -114,7 +116,7 @@ export interface MentorPublic {
   public_card_visibility?: Partial<Record<string, boolean>> | null;
 }
 
-export type MentorAvailabilityStatus = "available" | "busy" | "offline" | "unavailable";
+export type MentorAvailabilityStatus = "available" | "busy" | "offline" | "unavailable" | "paused";
 
 export interface UnavailabilityPublicBlock {
   kind: "one_off" | "weekly";
@@ -141,10 +143,14 @@ export interface UnavailabilityOut {
 }
 
 export function getMentorAvailabilityStatus(
-  mentor: Pick<MentorPublic, "is_online" | "chat_available" | "chat_price_per_minute" | "unavailable_now">,
+  mentor: Pick<
+    MentorPublic,
+    "is_online" | "chat_available" | "chat_price_per_minute" | "unavailable_now" | "manual_occupied"
+  >,
 ): MentorAvailabilityStatus {
   if (mentor.unavailable_now) return "unavailable";
   if (!mentor.is_online) return "offline";
+  if (mentor.manual_occupied) return "paused";
   return mentor.chat_available ? "available" : "busy";
 }
 

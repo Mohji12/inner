@@ -23,6 +23,8 @@ import {
 import { toast } from "sonner";
 import { Clock } from "lucide-react";
 import { sessionNeedsInitialPayment, sessionTimeExpired, sessionJoinWindowExpired } from "@/lib/chatSessionTiming";
+import { useLanguage } from "@/i18n/LanguageContext";
+import type { AppCopy } from "@/i18n/appBase";
 
 function formatCountdown(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
@@ -43,17 +45,23 @@ function resolveCommunicationMode(
   return null;
 }
 
-function waitingLabel(waitingFor: ChatSession["waiting_for"], role: string | null): string {
-  if (!waitingFor) return "Waiting to start…";
-  if (waitingFor === "mentor") return role === "mentor" ? "User is waiting for you" : "Waiting for coach…";
-  if (waitingFor === "user") return role === "user" ? "Coach is waiting for you" : "Waiting for user…";
-  return "Waiting for both participants…";
+function waitingLabel(
+  waitingFor: ChatSession["waiting_for"],
+  role: string | null,
+  c: AppCopy["chatSession"],
+): string {
+  if (!waitingFor) return c.waitingToStart;
+  if (waitingFor === "mentor") return role === "mentor" ? c.userWaitingForYou : c.waitingForCoach;
+  if (waitingFor === "user") return role === "user" ? c.coachWaitingForYou : c.waitingForUser;
+  return c.waitingForBoth;
 }
 
 const ChatSessionPage = () => {
   const { sessionId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const { role } = useAuth();
+  const { t } = useLanguage();
+  const c = t.app.chatSession;
   const queryClient = useQueryClient();
 
   const [extendOpen, setExtendOpen] = useState(false);
@@ -119,14 +127,10 @@ const ChatSessionPage = () => {
           clearPendingMolliePaymentId();
           paymentStatus = String(out.status || "").toLowerCase();
           if (paymentStatus === "paid") {
-            toast.success(
-              extendedFlag
-                ? "Time added — you can continue this conversation."
-                : "Payment confirmed — your chat is ready.",
-            );
+            toast.success(extendedFlag ? c.toastTimeAdded : c.toastPaymentConfirmed);
           } else if (["failed", "canceled", "cancelled", "expired", "open"].includes(paymentStatus)) {
-            toast.message("Payment was not completed.");
-          } else toast.info("Payment is still processing. Time will update shortly.");
+            toast.message(c.toastPaymentNotCompleted);
+          } else toast.info(c.toastPaymentProcessing);
         }
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["chat", "session", sid] }),
@@ -143,11 +147,11 @@ const ChatSessionPage = () => {
           sessionNeedsInitialPayment(refreshed) &&
           (checkoutReturn || paidFlag || (paymentStatus && ["failed", "canceled", "cancelled", "expired", "open"].includes(paymentStatus)))
         ) {
-          toast.message("Pay below to start this chat.");
+          toast.message(c.toastPayBelow);
           setExtendOpen(true);
         }
       } catch {
-        if (!cancelled) toast.info("Payment is still processing. Time will update shortly.");
+        if (!cancelled) toast.info(c.toastPaymentProcessing);
       } finally {
         if (!cancelled && (extendedFlag || paidFlag || checkoutReturn)) {
           const next = new URLSearchParams(searchParams);
@@ -162,7 +166,7 @@ const ChatSessionPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [role, sid, searchParams, setSearchParams, queryClient]);
+  }, [role, sid, searchParams, setSearchParams, queryClient, c]);
 
   const meetingQuery = useQuery({
     queryKey: ["meeting", "session", sid],
@@ -184,13 +188,21 @@ const ChatSessionPage = () => {
   const endMut = useMutation({
     mutationFn: () => endChatSession(sid),
     onSuccess: () => {
-      toast.message("Chat ended");
+      const coachMissed = role === "user" && (!session?.timer_started || session?.waiting_for === "mentor");
+      if (coachMissed) {
+        toast.success(c.toastRefunded);
+      } else {
+        toast.message(c.toastChatEnded);
+      }
       void queryClient.invalidateQueries({ queryKey: ["chat", "session", sid] });
       void queryClient.invalidateQueries({ queryKey: ["chat", "session", "booking-link", sid] });
       void queryClient.invalidateQueries({ queryKey: ["chat", "sessions", "appointments"] });
       void queryClient.invalidateQueries({ queryKey: ["bookings", "me"] });
       void queryClient.invalidateQueries({ queryKey: ["meeting", "session", sid] });
       void queryClient.invalidateQueries({ queryKey: ["chat", "mentor-active"] });
+      void queryClient.invalidateQueries({ queryKey: ["wallet"] });
+      void queryClient.invalidateQueries({ queryKey: ["user-transactions"] });
+      void queryClient.invalidateQueries({ queryKey: ["welcome-promo"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -239,14 +251,14 @@ const ChatSessionPage = () => {
         secondWarningShown.current = true;
         setWarningUrgency("final");
         setExpiryWarningOpen(true);
-        toast.warning("Your session is about to end. If you want to extend, you can extend it now.", {
+        toast.warning(c.toastExpiryWarning, {
           duration: 10_000,
         });
       }
     }, 1000);
 
     return () => window.clearInterval(interval);
-  }, [role, session?.timer_started]);
+  }, [role, session?.timer_started, c.toastExpiryWarning]);
 
   useEffect(() => {
     if (localRemaining === 0) {
@@ -269,19 +281,19 @@ const ChatSessionPage = () => {
   );
 
   if (!sid) {
-    return <p className="text-muted-foreground">Missing session</p>;
+    return <p className="text-muted-foreground">{c.missingSession}</p>;
   }
 
   if (sessionError) {
     return (
       <Card className="max-w-lg border-destructive/40">
         <CardHeader>
-          <CardTitle className="font-serif text-xl">Cannot open chat</CardTitle>
+          <CardTitle className="font-serif text-xl">{c.cannotOpen}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">{(sessionError as Error).message}</p>
           <Button asChild variant="outline">
-            <Link to={role === "mentor" ? "/mentor/messages" : "/user/messages"}>Back to Inbox</Link>
+            <Link to={role === "mentor" ? "/mentor/messages" : "/user/messages"}>{c.backToInbox}</Link>
           </Button>
         </CardContent>
       </Card>
@@ -289,7 +301,7 @@ const ChatSessionPage = () => {
   }
 
   if (!session) {
-    return <p className="animate-pulse text-muted-foreground">Loading live session…</p>;
+    return <p className="animate-pulse text-muted-foreground">{c.loading}</p>;
   }
 
   const isEnded = session.status === "ended";
@@ -303,16 +315,16 @@ const ChatSessionPage = () => {
   const partnerPresenceLabel =
     role === "user"
       ? session.partner_is_online
-        ? "Coach is online"
-        : "Coach is offline — waiting for them to join"
+        ? c.coachOnline
+        : c.coachOfflineWaiting
       : session.partner_is_online
-        ? "User is online"
-        : "User is offline — waiting for them to join";
+        ? c.userOnline
+        : c.userOfflineWaiting;
 
   const extendButton = showExtend ? (
     <Button type="button" variant="secondary" size="sm" onClick={() => setExtendOpen(true)}>
       <Clock className="mr-1 h-4 w-4" />
-      {needsPayment ? "Pay to start" : resumeMode ? "Continue chat" : "Extend"}
+      {needsPayment ? c.payToStart : resumeMode ? c.continueChat : c.extend}
     </Button>
   ) : null;
 
@@ -332,17 +344,17 @@ const ChatSessionPage = () => {
           <div>
             <p className="text-[10px] uppercase tracking-widest text-accent font-bold">
               {needsPayment
-                ? "Awaiting payment"
+                ? c.awaitingPayment
                 : joinWindowExpired
-                  ? "Join expired"
+                  ? c.joinExpired
                   : isEnded
-                    ? "Ended"
+                    ? c.ended
                     : timeUp
-                      ? "Time up"
-                      : "Live session"}
+                      ? c.timeUp
+                      : c.liveSession}
             </p>
             <div className="flex items-center gap-2">
-              <h1 className="font-serif text-2xl leading-tight">Chat</h1>
+              <h1 className="font-serif text-2xl leading-tight">{c.title}</h1>
               {session.partner_is_online != null && (isWaiting || !session.timer_started) ? (
                 <PresenceIndicator
                   status={session.partner_is_online ? "online" : "offline"}
@@ -361,33 +373,33 @@ const ChatSessionPage = () => {
             className="rounded-lg border border-border/70 bg-muted/40 px-3 py-2 text-center"
             title={
               needsPayment
-                ? "Payment required"
+                ? c.paymentRequired
                 : joinWindowExpired
-                  ? "Join window expired"
+                  ? c.joinWindowExpired
                   : isWaiting
-                    ? "Session has not started yet"
-                    : "Time remaining"
+                    ? c.sessionNotStartedYet
+                    : c.timeRemaining
             }
           >
             {needsPayment ? (
               <div className="space-y-0.5">
-                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Awaiting payment</p>
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{c.awaitingPayment}</p>
                 <p className="font-mono text-lg tabular-nums">—</p>
-                <p className="text-[10px] text-muted-foreground">not started</p>
+                <p className="text-[10px] text-muted-foreground">{c.notStarted}</p>
               </div>
             ) : joinWindowExpired ? (
               <div className="space-y-0.5">
-                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Join expired</p>
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{c.joinExpired}</p>
                 <p className="font-mono text-lg tabular-nums">0:00</p>
               </div>
             ) : isWaiting ? (
               <div className="space-y-0.5">
                 <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  {waitingLabel(session.waiting_for, role)}
+                  {waitingLabel(session.waiting_for, role, c)}
                 </p>
-                <p className="text-[10px] text-muted-foreground">Timer not started</p>
+                <p className="text-[10px] text-muted-foreground">{c.timerNotStarted}</p>
                 <p className="font-mono text-lg tabular-nums">{formatCountdown(displayRemaining)}</p>
-                <p className="text-[10px] text-muted-foreground">reserved</p>
+                <p className="text-[10px] text-muted-foreground">{c.reserved}</p>
               </div>
             ) : (
               <p className="font-mono text-lg tabular-nums">{formatCountdown(displayRemaining)}</p>
@@ -396,7 +408,7 @@ const ChatSessionPage = () => {
           {extendButton}
           {role === "user" && mentorProfilePath && isEnded ? (
             <Button asChild type="button" variant="outline" size="sm">
-              <Link to={mentorProfilePath}>Book again</Link>
+              <Link to={mentorProfilePath}>{c.bookAgain}</Link>
             </Button>
           ) : null}
           <Button
@@ -405,52 +417,55 @@ const ChatSessionPage = () => {
             size="sm"
             disabled={session.status === "ended" || endMut.isPending}
             onClick={() => {
-              if (
-                window.confirm(
-                  "End this session for both of you? You can still reopen this chat later by buying more minutes.",
-                )
-              ) {
+              const coachMissed = role === "user" && (!session.timer_started || session.waiting_for === "mentor");
+              const confirmMsg = coachMissed ? c.confirmEndCoachMissed : c.confirmEndNormal;
+              if (window.confirm(confirmMsg)) {
                 endMut.mutate();
               }
             }}
           >
-            End chat
+            {c.endChat}
           </Button>
         </div>
       </div>
 
+      {role === "user" && isEnded && !session.timer_started ? (
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-900 dark:text-emerald-100 flex items-center justify-between gap-3">
+          <span>{c.refundBanner}</span>
+          <Button asChild size="sm" variant="outline" className="border-emerald-600/40 text-emerald-800 dark:text-emerald-200 shrink-0">
+            <Link to="/user/wallet">{c.viewWallet}</Link>
+          </Button>
+        </div>
+      ) : null}
+
       {needsPayment ? (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
-          {role === "user"
-            ? "You left checkout without paying. Use Pay to start to unlock this conversation — same chat once payment succeeds."
-            : "Waiting for the client to complete payment before this chat can start."}
+          {role === "user" ? c.needsPaymentUser : c.needsPaymentMentor}
         </div>
       ) : null}
 
       {joinWindowExpired ? (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
-          {role === "user"
-            ? "The join window expired before both of you connected. Use Continue chat to buy more minutes on this same conversation."
-            : "Join window closed before both participants connected. The client can pay to continue."}
+          {role === "user" ? c.joinExpiredUser : c.joinExpiredMentor}
         </div>
       ) : null}
 
       {isWaiting ? (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
-          {waitingLabel(session.waiting_for, role)}. The session timer will start once both you and your{" "}
-          {role === "mentor" ? "client" : "coach"} are in the room.
+          {waitingLabel(session.waiting_for, role, c)}.{" "}
+          {role === "mentor" ? c.waitingBannerSuffixClient : c.waitingBannerSuffixCoach}
         </div>
       ) : null}
 
       {role === "mentor" && (timeUp || isEnded || needsPayment || joinWindowExpired) ? (
         <div className="rounded-lg border border-border/60 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
           {isEnded
-            ? "This session ended. The client can buy more minutes later to continue the same conversation."
+            ? c.mentorEnded
             : needsPayment
-              ? "Payment is still pending. The client must pay before messaging or calls start."
+              ? c.mentorNeedsPayment
               : joinWindowExpired
-                ? "Join window expired. Waiting for the client to continue if they want."
-                : "Paid time ran out. Waiting for the client to extend if they want to continue."}
+                ? c.mentorJoinExpired
+                : c.mentorTimeUp}
         </div>
       ) : null}
 

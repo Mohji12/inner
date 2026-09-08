@@ -20,6 +20,7 @@ from schemas.platform_invoice import (
     MentorOnboardingInvoiceOut,
 )
 from services.invoice_errors import InvoiceError
+from services.invoice_pdf_i18n import booking_line_description, localize_payment_status, t_invoice
 
 
 def _platform_contact() -> str:
@@ -76,7 +77,9 @@ def _booking_eligible_for_invoice(booking: Booking, payment: Payment | None, now
     return False
 
 
-def list_user_booking_invoice_summaries(db: Session, user_id: str) -> list[BookingInvoiceSummaryOut]:
+def list_user_booking_invoice_summaries(
+    db: Session, user_id: str, lang: str | None = None
+) -> list[BookingInvoiceSummaryOut]:
     """Paid bookings whose session window has ended — includes promo (€0) checkouts."""
     now = _utcnow()
     bookings = (
@@ -97,13 +100,14 @@ def list_user_booking_invoice_summaries(db: Session, user_id: str) -> list[Booki
         mentor: Mentor = booking.mentor
         promo_applied = str(payment.payment_gateway or "").strip().lower() == "promo"
         amount_display = Decimal(str(payment.amount)).quantize(Decimal("0.01"))
-        pay_status = "paid" if str(payment.status) == PAYMENT_RECORD_SUCCEEDED else str(payment.status)
+        raw_status = "paid" if str(payment.status) == PAYMENT_RECORD_SUCCEEDED else str(payment.status)
+        pay_status = localize_payment_status(raw_status, lang)
         out.append(
             BookingInvoiceSummaryOut(
                 booking_id=booking.id,
                 invoice_number=booking_invoice_number(booking.id),
-                mentor_name=mentor.full_name or "Coach",
-                customer_name=user.full_name or "Customer",
+                mentor_name=mentor.full_name or t_invoice(lang, "coach"),
+                customer_name=user.full_name or t_invoice(lang, "customer"),
                 customer_email=user.email,
                 total_amount=str(amount_display),
                 currency=str(payment.currency or "EUR"),
@@ -123,6 +127,7 @@ def load_booking_invoice(
     user_id: str | None = None,
     mentor_id: str | None = None,
     for_admin: bool = False,
+    lang: str | None = None,
 ) -> BookingInvoiceOut:
     booking = (
         db.query(Booking)
@@ -146,17 +151,21 @@ def load_booking_invoice(
 
     user: User = booking.user
     mentor: Mentor = booking.mentor
-    bill_name = user.full_name or "Customer"
-    m_name = mentor.full_name or "Coach"
+    bill_name = user.full_name or t_invoice(lang, "customer")
+    m_name = mentor.full_name or t_invoice(lang, "coach")
     topic = booking.session_topic
-    line_desc = f"Mentorship session ({booking.duration} min) with {m_name}"
-    if topic:
-        line_desc = f"{line_desc} — {topic}"
+    line_desc = booking_line_description(
+        lang=lang,
+        duration_minutes=int(booking.duration),
+        mentor_name=m_name,
+        session_topic=topic,
+    )
 
     amt_base = getattr(payment, "amount_base_eur", None)
     amount_display = Decimal(str(payment.amount)).quantize(Decimal("0.01"))
 
-    pay_status = "paid" if str(payment.status) == PAYMENT_RECORD_SUCCEEDED else str(payment.status)
+    raw_pay_status = "paid" if str(payment.status) == PAYMENT_RECORD_SUCCEEDED else str(payment.status)
+    pay_status = localize_payment_status(raw_pay_status, lang)
 
     return BookingInvoiceOut(
         invoice_number=booking_invoice_number(booking.id),

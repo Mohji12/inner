@@ -5,6 +5,7 @@ import {
   sessionTimeExpired,
   sessionWaitingForParticipants,
 } from "@/lib/chatSessionTiming";
+import { parseApiUtcDate } from "@/lib/timeZone";
 
 /** Extract chat session id from a booking meeting link (`/user/chat/{id}` or `/mentor/chat/{id}`). */
 export function meetingLinkSessionId(link: string | null | undefined): string | null {
@@ -36,8 +37,8 @@ type BookingTime = Pick<Booking, "status" | "payment_status" | "start_at_utc" | 
 /** Paid booking whose scheduled window is currently underway (not future, not past). */
 export function isCurrentBooking(booking: BookingTime, now = new Date()): boolean {
   if (booking.status !== "confirmed" || booking.payment_status !== "paid") return false;
-  const start = new Date(booking.start_at_utc).getTime();
-  const end = new Date(booking.end_at_utc).getTime();
+  const start = parseApiUtcDate(booking.start_at_utc).getTime();
+  const end = parseApiUtcDate(booking.end_at_utc).getTime();
   const t = now.getTime();
   return start <= t && t <= end;
 }
@@ -84,9 +85,9 @@ export function isBookingSessionEnded(
   if (linkedChat?.status === "ended") return true;
   if (sessionJoinWindowExpired(linkedChat) || sessionTimeExpired(linkedChat)) {
     // Join miss / time-up: booking window may still be "current" by clock — treat as ended for invoice UI.
-    if (new Date(booking.end_at_utc).getTime() <= now.getTime()) return true;
+    if (parseApiUtcDate(booking.end_at_utc).getTime() <= now.getTime()) return true;
   }
-  if (new Date(booking.end_at_utc).getTime() <= now.getTime()) return true;
+  if (parseApiUtcDate(booking.end_at_utc).getTime() <= now.getTime()) return true;
   return false;
 }
 
@@ -109,7 +110,7 @@ export function sortBookingsForDisplay<T extends Pick<Booking, "status" | "payme
     const aCurrent = isCurrentBooking(a, now) ? 0 : 1;
     const bCurrent = isCurrentBooking(b, now) ? 0 : 1;
     if (aCurrent !== bCurrent) return aCurrent - bCurrent;
-    return new Date(b.start_at_utc).getTime() - new Date(a.start_at_utc).getTime();
+    return parseApiUtcDate(b.start_at_utc).getTime() - parseApiUtcDate(a.start_at_utc).getTime();
   });
 }
 

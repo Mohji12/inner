@@ -1,8 +1,8 @@
 import type { AuthRole } from "@/auth/AuthContext";
 
 const DEFAULT_PATHS: Record<AuthRole, string> = {
-  user: "/user/appointments",
-  mentor: "/mentor/appointments",
+  user: "/user/dashboard",
+  mentor: "/mentor/dashboard",
   admin: "/admin",
 };
 

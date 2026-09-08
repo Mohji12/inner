@@ -15,11 +15,13 @@ export default function SessionKeepAlive() {
         (auth.role === "admin" && auth.adminAccessToken)),
   );
 
+  const role = auth?.role ?? undefined;
+
   useEffect(() => {
     if (!hasSession) return;
 
     const refresh = () => {
-      void ensureFreshAccessToken();
+      void ensureFreshAccessToken(role);
     };
 
     const onVisibility = () => {
@@ -48,7 +50,7 @@ export default function SessionKeepAlive() {
       window.removeEventListener("focus", refresh);
       window.clearInterval(intervalId);
     };
-  }, [hasSession]);
+  }, [hasSession, role]);
 
   return null;
 }

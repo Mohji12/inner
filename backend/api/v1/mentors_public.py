@@ -164,6 +164,7 @@ def _mentor_public_out(
         "badges": badges,
         "session_packages_available": packages_ok,
         "unavailable_now": unavailable_now,
+        "manual_occupied": occupied,
         "unavailability": _unavailability_block(unavail_snap),
         "next_availability_at": next_window.start_at_utc if next_window else None,
         "next_availability_end_at": next_window.end_at_utc if next_window else None,

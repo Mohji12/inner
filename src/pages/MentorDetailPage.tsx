@@ -96,6 +96,7 @@ const MentorDetailPage = () => {
 
   const availability = mentor ? getMentorAvailabilityStatus(mentor) : "offline";
   const mentorBusy = availability === "busy";
+  const mentorPaused = availability === "paused";
   const mentorOffline = availability === "offline";
   const mentorUnavailable = availability === "unavailable";
   const canBookLive = availability === "available";
@@ -199,7 +200,7 @@ const MentorDetailPage = () => {
   });
 
   const userLoggedIn = role === "user" && Boolean(userAccessToken);
-  const bookSessionDisabled = userLoggedIn && (mentorBusy || mentorOffline || mentorUnavailable);
+  const bookSessionDisabled = userLoggedIn && (mentorBusy || mentorPaused || mentorOffline || mentorUnavailable);
   const flexibleChatEnabled = Number(mentor?.chat_price_per_minute) > 0;
   const talkNowMinutes = Math.max(5, Number(mentor?.chat_min_purchase_minutes) || 5);
   const chatSessionAmount =
@@ -442,6 +443,19 @@ const MentorDetailPage = () => {
                       <p className="text-[10px] text-muted-foreground">{unavailabilityLine}</p>
                     ) : null}
                   </div>
+                ) : availability === "paused" ? (
+                  <div className="flex flex-col items-start gap-1 sm:items-end">
+                    <div className="flex items-center gap-1.5 rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 dark:border-orange-900/50 dark:bg-orange-950/30">
+                      <PresenceIndicator status="occupied" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-orange-700 dark:text-orange-400">
+                        {md.paused}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">{md.pausedHint}</p>
+                    {unavailabilityLine ? (
+                      <p className="text-[10px] text-muted-foreground">{unavailabilityLine}</p>
+                    ) : null}
+                  </div>
                 ) : availability === "busy" ? (
                   <div className="flex flex-col items-start gap-1 sm:items-end">
                     <div className="flex items-center gap-1.5 rounded-full border border-rose-100 bg-rose-50 px-2.5 py-1 dark:border-rose-900/50 dark:bg-rose-950/30">
@@ -630,9 +644,11 @@ const MentorDetailPage = () => {
                               ? "Session checkout is disabled"
                               : mentorOffline
                                 ? md.offline
-                                : mentorBusy
-                                  ? md.inSession
-                                  : `Select ${mins}-minute session`
+                                : mentorPaused
+                                  ? md.paused
+                                  : mentorBusy
+                                    ? md.inSession
+                                    : `Select ${mins}-minute session`
                           }
                           onClick={() => handleDurationSelect(mins)}
                         >
@@ -736,7 +752,9 @@ const MentorDetailPage = () => {
                 title={
                   mentorUnavailable
                     ? u.badge
-                    : mentorOffline
+                    : mentorPaused
+                      ? md.paused
+                      : mentorOffline
                     ? md.offline
                     : mentorBusy
                       ? md.inSession
@@ -755,7 +773,9 @@ const MentorDetailPage = () => {
                 title={
                   mentorUnavailable
                     ? u.badge
-                    : mentorOffline
+                    : mentorPaused
+                      ? md.paused
+                      : mentorOffline
                     ? md.offline
                     : mentorBusy
                       ? md.inSession
@@ -810,7 +830,9 @@ const MentorDetailPage = () => {
               <DialogDescription>
                 {mentorBusy
                   ? md.notAvailableBusyBody
-                  : mentorUnavailable
+                  : mentorPaused
+                    ? md.notAvailablePausedBody
+                    : mentorUnavailable
                     ? md.notAvailableUnavailableBody
                     : md.notAvailableOfflineBody}{" "}
                 {md.bookWhenOnline}
@@ -897,9 +919,11 @@ function SimilarCoaches({ mentorId }: { mentorId: string }) {
                           ? "mt-1.5 h-2 w-2 shrink-0 rounded-full bg-emerald-500"
                           : getMentorAvailabilityStatus(m) === "busy"
                             ? "mt-1.5 h-2 w-2 shrink-0 rounded-full bg-rose-500"
-                            : getMentorAvailabilityStatus(m) === "unavailable"
-                              ? "mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amber-500"
-                              : "mt-1.5 h-2 w-2 shrink-0 rounded-full bg-slate-400"
+                            : getMentorAvailabilityStatus(m) === "paused"
+                              ? "mt-1.5 h-2 w-2 shrink-0 rounded-full bg-orange-500"
+                              : getMentorAvailabilityStatus(m) === "unavailable"
+                                ? "mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amber-500"
+                                : "mt-1.5 h-2 w-2 shrink-0 rounded-full bg-slate-400"
                       }
                     />
                   </div>

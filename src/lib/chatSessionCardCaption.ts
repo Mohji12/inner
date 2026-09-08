@@ -1,4 +1,4 @@
-import { formatDateLocal, formatTimeLocal } from "@/lib/timeZone";
+import { formatDateLocal, formatTimeLocal, parseApiUtcDate } from "@/lib/timeZone";
 import {
   sessionJoinWindowExpired,
   sessionNeedsInitialPayment,
@@ -39,7 +39,7 @@ export function chatSessionCardCaption(
     waiting_for: args.waiting_for ?? null,
     allocated_duration_minutes: args.allocated_duration_minutes ?? null,
   };
-  const endUtc = new Date(ends_at);
+  const endUtc = parseApiUtcDate(ends_at);
   const dateStr = formatDateLocal(endUtc, END_DATE_OPTS, displayTimeZone);
   const timeStr = formatTimeLocal(endUtc, undefined, displayTimeZone);
   const blob = `${dateStr} · ${timeStr}`;

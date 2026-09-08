@@ -5,6 +5,123 @@ Living log of work done on this project.
 
 ---
 
+## 2026-09-08
+
+### Silence AudioContext autoplay console spam
+**Goal:** Stop repeated “AudioContext was not allowed to start” warnings from notification sounds.
+
+- Create/resume Web Audio only after a user gesture; remove unlock listeners after first gesture
+- Skip generated-chime fallback until audio is unlocked
+- Key path: `src/lib/notificationSound.ts`
+
+### Fix earnings lock-wait timeout
+**Goal:** Coach dashboard `/earnings` and marketplace wallet reads no longer hit MySQL `1205 Lock wait timeout` when creating/loading wallet accounts.
+
+- Read endpoints use `get_or_create_wallet_account(..., lock=False)` (no `FOR UPDATE`)
+- Create path retries briefly on lock-wait timeouts
+- Key paths: `backend/services/ledger_service.py`, `backend/api/v1/mentor_me.py`, `backend/api/v1/marketplace.py`
+
+### Smaller accessibility floating button
+**Goal:** Reduce the size of the floating accessibility symbol so it does not dominate the page.
+
+- Floating button set to **24px** (`h-6 w-6`)
+- Key path: `src/components/accessibility/AccessibilityWidget.tsx`
+
+### Fix promo create-intent 500 on duplicate redemption
+**Goal:** Free/promo checkout no longer crashes with IntegrityError when the user already has a promo redemption row.
+
+- `apply_promo_code` rebinds an existing `(user, promo)` redemption to the new booking instead of inserting a duplicate
+- `payments/create-intent` maps `PromoError` to HTTP 400
+- Key paths: `backend/services/promo_service.py`, `backend/api/v1/payments.py`, `backend/tests/test_promo_service.py`
+
+### Fix booking times shown in UTC instead of local
+**Goal:** Appointment/session times match the viewer’s local timezone (e.g. IST).
+
+- API naive datetimes were parsed as browser-local; treat them as UTC (`parseApiUtcDate`) in formatters and booking logic
+- Serialize booking/chat datetime fields with a trailing `Z` via `UtcDateTime`
+- Key paths: `src/lib/timeZone.ts`, `src/lib/bookingChatLinks.ts`, `src/lib/sessionBooking.ts` (via formatters), `backend/schemas/utc_datetime.py`, `backend/schemas/booking.py`, `backend/schemas/chat.py`
+
+### Login role URL + admin error message
+**Goal:** Role toggles on the login page update `?role=` in the URL, and failed admin/user logins no longer show a coach-only hint.
+
+- Selecting User / Coach / Admin now writes `?role=` via `setSearchParams`
+- Generic invalid-credentials copy no longer says “Coaches must use the Coach login option”
+- Key paths: `src/pages/LoginPage.tsx`, `src/lib/humanizeApiError.ts`
+
+### Invoice PDFs follow selected platform language
+**Goal:** Invoice PDF/JSON labels use the UI language from `Accept-Language` for every supported locale.
+
+- Expanded `invoice_pdf_i18n` catalogs to all platform languages (en, nl, fr, es, de, it, ro, ar, zh, ru), including settlement/monthly copy
+- Wired `lang` through mentor chat, admin booking/chat/settlement/monthly, and mentor settlement/monthly PDF downloads
+- Unicode PDF fonts (Arial / YaHei) so non-Latin labels render; API client default language aligned to `nl`
+- Key paths: `backend/services/invoice_pdf_i18n.py`, `backend/services/invoice_pdf_fonts.py`, `backend/services/*_invoice_pdf.py`, `backend/api/v1/{chat,invoices,mentor_me,admin_router}.py`, `src/api/client.ts`
+
+### Responsive layout alignment fixes
+**Goal:** Fix overflow and misaligned public UI across phone, tablet, and laptop widths.
+
+- Navbar: compact Account dropdown for signed-in roles; smaller logo/nav gaps to prevent overflow
+- Hero + pricing promo banners stack cleanly on narrow screens; CTAs full-width on mobile
+- Coach browse cards: shorter mobile image, stacked name/status, `min-w-0` wrapping
+- Package grid: single-column on small phones, tighter card padding on dense layouts
+- Key paths: `src/components/Navbar.tsx`, `src/components/HeroSection.tsx`, `src/components/MentorBrowseCard.tsx`, `src/components/ConsultationPackagesSection.tsx`, `src/i18n/appBase.ts`, `src/i18n/appOverrides.ts`
+
+### Coach pause status on public cards
+**Goal:** When a coach pauses from the dashboard, browse/profile cards show **Paused** (not Online / In session), including on mobile.
+
+- Public API now returns `manual_occupied` on mentor cards
+- `getMentorAvailabilityStatus` maps paused coaches to `paused`
+- Updated `MentorBrowseCard` + `MentorDetailPage` badges/CTAs
+- Key paths: `backend/schemas/mentor.py`, `backend/api/v1/mentors_public.py`, `src/api/types.ts`, `src/components/MentorBrowseCard.tsx`, `src/pages/MentorDetailPage.tsx`
+
+### Public nav — login as another role (multi-session)
+**Goal:** On the homepage, a tab can stay role-neutral and still open Login as coach even when a user session exists in another tab.
+
+- Stop auto-picking a role from localStorage on public pages (`detectInitialRole`)
+- Navbar shows a hub button for each signed-in role **and** “Login as another role”
+- Key paths: `src/auth/AuthContext.tsx`, `src/components/Navbar.tsx`, `src/i18n/appBase.ts`
+
+### Post-login opens dashboard
+**Goal:** After login, land on the role dashboard instead of appointments.
+
+- User → `/user/dashboard`, coach → `/mentor/dashboard`, admin → `/admin` (unchanged)
+- Key path: `src/lib/postLoginRedirect.ts`
+
+## 2026-09-07
+
+### Chat i18n overrides (9 locales)
+**Goal:** Full non-English translations for chat inbox, session, and call panel UI.
+
+- Added `chatOverrides.ts` with complete `chatInbox` (17), `chatSession` (100), and `chatCallPanel` (52) keys for nl, fr, de, es, it, ar, zh, ru, ro
+- Key paths: `src/i18n/chatOverrides.ts`
+
+### Admin dashboard — home page without logout
+**Goal:** Let admins open the public home page from the console without ending their admin session.
+
+- Added “View website” link (`/`) in admin sidebar footer and header (same pattern as coach dashboard)
+- i18n: `viewWebsite` / `viewWebsiteHint` under `dashboardAdmin`
+- Key paths: `src/components/dashboard/AdminDashboardLayout.tsx`, `src/i18n/appBase.ts`, `src/i18n/adminDashboardOverrides.ts`
+
+### Chat + live session — full 10-language i18n
+**Goal:** Selecting a UI language localizes the entire chat / live session experience (inbox, session chrome, extend/pay dialogs, meeting panel).
+
+- Added `chatInbox` + `chatSession` namespaces and expanded `chatCallPanel` in `src/i18n/appBase.ts`
+- New `src/i18n/chatOverrides.ts` with complete translations for nl, fr, de, es, it, ar, zh, ru, ro; wired via `appOverrides.ts`
+- Wired components: `ChatInboxPage`, `ChatInboxList`, `ChatSessionPage`, `ChatPanel`, `ConnectionStatusBar`, `SessionExtendDialog`, `SessionExpiryWarningDialog`, `MeetingPanel`
+
+### Manual wallet refund — coach no-show (info@mijnlevenspad.com)
+**Goal:** Return €10 for two paid sessions the coach never joined.
+
+- User `info@mijnlevenspad.com` had two unattended mentor no-show bookings (€5 wallet + €5 card), no prior refunds
+- Ran `refund_booking_to_user_wallet_direct` for both; wallet balance `0.00` → `10.00`
+- Bookings: `c5a7289a-…`, `387dce8c-…` (coach Anke Dewla)
+
+### Local frontend + backend wiring
+**Goal:** Run SPA against local FastAPI.
+
+- Pointed root `.env` `VITE_API_URL` to empty (Vite proxies `/api` → `127.0.0.1:8001`)
+- Fixed backend startup crash: missing `Any` import in `backend/api/v1/chat.py`
+- Fixed PowerShell quoting in `scripts/start-backend.ps1`
+
 ## 2026-09-04
 
 ### Promo / WELCOME5 — coach no-show restore

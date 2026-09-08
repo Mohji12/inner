@@ -102,6 +102,8 @@ class MentorPublicOut(BaseModel):
     session_packages_available: bool = False
     public_card_visibility: dict[str, bool] | None = None
     unavailable_now: bool = False
+    # Coach paused live booking/chat from dashboard (still online heartbeat)
+    manual_occupied: bool = False
     unavailability: UnavailabilityPublicBlock | None = None
 
     @field_validator("unavailability", mode="before")

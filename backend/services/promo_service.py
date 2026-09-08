@@ -20,15 +20,43 @@ class PromoError(Exception):
 
 
 def user_has_redeemed_promo(db: Session, user_id: str, promo: PromoCode) -> bool:
-    return (
-        db.query(PromoCodeRedemption)
-        .filter(
-            PromoCodeRedemption.user_id == user_id,
-            PromoCodeRedemption.promo_code_id == promo.id,
-        )
-        .first()
-        is not None
+    """
+    Check if user has an effective redemption for this promo code.
+    If a previous redemption belonged to a booking where the coach missed,
+    was unattended, or coach never joined, it does NOT count as redeemed.
+    """
+    query = db.query(PromoCodeRedemption).filter(
+        PromoCodeRedemption.user_id == user_id,
+        PromoCodeRedemption.promo_code_id == promo.id,
     )
+    raw_redemptions = query.all()
+    if isinstance(raw_redemptions, (list, tuple)) and raw_redemptions:
+        redemptions = raw_redemptions
+    else:
+        first_r = query.first()
+        redemptions = [first_r] if first_r else []
+
+    if not redemptions:
+        return False
+
+    for r in redemptions:
+        booking_id = getattr(r, "booking_id", None)
+        if not booking_id:
+            return True
+        b = db.query(Booking).filter(Booking.id == booking_id).first()
+        if not b:
+            continue
+        if getattr(b, "no_show_by", None) == "mentor" or getattr(b, "status", None) in ("unattended", "cancelled"):
+            continue
+        try:
+            from services.live_session_service import chat_session_for_booking
+            cs = chat_session_for_booking(db, b)
+            if cs and cs.mentor_joined_at is None and cs.timer_started_at is None and cs.status == "ended":
+                continue
+        except Exception:
+            pass
+        return True
+    return False
 
 
 def _chat_purchase_counts_as_prior_paid_session(purchase: ChatPurchase) -> bool:
@@ -47,18 +75,46 @@ def _chat_purchase_counts_as_prior_paid_session(purchase: ChatPurchase) -> bool:
 
 
 def user_has_completed_booking(db: Session, user_id: str) -> bool:
-    return (
-        db.query(Booking)
-        .filter(
-            Booking.user_id == user_id,
-            Booking.status.in_([STATUS_CONFIRMED, STATUS_COMPLETED]),
-        )
-        .first()
-        is not None
+    """
+    Return True if user has completed a live booking session where the coach actually participated.
+    Bookings where the coach did not join (no-show / unattended / cancelled) do NOT count as completed.
+    """
+    query = db.query(Booking).filter(
+        Booking.user_id == user_id,
+        Booking.status.in_([STATUS_CONFIRMED, STATUS_COMPLETED]),
     )
+    raw_bookings = query.all()
+    if isinstance(raw_bookings, (list, tuple)) and raw_bookings:
+        bookings = raw_bookings
+    else:
+        first_b = query.first()
+        bookings = [first_b] if first_b else []
+
+    if not bookings:
+        return False
+
+    from services.live_session_service import chat_session_for_booking
+
+    for b in bookings:
+        b_status = getattr(b, "status", None)
+        no_show_by = getattr(b, "no_show_by", None)
+        if no_show_by == "mentor" or b_status in ("unattended", "cancelled"):
+            continue
+        try:
+            cs = chat_session_for_booking(db, b)
+        except Exception:
+            cs = None
+        if cs is not None:
+            if cs.mentor_joined_at is None and cs.timer_started_at is None:
+                continue
+        return True
+    return False
 
 
 def user_has_completed_paid_chat(db: Session, user_id: str) -> bool:
+    """
+    Return True if user has completed a paid chat session where the coach actually participated.
+    """
     purchases = (
         db.query(ChatPurchase)
         .filter(
@@ -67,7 +123,16 @@ def user_has_completed_paid_chat(db: Session, user_id: str) -> bool:
         )
         .all()
     )
-    return any(_chat_purchase_counts_as_prior_paid_session(p) for p in purchases)
+    for p in purchases:
+        if not _chat_purchase_counts_as_prior_paid_session(p):
+            continue
+        if p.session_id:
+            from models.chat_session import ChatSession
+            cs = db.query(ChatSession).filter(ChatSession.id == p.session_id).first()
+            if cs and cs.mentor_joined_at is None and cs.timer_started_at is None and cs.status == "ended":
+                continue
+        return True
+    return False
 
 
 def _promo_scope_matches(promo_scope: str, checkout_scope: str) -> bool:
@@ -165,7 +230,12 @@ def apply_promo_code(
     """
     Increments the usage count of a promo code and records a per-user redemption.
     Call this when payment is successful.
+
+    One redemption row exists per (user, promo). Retries and forgiven prior bookings
+    rebind that row to the new booking_id instead of inserting a duplicate.
     """
+    from sqlalchemy.exc import IntegrityError
+
     normalized_code = code.strip().upper()
     if not normalized_code:
         return
@@ -174,17 +244,42 @@ def apply_promo_code(
     if not promo:
         return
 
-    if user_id and not user_has_redeemed_promo(db, user_id, promo):
+    now = datetime.now(timezone.utc)
+
+    if user_id:
+        existing = (
+            db.query(PromoCodeRedemption)
+            .filter(
+                PromoCodeRedemption.user_id == user_id,
+                PromoCodeRedemption.promo_code_id == promo.id,
+            )
+            .with_for_update()
+            .first()
+        )
+        if existing:
+            # Same checkout retry, or rebind after a forgiven prior booking.
+            if existing.booking_id != booking_id:
+                existing.booking_id = booking_id
+                existing.created_at = now
+            if commit:
+                db.commit()
+            else:
+                db.flush()
+            return
+
         db.add(
             PromoCodeRedemption(
                 id=new_uuid(),
                 user_id=user_id,
                 promo_code_id=promo.id,
                 booking_id=booking_id,
-                created_at=datetime.now(timezone.utc),
+                created_at=now,
             )
         )
-        db.flush()
+        try:
+            db.flush()
+        except IntegrityError as exc:
+            raise PromoError("You have already used this promo code") from exc
 
     promo.current_uses += 1
     if commit:

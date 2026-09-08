@@ -891,13 +891,17 @@ def admin_download_mentor_monthly_invoice_pdf(
     invoice_id: str,
     db: DbSession,
     _admin: CurrentAdmin,
+    lang: RequestLang,
 ) -> Response:
     inv = db.query(MentorMonthlyInvoice).filter(MentorMonthlyInvoice.id == invoice_id).first()
     if not inv:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
     mentor = db.query(Mentor).filter(Mentor.id == inv.mentor_id).first()
-    pdf_bytes = build_mentor_monthly_invoice_pdf(invoice=inv, mentor=mentor)
-    safe_name = f"mentor-monthly-invoice-{str(inv.invoice_month)}-{inv.id[:8]}.pdf"
+    pdf_bytes = build_mentor_monthly_invoice_pdf(invoice=inv, mentor=mentor, lang=lang)
+    from services.invoice_pdf_i18n import t_invoice
+
+    prefix = t_invoice(lang, "filename_monthly_invoice")
+    safe_name = f"{prefix}-{str(inv.invoice_month)}-{inv.id[:8]}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -1029,13 +1033,17 @@ def admin_download_booking_invoice_pdf(
     booking_id: str,
     db: DbSession,
     _admin: CurrentAdmin,
+    lang: RequestLang,
 ) -> Response:
     try:
-        inv = load_booking_invoice(db, booking_id=booking_id, for_admin=True)
+        inv = load_booking_invoice(db, booking_id=booking_id, for_admin=True, lang=lang)
     except InvoiceError as e:
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(e)) from e
-    pdf_bytes = build_booking_invoice_pdf_from_out(inv)
-    safe_name = f"booking-invoice-{inv.invoice_number.replace(' ', '_')}.pdf"
+    pdf_bytes = build_booking_invoice_pdf_from_out(inv, lang=lang)
+    from services.invoice_pdf_i18n import t_invoice
+
+    prefix = t_invoice(lang, "filename_booking_invoice")
+    safe_name = f"{prefix}-{inv.invoice_number.replace(' ', '_')}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -1331,6 +1339,7 @@ def admin_download_settlement_invoice_pdf(
     settlement_id: str,
     db: DbSession,
     _admin: CurrentAdmin,
+    lang: RequestLang,
 ) -> Response:
     s = db.query(MentorSettlement).filter(MentorSettlement.id == settlement_id).first()
     if not s:
@@ -1342,9 +1351,12 @@ def admin_download_settlement_invoice_pdf(
         .order_by(MentorSettlementItem.created_at.asc())
         .all()
     )
-    pdf_bytes = build_settlement_invoice_pdf(settlement=s, mentor=mentor, items=items)
+    pdf_bytes = build_settlement_invoice_pdf(settlement=s, mentor=mentor, items=items, lang=lang)
     inv_no = settlement_invoice_number(s)
-    safe_name = f"settlement-invoice-{inv_no}.pdf"
+    from services.invoice_pdf_i18n import t_invoice
+
+    prefix = t_invoice(lang, "filename_settlement_invoice")
+    safe_name = f"{prefix}-{inv_no}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -1701,6 +1713,7 @@ def admin_download_chat_invoice_pdf(
     session_id: str,
     db: DbSession,
     _admin: CurrentAdmin,
+    lang: RequestLang,
 ) -> Response:
     session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
     if not session:
@@ -1734,8 +1747,12 @@ def admin_download_chat_invoice_pdf(
         mentor=mentor,
         purchases=purchases,
         messages=messages,
+        lang=lang,
     )
-    safe_name = f"admin-invoice-{inv.replace(' ', '_')}.pdf"
+    from services.invoice_pdf_i18n import t_invoice
+
+    prefix = t_invoice(lang, "filename_invoice")
+    safe_name = f"{prefix}-{inv.replace(' ', '_')}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

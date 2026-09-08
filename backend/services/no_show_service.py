@@ -8,6 +8,7 @@ from models.booking import Booking
 from services.live_session_service import booking_was_coach_no_show, classify_booking_no_show
 from services.notification_service import create_notification
 from services.promo_service import reverse_promo_redemption_for_booking
+from services.refund_service import refund_booking_to_user_wallet_direct
 
 logger = logging.getLogger(__name__)
 
@@ -41,13 +42,19 @@ def mark_booking_unattended(
         booking.no_show_by = who
 
     restored = False
-    if restore_promo_on_coach_miss and (who == "mentor" or booking_was_coach_no_show(db, booking)):
-        restored = reverse_promo_redemption_for_booking(db, booking.id, commit=False)
-        if restored:
-            logger.info(
-                "Restored promo redemption for booking %s after coach no-show",
-                booking.id,
-            )
+    if who == "mentor" or booking_was_coach_no_show(db, booking):
+        try:
+            refund_res = refund_booking_to_user_wallet_direct(db, booking=booking, commit=False)
+            if refund_res.get("refunded"):
+                logger.info(
+                    "Refunded booking %s (%s EUR) to user wallet after coach no-show",
+                    booking.id,
+                    refund_res.get("amount"),
+                )
+        except Exception as e:
+            logger.warning("Refund for unattended booking %s failed: %s", booking.id, e)
+        if restore_promo_on_coach_miss:
+            restored = reverse_promo_redemption_for_booking(db, booking.id, commit=False)
 
     mentor_name = booking.mentor.full_name if booking.mentor else "your coach"
     user_name = booking.user.full_name if booking.user else "the user"

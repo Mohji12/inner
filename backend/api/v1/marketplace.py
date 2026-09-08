@@ -328,6 +328,7 @@ def get_my_marketplace_wallet(
             owner_id=actor.subject_id,
             account_kind=ACCOUNT_USER_AVAILABLE,
             currency=ccy,
+            lock=False,
         )
         return WalletBalanceOut(
             currency=ccy,
@@ -342,6 +343,7 @@ def get_my_marketplace_wallet(
             owner_id=actor.subject_id,
             account_kind=ACCOUNT_COACH_PENDING,
             currency=ccy,
+            lock=False,
         )
         withdrawable = get_or_create_wallet_account(
             db,
@@ -349,6 +351,7 @@ def get_my_marketplace_wallet(
             owner_id=actor.subject_id,
             account_kind=ACCOUNT_COACH_WITHDRAWABLE,
             currency=ccy,
+            lock=False,
         )
         return WalletBalanceOut(
             currency=ccy,

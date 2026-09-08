@@ -122,30 +122,32 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
 
   return (
     <article
-      className="group flex w-full max-w-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-md md:min-h-[280px] md:flex-row"
+      className="group flex w-full max-w-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-md md:min-h-[280px] md:flex-row"
       onClick={goToProfile}
     >
       <div
         className={cn(
-          "relative flex min-w-0 flex-1 flex-col justify-between gap-3 p-4 text-primary-foreground sm:p-6",
+          "relative flex min-w-0 flex-1 flex-col justify-between gap-3 p-4 text-primary-foreground sm:p-5 md:p-6",
           "bg-gradient-to-br from-primary via-primary to-accent",
         )}
       >
         {/* subtle texture */}
         <div className="pointer-events-none absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_top_right,var(--muted),transparent_55%)]" />
 
-        <div className="relative z-[1] space-y-2">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <h2 className="min-w-0 break-words font-serif text-xl font-bold leading-tight tracking-tight text-primary-foreground sm:text-2xl">
+        <div className="relative z-[1] min-w-0 space-y-2">
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <h2 className="min-w-0 break-words font-serif text-xl font-bold leading-tight tracking-tight text-primary-foreground sm:flex-1 sm:pr-2 sm:text-2xl">
               {mentor.full_name}
             </h2>
-            <div className="flex max-w-[12rem] flex-col items-end gap-0.5">
+            <div className="flex w-full min-w-0 flex-col items-start gap-0.5 sm:w-auto sm:max-w-[11rem] sm:shrink-0 sm:items-end">
               <span
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ring-1",
+                  "inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ring-1",
                   availability === "unavailable"
                     ? "bg-amber-400/25 ring-amber-200/50"
-                    : "bg-primary-foreground/15 ring-primary-foreground/25",
+                    : availability === "paused"
+                      ? "bg-orange-400/25 ring-orange-200/50"
+                      : "bg-primary-foreground/15 ring-primary-foreground/25",
                 )}
               >
                 <span
@@ -155,26 +157,30 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
                       ? "bg-emerald-400"
                       : availability === "busy"
                         ? "bg-rose-400"
-                        : availability === "unavailable"
-                          ? "bg-amber-300"
-                          : "bg-slate-300",
+                        : availability === "paused"
+                          ? "bg-orange-400"
+                          : availability === "unavailable"
+                            ? "bg-amber-300"
+                            : "bg-slate-300",
                   )}
                 />
                 {availability === "available"
                   ? bc.available
                   : availability === "busy"
                     ? bc.inSession
-                    : availability === "unavailable"
-                      ? u.badge
-                      : bc.offline}
+                    : availability === "paused"
+                      ? bc.paused
+                      : availability === "unavailable"
+                        ? u.badge
+                        : bc.offline}
               </span>
               {unavailabilityLine ? (
-                <p className="text-right text-[10px] font-medium leading-tight text-primary-foreground/85">
+                <p className="text-left text-[10px] font-medium leading-tight text-primary-foreground/85 sm:text-right">
                   {unavailabilityLine}
                 </p>
               ) : null}
               {nextAvailabilityLine ? (
-                <p className="text-right text-[10px] font-medium leading-tight text-primary-foreground/85">
+                <p className="text-left text-[10px] font-medium leading-tight text-primary-foreground/85 sm:text-right">
                   {md.nextOnPlatform}: {nextAvailabilityLine}
                 </p>
               ) : null}
@@ -257,6 +263,12 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
           {showPackages && pricing ? (
             <div className="flex flex-wrap gap-2">
               <span className="rounded-md bg-primary-foreground/15 px-2 py-1 text-[11px] font-medium backdrop-blur-sm">
+                5m · {pricing.currency}{" "}
+                {pricing.price_5_min && Number(pricing.price_5_min) > 0
+                  ? pricing.price_5_min
+                  : (Number(pricing.price_10_min) / 2).toFixed(2)}
+              </span>
+              <span className="rounded-md bg-primary-foreground/15 px-2 py-1 text-[11px] font-medium backdrop-blur-sm">
                 10m · {pricing.currency} {pricing.price_10_min}
               </span>
               <span className="rounded-md bg-primary-foreground/15 px-2 py-1 text-[11px] font-medium backdrop-blur-sm">
@@ -306,7 +318,7 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
         </div>
       </div>
 
-      <div className="relative order-first h-[min(88vw,28rem)] w-full shrink-0 overflow-hidden bg-muted md:order-last md:h-auto md:min-h-[280px] md:w-[40%] md:self-stretch lg:w-[38%]">
+      <div className="relative order-first aspect-[4/3] w-full max-h-[16rem] shrink-0 overflow-hidden bg-muted sm:max-h-[18rem] md:order-last md:aspect-auto md:h-auto md:max-h-none md:min-h-[280px] md:w-[40%] md:self-stretch lg:w-[38%]">
         {heroSrc ? (
           <>
             <img
@@ -317,7 +329,7 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent md:bg-gradient-to-l md:from-transparent md:via-transparent md:to-black/40" />
           </>
         ) : (
-          <div className="flex h-full min-h-[13.75rem] w-full items-center justify-center bg-gradient-to-br from-muted to-accent/25 text-muted-foreground md:min-h-0">
+          <div className="flex h-full min-h-[11rem] w-full items-center justify-center bg-gradient-to-br from-muted to-accent/25 text-muted-foreground md:min-h-0">
             {bc.photoComingSoon}
           </div>
         )}
@@ -326,7 +338,7 @@ export function MentorBrowseCard({ mentor, pricing, viewProfileLabel, consultNow
             <img
               src={profileSrc}
               alt=""
-              className="h-16 w-16 rounded-full border-4 border-card object-cover object-[center_28%] shadow-lg md:h-20 md:w-20"
+              className="h-14 w-14 rounded-full border-4 border-card object-cover object-[center_28%] shadow-lg sm:h-16 sm:w-16 md:h-20 md:w-20"
             />
           </div>
         ) : null}

@@ -92,6 +92,9 @@ def _fetch_booking_sources(db: Session, start: date, end: date, cutoff: datetime
         .join(Booking, Booking.id == Payment.booking_id)
         .join(Mentor, Mentor.id == Booking.mentor_id)
         .filter(Payment.status.in_(SUCCESS_PAYMENT_STATUSES))
+        .filter(Booking.status != "unattended")
+        .filter(Booking.status != "cancelled")
+        .filter((Booking.no_show_by.is_(None)) | (Booking.no_show_by != "mentor"))
         .filter(Mentor.is_approved == True)  # noqa: E712
         .filter(Mentor.status == "active")
         .all()

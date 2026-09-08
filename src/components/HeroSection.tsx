@@ -1,8 +1,78 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
+import { Gift, Copy, Check } from "lucide-react";
+import { toast } from "sonner";
 import { useLanguage } from "@/i18n/LanguageContext";
+import type { Language } from "@/i18n/translations";
+
+const heroPromoCopy: Record<Language, { announcement: string; label: string; copied: string }> = {
+  en: {
+    announcement: "New here? Get a 5-minute session for FREE! Use promo code:",
+    label: "Copy code",
+    copied: "Promo code WELCOME5 copied!",
+  },
+  nl: {
+    announcement: "Nieuw hier? Krijg een sessie van 5 minuten GRATIS! Gebruik promocode:",
+    label: "Code kopiëren",
+    copied: "Promocode WELCOME5 gekopieerd!",
+  },
+  fr: {
+    announcement: "Nouveau ici ? Obtenez une séance de 5 minutes GRATUITE ! Utilisez le code promo :",
+    label: "Copier le code",
+    copied: "Code promo WELCOME5 copié !",
+  },
+  ar: {
+    announcement: "جديد هنا؟ احصل على جلسة مدتها 5 دقائق مجاناً! استخدم الرمز الترويجي:",
+    label: "نسخ الرمز",
+    copied: "تم نسخ الرمز الترويجي WELCOME5!",
+  },
+  zh: {
+    announcement: "新用户专享？免费获得 5 分钟初次体验咨询！使用优惠码：",
+    label: "复制代码",
+    copied: "优惠码 WELCOME5 已复制！",
+  },
+  ru: {
+    announcement: "Впервые у нас? Получите 5-минутную сессию БЕСПЛАТНО! Промокод:",
+    label: "Скопировать код",
+    copied: "Промокод WELCOME5 скопирован!",
+  },
+  es: {
+    announcement: "¿Nuevo por aquí? ¡Obtén una sesión de 5 minutos GRATIS! Usa el código promocional:",
+    label: "Copiar código",
+    copied: "¡Código promocional WELCOME5 copiado!",
+  },
+  it: {
+    announcement: "Nuovo utente? Ottieni una sessione di 5 minuti GRATIS! Usa il codice promozionale:",
+    label: "Copia codice",
+    copied: "Codice promozionale WELCOME5 copiato!",
+  },
+  de: {
+    announcement: "Neu hier? Erhalte eine 5-minütige Sitzung KOSTENLOS! Nutze den Promo-Code:",
+    label: "Code kopieren",
+    copied: "Promo-Code WELCOME5 kopiert!",
+  },
+  ro: {
+    announcement: "Nou aici? Primești o sesiune de 5 minute GRATUIT! Folosește codul promoțional:",
+    label: "Copiază codul",
+    copied: "Codul promoțional WELCOME5 a fost copiat!",
+  },
+};
 
 const HeroSection = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const promo = heroPromoCopy[language] ?? heroPromoCopy.en;
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyPromo = async () => {
+    try {
+      await navigator.clipboard.writeText("WELCOME5");
+      setCopied(true);
+      toast.success(promo.copied);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.success(promo.copied);
+    }
+  };
 
   return (
     <section
@@ -24,22 +94,44 @@ const HeroSection = () => {
             {t.hero.subtext}
           </p>
         </div>
-        <div className="mt-10 flex w-full max-w-xl flex-col flex-wrap justify-center gap-4 sm:mt-16 sm:flex-row sm:justify-center md:mt-24 lg:mt-28">
+
+        {/* Promo code announcement banner */}
+        <div className="mt-6 sm:mt-8 flex w-full max-w-lg flex-col items-center gap-2.5 rounded-2xl border border-white/25 bg-black/25 px-4 py-3 text-sm text-white shadow-xl backdrop-blur-md transition-all hover:bg-black/30 sm:max-w-xl sm:flex-row sm:flex-wrap sm:justify-center sm:rounded-full sm:px-5 sm:py-2.5 md:text-base">
+          <span className="inline-flex min-w-0 items-center justify-center gap-2 text-pretty text-center sm:text-left">
+            <Gift className="h-4 w-4 shrink-0 text-amber-300" />
+            <span className="font-light leading-snug">{promo.announcement}</span>
+          </span>
+          <button
+            type="button"
+            onClick={handleCopyPromo}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#E2E5D3] px-3 py-1 font-mono text-xs font-bold tracking-wider text-[#2C3E2D] shadow-sm transition-all hover:bg-[#d6d8c6] active:scale-95 cursor-pointer"
+            title={promo.label}
+          >
+            <span>WELCOME5</span>
+            {copied ? (
+              <Check className="h-3.5 w-3.5 text-emerald-700" />
+            ) : (
+              <Copy className="h-3.5 w-3.5 text-[#2C3E2D]/70" />
+            )}
+          </button>
+        </div>
+
+        <div className="mt-8 flex w-full max-w-xl flex-col items-stretch gap-3 sm:mt-10 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center sm:gap-4 md:mt-12 lg:mt-14">
           <a
             href="#services"
-            className="px-8 py-3.5 rounded-xl gradient-cta text-white font-medium text-sm tracking-wide shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
+            className="w-full rounded-xl px-8 py-3.5 text-center text-sm font-medium tracking-wide text-white shadow-lg gradient-cta transition-all duration-300 hover:scale-[1.02] hover:shadow-xl active:scale-[0.98] sm:w-auto"
           >
             {t.hero.cta1}
           </a>
           <a
             href="#pricing"
-            className="px-8 py-3.5 rounded-xl bg-background/85 backdrop-blur-md border border-border/80 text-foreground font-medium text-sm tracking-wide shadow-sm hover:bg-background hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
+            className="w-full rounded-xl border border-border/80 bg-background/85 px-8 py-3.5 text-center text-sm font-medium tracking-wide text-foreground shadow-sm backdrop-blur-md transition-all duration-300 hover:scale-[1.02] hover:bg-background active:scale-[0.98] sm:w-auto"
           >
             {t.hero.cta2}
           </a>
           <Link
             to="/mentors"
-            className="px-8 py-3.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm tracking-wide shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 text-center"
+            className="w-full rounded-xl bg-primary px-8 py-3.5 text-center text-sm font-medium tracking-wide text-primary-foreground shadow-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-xl active:scale-[0.98] sm:w-auto"
           >
             {t.hero.cta3}
           </Link>
@@ -49,4 +141,4 @@ const HeroSection = () => {
   );
 };
 
-export default HeroSection
+export default HeroSection;

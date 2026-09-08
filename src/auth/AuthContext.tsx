@@ -9,9 +9,15 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { configureApiAuth, type AuthRole } from "@/api/client";
+import { configureApiAuth, inferRoleFromPath, type AuthRole } from "@/api/client";
 import type { AccessTokenResponse } from "@/api/types";
-import { readPersistedSessionAuth, writePersistedSessionAuth } from "@/auth/authSessionStorage";
+import {
+  readPersistedTokens,
+  savePersistedRoleToken,
+  readTabRole,
+  writeTabRole,
+  type PersistedAuthTokens,
+} from "@/auth/authSessionStorage";
 import {
   loginAdmin,
   loginMentor,
@@ -31,6 +37,7 @@ type AuthContextValue = {
   userAccessToken: string | null;
   mentorAccessToken: string | null;
   adminAccessToken: string | null;
+  setActiveRole: (role: AuthRole | null) => void;
   setUserSession: (token: string | null) => void;
   setMentorSession: (token: string | null) => void;
   setAdminSession: (token: string | null) => void;
@@ -44,240 +51,241 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function loadPersistedSession(): {
-  role: AuthRole | null;
-  user: string | null;
-  mentor: string | null;
-  admin: string | null;
-} {
-  if (typeof window === "undefined") {
-    return { role: null, user: null, mentor: null, admin: null };
+function detectInitialRole(tokens: PersistedAuthTokens): AuthRole | null {
+  if (typeof window === "undefined") return null;
+
+  // 1. Path-based role detection (strongest signal for tab purpose)
+  const pathname = window.location.pathname;
+  if (pathname.startsWith("/admin") && tokens.admin) return "admin";
+  if (pathname.startsWith("/mentor") && tokens.mentor) return "mentor";
+  if ((pathname.startsWith("/user") || pathname.startsWith("/payment")) && tokens.user) return "user";
+
+  // 2. Query param role (e.g. /login?role=mentor)
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const qRole = params.get("role") as AuthRole | null;
+    if (qRole && (qRole === "user" || qRole === "mentor" || qRole === "admin")) {
+      if (tokens[qRole]) return qRole;
+    }
+  } catch {
+    // ignore
   }
-  const p = readPersistedSessionAuth();
-  if (!p) return { role: null, user: null, mentor: null, admin: null };
-  if (p.role === "user") {
-    return { role: "user", user: p.accessToken, mentor: null, admin: null };
-  }
-  if (p.role === "mentor") {
-    return { role: "mentor", user: null, mentor: p.accessToken, admin: null };
-  }
-  return { role: "admin", user: null, mentor: null, admin: p.accessToken };
+
+  // 3. Tab-specific role stored in sessionStorage
+  const tabRole = readTabRole();
+  if (tabRole && tokens[tabRole]) return tabRole;
+
+  // 4. No fallback to an arbitrary saved token.
+  // A fresh tab on the public homepage must stay role-neutral so the user can
+  // open Login and sign in as coach/admin without being locked to "User hub".
+  return null;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const persisted = typeof window !== "undefined" ? loadPersistedSession() : null;
+  const [tokens, setTokens] = useState<PersistedAuthTokens>(() => {
+    if (typeof window === "undefined") return { v: 2, user: null, mentor: null, admin: null };
+    return readPersistedTokens();
+  });
 
-  const [role, setRole] = useState<AuthRole | null>(() => persisted?.role ?? null);
-  const [userAccessToken, setUserAccessToken] = useState<string | null>(() => persisted?.user ?? null);
-  const [mentorAccessToken, setMentorAccessToken] = useState<string | null>(() => persisted?.mentor ?? null);
-  const [adminAccessToken, setAdminAccessToken] = useState<string | null>(() => persisted?.admin ?? null);
+  const [role, setRole] = useState<AuthRole | null>(() => detectInitialRole(tokens));
 
-  const roleRef = useRef<AuthRole | null>(null);
-  const userTokenRef = useRef<string | null>(null);
-  const mentorTokenRef = useRef<string | null>(null);
-  const adminTokenRef = useRef<string | null>(null);
+  const roleRef = useRef<AuthRole | null>(role);
+  const userTokenRef = useRef<string | null>(tokens.user);
+  const mentorTokenRef = useRef<string | null>(tokens.mentor);
+  const adminTokenRef = useRef<string | null>(tokens.admin);
 
   roleRef.current = role;
-  userTokenRef.current = userAccessToken;
-  mentorTokenRef.current = mentorAccessToken;
-  adminTokenRef.current = adminAccessToken;
+  userTokenRef.current = tokens.user;
+  mentorTokenRef.current = tokens.mentor;
+  adminTokenRef.current = tokens.admin;
 
+  // Update sessionStorage whenever this tab's active role changes
   useEffect(() => {
-    const hasToken =
-      role === "user"
-        ? Boolean(userAccessToken)
-        : role === "mentor"
-          ? Boolean(mentorAccessToken)
-          : role === "admin"
-            ? Boolean(adminAccessToken)
-            : false;
+    writeTabRole(role);
+  }, [role]);
 
-    // Keep last persisted session while a temporary token gap is repaired by refresh
-    // (e.g. laptop wake). Only clear storage when the role itself is cleared (logout).
-    if (!role) {
-      writePersistedSessionAuth(null);
-      return;
-    }
-    if (!hasToken) {
-      return;
-    }
-    const token =
-      role === "user" ? userAccessToken : role === "mentor" ? mentorAccessToken : adminAccessToken;
-    if (!token) {
-      return;
-    }
-    writePersistedSessionAuth({ v: 1, role, accessToken: token });
-  }, [role, userAccessToken, mentorAccessToken, adminAccessToken]);
+  // Synchronize across browser tabs when localStorage changes
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const onStorage = (event: StorageEvent) => {
+      if (!event.key || event.key === "inner_path_auth_tokens_v2") {
+        const latest = readPersistedTokens();
+        setTokens(latest);
+        userTokenRef.current = latest.user;
+        mentorTokenRef.current = latest.mentor;
+        adminTokenRef.current = latest.admin;
+
+        // If the active role of this tab had its token revoked, re-evaluate tab role
+        setRole((curRole) => {
+          if (curRole && !latest[curRole]) {
+            return detectInitialRole(latest);
+          }
+          return curRole;
+        });
+      }
+    };
+
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   useLayoutEffect(() => {
     configureApiAuth({
-      getAccessToken: () => {
-        const r = roleRef.current;
-        if (r === "user") return userTokenRef.current;
-        if (r === "mentor") return mentorTokenRef.current;
-        if (r === "admin") return adminTokenRef.current;
-        // After login*Session sets token refs, `role` state (and thus roleRef) may not
-        // update until the next render — same-tick apiFetch still needs the Bearer token.
-        if (userTokenRef.current) return userTokenRef.current;
+      getAccessToken: (targetPath?: string) => {
+        const pathRole = inferRoleFromPath(targetPath);
+        if (pathRole === "user") return userTokenRef.current;
+        if (pathRole === "mentor") return mentorTokenRef.current;
+        if (pathRole === "admin") return adminTokenRef.current;
+
+        const currentRole = roleRef.current;
+        if (currentRole === "user") return userTokenRef.current;
+        if (currentRole === "mentor") return mentorTokenRef.current;
+        if (currentRole === "admin") return adminTokenRef.current;
+
+        // Fallbacks
         if (mentorTokenRef.current) return mentorTokenRef.current;
         if (adminTokenRef.current) return adminTokenRef.current;
+        if (userTokenRef.current) return userTokenRef.current;
         return null;
       },
-      getRole: () => {
-        const r = roleRef.current;
-        if (r) return r;
-        if (userTokenRef.current) return "user";
+      getRole: (targetPath?: string) => {
+        const pathRole = inferRoleFromPath(targetPath);
+        if (pathRole) return pathRole;
+        const currentRole = roleRef.current;
+        if (currentRole) return currentRole;
         if (mentorTokenRef.current) return "mentor";
         if (adminTokenRef.current) return "admin";
+        if (userTokenRef.current) return "user";
         return null;
       },
-      setAccessToken: (token) => {
-        let r = roleRef.current;
-        if (!r) {
-          if (userTokenRef.current) r = "user";
-          else if (mentorTokenRef.current) r = "mentor";
-          else if (adminTokenRef.current) r = "admin";
-        }
-        if (r === "user") {
-          userTokenRef.current = token;
-          setUserAccessToken(token);
-          if (!token && roleRef.current === "user") setRole(null);
-        } else if (r === "mentor") {
-          mentorTokenRef.current = token;
-          setMentorAccessToken(token);
-          if (!token && roleRef.current === "mentor") setRole(null);
-        } else if (r === "admin") {
-          adminTokenRef.current = token;
-          setAdminAccessToken(token);
-          if (!token && roleRef.current === "admin") setRole(null);
+      setAccessToken: (token: string | null, targetRole?: AuthRole) => {
+        const r = targetRole || roleRef.current || "user";
+        savePersistedRoleToken(r, token);
+        setTokens((prev) => ({ ...prev, [r]: token }));
+        if (r === "user") userTokenRef.current = token;
+        if (r === "mentor") mentorTokenRef.current = token;
+        if (r === "admin") adminTokenRef.current = token;
+
+        if (!token && roleRef.current === r) {
+          setRole(null);
+          writeTabRole(null);
         }
       },
     });
   }, []);
 
+  const setActiveRole = useCallback((newRole: AuthRole | null) => {
+    setRole(newRole);
+    writeTabRole(newRole);
+  }, []);
+
   const setUserSession = useCallback((token: string | null) => {
     userTokenRef.current = token;
-    setUserAccessToken(token);
+    savePersistedRoleToken("user", token);
+    setTokens((prev) => ({ ...prev, user: token }));
     if (token) {
-      mentorTokenRef.current = null;
-      setMentorAccessToken(null);
-      adminTokenRef.current = null;
-      setAdminAccessToken(null);
       setRole("user");
+      writeTabRole("user");
     } else if (roleRef.current === "user") {
       setRole(null);
+      writeTabRole(null);
     }
   }, []);
 
   const setMentorSession = useCallback((token: string | null) => {
     mentorTokenRef.current = token;
-    setMentorAccessToken(token);
+    savePersistedRoleToken("mentor", token);
+    setTokens((prev) => ({ ...prev, mentor: token }));
     if (token) {
-      userTokenRef.current = null;
-      setUserAccessToken(null);
-      adminTokenRef.current = null;
-      setAdminAccessToken(null);
       setRole("mentor");
+      writeTabRole("mentor");
     } else if (roleRef.current === "mentor") {
       setRole(null);
+      writeTabRole(null);
     }
   }, []);
 
   const setAdminSession = useCallback((token: string | null) => {
     adminTokenRef.current = token;
-    setAdminAccessToken(token);
+    savePersistedRoleToken("admin", token);
+    setTokens((prev) => ({ ...prev, admin: token }));
     if (token) {
-      userTokenRef.current = null;
-      setUserAccessToken(null);
-      mentorTokenRef.current = null;
-      setMentorAccessToken(null);
       setRole("admin");
+      writeTabRole("admin");
     } else if (roleRef.current === "admin") {
       setRole(null);
+      writeTabRole(null);
     }
   }, []);
 
-  const loginUserSession = useCallback(async (body: UserLoginBody) => {
-    const res = await loginUser(body);
-    if (!res.two_factor_required) {
-      userTokenRef.current = res.access_token;
-      mentorTokenRef.current = null;
-      adminTokenRef.current = null;
-      setUserAccessToken(res.access_token);
-      setMentorAccessToken(null);
-      setAdminAccessToken(null);
-      setRole("user");
-    }
-    return res;
-  }, []);
+  const loginUserSession = useCallback(
+    async (body: UserLoginBody) => {
+      const res = await loginUser(body);
+      if (!res.two_factor_required) {
+        setUserSession(res.access_token);
+      }
+      return res;
+    },
+    [setUserSession],
+  );
 
-  const loginMentorSession = useCallback(async (body: MentorLoginBody) => {
-    const res = await loginMentor(body);
-    if (!res.two_factor_required) {
-      mentorTokenRef.current = res.access_token;
-      userTokenRef.current = null;
-      adminTokenRef.current = null;
-      setMentorAccessToken(res.access_token);
-      setUserAccessToken(null);
-      setAdminAccessToken(null);
-      setRole("mentor");
-    }
-    return res;
-  }, []);
+  const loginMentorSession = useCallback(
+    async (body: MentorLoginBody) => {
+      const res = await loginMentor(body);
+      if (!res.two_factor_required) {
+        setMentorSession(res.access_token);
+      }
+      return res;
+    },
+    [setMentorSession],
+  );
 
-  const loginAdminSession = useCallback(async (body: UserLoginBody) => {
-    const res = await loginAdmin(body);
-    adminTokenRef.current = res.access_token;
-    userTokenRef.current = null;
-    mentorTokenRef.current = null;
-    setAdminAccessToken(res.access_token);
-    setUserAccessToken(null);
-    setMentorAccessToken(null);
-    setRole("admin");
-    return res;
-  }, []);
+  const loginAdminSession = useCallback(
+    async (body: UserLoginBody) => {
+      const res = await loginAdmin(body);
+      setAdminSession(res.access_token);
+      return res;
+    },
+    [setAdminSession],
+  );
 
   const logoutUserSession = useCallback(async () => {
     try {
       await logoutUser();
     } finally {
-      userTokenRef.current = null;
-      setUserAccessToken(null);
-      if (roleRef.current === "user") setRole(null);
+      setUserSession(null);
     }
-  }, []);
+  }, [setUserSession]);
 
   const logoutMentorSession = useCallback(async () => {
     try {
       await logoutMentor();
     } finally {
-      mentorTokenRef.current = null;
-      setMentorAccessToken(null);
-      if (roleRef.current === "mentor") setRole(null);
+      setMentorSession(null);
       try {
         sessionStorage.removeItem("coach_online_toast_shown");
       } catch {
         /* ignore */
       }
     }
-  }, []);
+  }, [setMentorSession]);
 
   const logoutAdminSession = useCallback(async () => {
     try {
       await logoutAdmin();
     } finally {
-      adminTokenRef.current = null;
-      setAdminAccessToken(null);
-      if (roleRef.current === "admin") setRole(null);
+      setAdminSession(null);
     }
-  }, []);
+  }, [setAdminSession]);
 
   const value = useMemo(
     () => ({
       role,
-      userAccessToken,
-      mentorAccessToken,
-      adminAccessToken,
+      userAccessToken: tokens.user,
+      mentorAccessToken: tokens.mentor,
+      adminAccessToken: tokens.admin,
+      setActiveRole,
       setUserSession,
       setMentorSession,
       setAdminSession,
@@ -290,9 +298,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }),
     [
       role,
-      userAccessToken,
-      mentorAccessToken,
-      adminAccessToken,
+      tokens.user,
+      tokens.mentor,
+      tokens.admin,
+      setActiveRole,
       setUserSession,
       setMentorSession,
       setAdminSession,

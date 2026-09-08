@@ -3,13 +3,41 @@ import type { AccessTokenResponse } from "./types";
 
 export type AuthRole = "user" | "mentor" | "admin";
 
-type TokenSetter = (token: string | null) => void;
+export type TokenGetter = (targetPath?: string) => string | null;
+export type RoleGetter = (targetPath?: string) => AuthRole | null;
+export type TokenSetter = (token: string | null, role?: AuthRole) => void;
 
-let getAccessToken: () => string | null = () => null;
-let getAuthRole: () => AuthRole | null = () => null;
+let getAccessToken: TokenGetter = () => null;
+let getAuthRole: RoleGetter = () => null;
 let setAccessTokenForRole: TokenSetter = () => {};
 
-let refreshInFlight: Promise<string | null> | null = null;
+const refreshInFlightByRole: Partial<Record<AuthRole, Promise<string | null>>> = {};
+
+export function inferRoleFromPath(path?: string): AuthRole | null {
+  if (!path) return null;
+  const p = path.startsWith("/") ? path : `/${path}`;
+  if (p.startsWith("/admin") || p.startsWith("/auth/admin")) {
+    return "admin";
+  }
+  if (
+    p.startsWith("/mentor") ||
+    p.startsWith("/auth/mentor") ||
+    p.startsWith("/mentors/me") ||
+    p.startsWith("/payouts/mentor")
+  ) {
+    return "mentor";
+  }
+  if (
+    p.startsWith("/user") ||
+    p.startsWith("/auth/user") ||
+    p.startsWith("/users/me") ||
+    p.startsWith("/bookings/my") ||
+    p.startsWith("/wallet")
+  ) {
+    return "user";
+  }
+  return null;
+}
 
 function getSelectedLanguage(): string {
   let raw: string | null = null;
@@ -18,13 +46,14 @@ function getSelectedLanguage(): string {
   } catch {
     raw = null;
   }
-  const lang = (raw || "en").toLowerCase();
+  // Match LanguageContext product default (nl) when storage is empty.
+  const lang = (raw || "nl").toLowerCase();
   return lang.split("-")[0];
 }
 
 export function configureApiAuth(accessors: {
-  getAccessToken: () => string | null;
-  getRole: () => AuthRole | null;
+  getAccessToken: TokenGetter;
+  getRole: RoleGetter;
   setAccessToken: TokenSetter;
 }): void {
   getAccessToken = accessors.getAccessToken;
@@ -86,17 +115,25 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Refresh access token via HttpOnly cookie.
+ * Refresh access token via HttpOnly cookie for a specific role.
  * Retries on network errors (common after laptop wake).
  * Only clears the access token after a definitive auth failure (401/403).
  */
-async function refreshAccessToken(options?: { clearOnFailure?: boolean }): Promise<string | null> {
+export async function refreshAccessToken(options?: {
+  clearOnFailure?: boolean;
+  targetRole?: AuthRole;
+  targetPath?: string;
+}): Promise<string | null> {
   const clearOnFailure = options?.clearOnFailure !== false;
-  const role = getAuthRole();
+  const pathRole = inferRoleFromPath(options?.targetPath);
+  const role = options?.targetRole || pathRole || getAuthRole(options?.targetPath);
   if (!role) return null;
-  if (refreshInFlight) return refreshInFlight;
 
-  refreshInFlight = (async () => {
+  if (refreshInFlightByRole[role]) {
+    return refreshInFlightByRole[role]!;
+  }
+
+  const inFlight = (async () => {
     const maxAttempts = 3;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -106,12 +143,12 @@ async function refreshAccessToken(options?: { clearOnFailure?: boolean }): Promi
         });
         if (res.ok) {
           const body = (await res.json()) as AccessTokenResponse;
-          setAccessTokenForRole(body.access_token);
+          setAccessTokenForRole(body.access_token, role);
           return body.access_token;
         }
         // Definitive auth failure — cookie missing/expired/revoked.
         if (res.status === 401 || res.status === 403) {
-          if (clearOnFailure) setAccessTokenForRole(null);
+          if (clearOnFailure) setAccessTokenForRole(null, role);
           return null;
         }
         // Transient server error — retry
@@ -119,30 +156,31 @@ async function refreshAccessToken(options?: { clearOnFailure?: boolean }): Promi
           await sleep(400 * attempt);
           continue;
         }
-        return getAccessToken();
+        return getAccessToken(options?.targetPath);
       } catch {
         // Network not ready after sleep — keep existing token, retry.
         if (attempt < maxAttempts) {
           await sleep(500 * attempt);
           continue;
         }
-        return getAccessToken();
+        return getAccessToken(options?.targetPath);
       }
     }
-    return getAccessToken();
+    return getAccessToken(options?.targetPath);
   })().finally(() => {
-    refreshInFlight = null;
+    delete refreshInFlightByRole[role];
   });
 
-  return refreshInFlight;
+  refreshInFlightByRole[role] = inFlight;
+  return inFlight;
 }
 
 /**
  * Ensure the access token is still valid. Call on laptop wake / tab focus.
  * Refreshes when missing or within 5 minutes of expiry.
  */
-export async function ensureFreshAccessToken(): Promise<string | null> {
-  const role = getAuthRole();
+export async function ensureFreshAccessToken(targetRole?: AuthRole): Promise<string | null> {
+  const role = targetRole || getAuthRole();
   if (!role) return null;
 
   const token = getAccessToken();
@@ -154,7 +192,7 @@ export async function ensureFreshAccessToken(): Promise<string | null> {
   if (!needsRefresh) return token;
   // After Mollie (or sleep), the refresh cookie can fail even though the access
   // token is still valid. Do not wipe a live session in that case.
-  const refreshed = await refreshAccessToken({ clearOnFailure: expired || !token });
+  const refreshed = await refreshAccessToken({ clearOnFailure: expired || !token, targetRole: role });
   if (refreshed) return refreshed;
   if (token && !expired) return token;
   return null;
@@ -171,7 +209,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   const headers = new Headers(init.headers);
 
   if (!skipAuth) {
-    const token = getAccessToken();
+    const token = getAccessToken(path);
     if (token) headers.set("Authorization", `Bearer ${token}`);
   }
   if (!headers.has("Accept-Language")) headers.set("Accept-Language", getSelectedLanguage());
@@ -197,7 +235,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   }
 
   if (response.status === 401 && !skipAuth) {
-    const newToken = await refreshAccessToken({ clearOnFailure: true });
+    const newToken = await refreshAccessToken({ clearOnFailure: true, targetPath: path });
     if (newToken) {
       headers.set("Authorization", `Bearer ${newToken}`);
       try {
@@ -229,7 +267,7 @@ export async function apiFetchBlob(path: string, options: ApiFetchOptions = {}):
   const headers = new Headers(init.headers);
 
   if (!skipAuth) {
-    const token = getAccessToken();
+    const token = getAccessToken(path);
     if (token) headers.set("Authorization", `Bearer ${token}`);
   }
   if (!headers.has("Accept-Language")) headers.set("Accept-Language", getSelectedLanguage());
@@ -244,7 +282,7 @@ export async function apiFetchBlob(path: string, options: ApiFetchOptions = {}):
   let response = await exec();
 
   if (response.status === 401 && !skipAuth) {
-    const newToken = await refreshAccessToken({ clearOnFailure: true });
+    const newToken = await refreshAccessToken({ clearOnFailure: true, targetPath: path });
     if (newToken) {
       headers.set("Authorization", `Bearer ${newToken}`);
       response = await exec();
