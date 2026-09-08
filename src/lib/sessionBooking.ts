@@ -1,5 +1,8 @@
 import type { SessionBookingMeta } from "@/api/types";
-import { formatDateLocal, formatTimeLocal } from "@/lib/timeZone";
+import { formatDateLocal, formatTimeLocal, parseApiUtcDate } from "@/lib/timeZone";
+
+/** Join window after payment before both parties enter (matches backend BOOKING_JOIN_DEADLINE_MINUTES). */
+export const BOOKING_JOIN_DEADLINE_MINUTES = 30;
 
 export function formatCommunicationMode(mode: string | null | undefined): string | null {
   if (!mode) return null;
@@ -7,6 +10,25 @@ export function formatCommunicationMode(mode: string | null | undefined): string
   if (normalized === "video") return "Video";
   if (normalized === "call") return "Phone call";
   return mode;
+}
+
+/**
+ * Billed session end = start + duration.
+ * Prefer duration over stored end_at when they disagree (older rows stored the 30-min join window as end_at).
+ */
+export function bookingSessionEndAt(args: {
+  start_at_utc: string | Date;
+  end_at_utc: string | Date;
+  duration_minutes?: number | null;
+  duration?: number | null;
+}): Date {
+  const start = parseApiUtcDate(args.start_at_utc);
+  const storedEnd = parseApiUtcDate(args.end_at_utc);
+  const duration = args.duration_minutes ?? args.duration ?? null;
+  if (duration == null || duration <= 0 || Number.isNaN(start.getTime())) {
+    return storedEnd;
+  }
+  return new Date(start.getTime() + duration * 60_000);
 }
 
 export function formatSessionBookingSummary(
@@ -19,7 +41,8 @@ export function formatSessionBookingSummary(
     timeZone,
   );
   const start = formatTimeLocal(booking.start_at_utc, undefined, timeZone);
-  const end = formatTimeLocal(booking.end_at_utc, undefined, timeZone);
+  const endAt = bookingSessionEndAt(booking);
+  const end = formatTimeLocal(endAt, undefined, timeZone);
   const bookedDate = formatDateLocal(
     booking.booked_at,
     { day: "numeric", month: "short", year: "numeric" },

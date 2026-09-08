@@ -34,6 +34,7 @@ import { CheckoutCurrencySelect } from "@/components/CheckoutCurrencySelect";
 import { SuccessBurst } from "@/components/ui/SuccessBurst";
 import { guessCheckoutCurrencyFromLocale } from "@/lib/checkoutCurrencyGuess";
 import { formatDateLocal, formatTimeLocal, parseApiUtcDate } from "@/lib/timeZone";
+import { bookingSessionEndAt } from "@/lib/sessionBooking";
 import { chatSessionCardCaption, chatSessionOpenLabel } from "@/lib/chatSessionCardCaption";
 import {
   sessionNeedsInitialPayment,
@@ -505,7 +506,11 @@ const UserAppointmentsPage = () => {
             pricingQuery.data ? slotPriceForDuration(pricingQuery.data, b.duration) : null,
           );
           const startUtc = parseApiUtcDate(b.start_at_utc);
-          const endUtc = parseApiUtcDate(b.end_at_utc);
+          const endUtc = bookingSessionEndAt({
+            start_at_utc: b.start_at_utc,
+            end_at_utc: b.end_at_utc,
+            duration: b.duration,
+          });
           const now = new Date();
           const linkedChat = (() => {
             const sessionId = meetingLinkSessionId(b.meeting_link);

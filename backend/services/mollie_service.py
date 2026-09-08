@@ -410,15 +410,22 @@ def _dt_utc(dt: datetime | None, *, fallback_combine: datetime | None) -> dateti
 
 
 def _live_session_window_on_payment(booking: Booking, *, now: datetime) -> tuple[datetime, datetime, int]:
-    """Live bookings: join deadline starts at payment; billed timer starts when both join."""
+    """Live bookings: join deadline starts at payment; billed timer starts when both join.
+
+    Booking start/end store the *billed session* window (duration_minutes).
+    ChatSession.ends_at holds the separate join deadline until both participants join.
+    """
+    from services.live_session_service import BOOKING_JOIN_DEADLINE_MINUTES
+
     duration_minutes = max(1, int(booking.duration or 5))
     start_dt = now
-    join_deadline = now + timedelta(minutes=30)
+    session_end = now + timedelta(minutes=duration_minutes)
+    join_deadline = now + timedelta(minutes=BOOKING_JOIN_DEADLINE_MINUTES)
     booking.start_at_utc = start_dt
-    booking.end_at_utc = join_deadline
+    booking.end_at_utc = session_end
     booking.booking_date = start_dt.date()
     booking.start_time = start_dt.time().replace(microsecond=0)
-    booking.end_time = join_deadline.time().replace(microsecond=0)
+    booking.end_time = session_end.time().replace(microsecond=0)
     return start_dt, join_deadline, duration_minutes
 
 
@@ -438,9 +445,11 @@ def _mark_booking_paid(db: Session, payment: Payment) -> None:
         _, join_deadline, duration_minutes = _live_session_window_on_payment(booking, now=now)
         slot = db.query(AvailabilitySlot).filter(AvailabilitySlot.id == booking.slot_id).first()
         if slot:
+            # Hold the synthetic live slot through the join window (may exceed billed duration).
             slot.is_booked = True
             slot.start_at_utc = booking.start_at_utc
-            slot.end_at_utc = booking.end_at_utc
+            slot.end_at_utc = join_deadline
+            slot.end_time = join_deadline.time().replace(microsecond=0)
         session_id: str | None = None
         mode = (booking.communication_mode or "video").strip().lower()
         if mode not in ("video", "call"):

@@ -16,8 +16,9 @@ const END_DATE_OPTS: Intl.DateTimeFormatOptions = {
 export type ChatCardCaptionRole = "user" | "mentor";
 
 /**
- * Copy for appointments / inbox cards. Booking-paid chats set `ends_at` to the
- * booked session end (`_mark_booking_paid`). "Talk now" chats use purchased minutes instead.
+ * Copy for appointments / inbox cards. Booking-paid chats use `ends_at` as the
+ * join deadline until both join (`_mark_booking_paid`); billed end is start + duration.
+ * "Talk now" chats use purchased minutes instead.
  */
 export function chatSessionCardCaption(
   args: {

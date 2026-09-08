@@ -6,6 +6,7 @@ import { saveMentorBookingInvoicePdf } from "@/api/invoices";
 import { listMentorBookings, patchBookingAsMentor } from "@/api/bookings";
 import type { ChatInboxSession } from "@/api/types";
 import { formatDateLocal, formatTimeLocal, parseApiUtcDate } from "@/lib/timeZone";
+import { bookingSessionEndAt } from "@/lib/sessionBooking";
 import { chatSessionCardCaption, chatSessionOpenLabel } from "@/lib/chatSessionCardCaption";
 import {
   sessionNeedsInitialPayment,
@@ -243,7 +244,11 @@ const MentorAppointmentsPage = () => {
       <div className="space-y-4">
         {sortedBookings.map((b) => {
           const startUtc = parseApiUtcDate(b.start_at_utc);
-          const endUtc = parseApiUtcDate(b.end_at_utc);
+          const endUtc = bookingSessionEndAt({
+            start_at_utc: b.start_at_utc,
+            end_at_utc: b.end_at_utc,
+            duration: b.duration,
+          });
           const now = new Date();
           const normalizedMeetingLink = normalizeMentorMeetingLink(b.meeting_link);
           const linkedChat = (() => {

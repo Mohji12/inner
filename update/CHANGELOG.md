@@ -7,6 +7,13 @@ Living log of work done on this project.
 
 ## 2026-09-08
 
+### Fix 5-min session showing a 30-min time range
+**Goal:** Session cards show start–end matching the booked duration (e.g. 5 min), not the 30-minute join window.
+
+- On payment, `booking.end_at_utc` is set to start + duration; chat `ends_at` still holds the join deadline
+- UI derives display end from start + duration (heals older rows that stored the join window as end)
+- Key paths: `backend/services/mollie_service.py`, `src/lib/sessionBooking.ts`, `src/lib/bookingChatLinks.ts`, `src/pages/user/UserAppointmentsPage.tsx`, `src/pages/mentor/MentorAppointmentsPage.tsx`
+
 ### Silence AudioContext autoplay console spam
 **Goal:** Stop repeated “AudioContext was not allowed to start” warnings from notification sounds.
 

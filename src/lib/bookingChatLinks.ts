@@ -5,6 +5,7 @@ import {
   sessionTimeExpired,
   sessionWaitingForParticipants,
 } from "@/lib/chatSessionTiming";
+import { BOOKING_JOIN_DEADLINE_MINUTES } from "@/lib/sessionBooking";
 import { parseApiUtcDate } from "@/lib/timeZone";
 
 /** Extract chat session id from a booking meeting link (`/user/chat/{id}` or `/mentor/chat/{id}`). */
@@ -39,8 +40,10 @@ export function isCurrentBooking(booking: BookingTime, now = new Date()): boolea
   if (booking.status !== "confirmed" || booking.payment_status !== "paid") return false;
   const start = parseApiUtcDate(booking.start_at_utc).getTime();
   const end = parseApiUtcDate(booking.end_at_utc).getTime();
+  // Join window may outlast billed duration (e.g. 5-min session, 30-min join grace).
+  const windowEnd = Math.max(end, start + BOOKING_JOIN_DEADLINE_MINUTES * 60_000);
   const t = now.getTime();
-  return start <= t && t <= end;
+  return start <= t && t <= windowEnd;
 }
 
 type LinkedChat = Pick<
@@ -76,24 +79,27 @@ export function canOpenBookingChat(
 
 /** True when the booked session window or linked live chat has finished. */
 export function isBookingSessionEnded(
-  booking: Pick<Booking, "status" | "payment_status" | "end_at_utc">,
+  booking: Pick<Booking, "status" | "payment_status" | "start_at_utc" | "end_at_utc">,
   linkedChat?: LinkedChat | null,
   now = new Date(),
 ): boolean {
   if (booking.status === "completed") return true;
   if (booking.status !== "confirmed" || booking.payment_status !== "paid") return false;
   if (linkedChat?.status === "ended") return true;
-  if (sessionJoinWindowExpired(linkedChat) || sessionTimeExpired(linkedChat)) {
-    // Join miss / time-up: booking window may still be "current" by clock — treat as ended for invoice UI.
-    if (parseApiUtcDate(booking.end_at_utc).getTime() <= now.getTime()) return true;
-  }
-  if (parseApiUtcDate(booking.end_at_utc).getTime() <= now.getTime()) return true;
+  if (sessionJoinWindowExpired(linkedChat) || sessionTimeExpired(linkedChat)) return true;
+  // Still waiting for both parties inside the join window — not ended yet.
+  if (linkedChat && sessionWaitingForParticipants(linkedChat)) return false;
+  if (linkedChat && linkedChat.remaining_seconds > 0) return false;
+  const start = parseApiUtcDate(booking.start_at_utc).getTime();
+  const end = parseApiUtcDate(booking.end_at_utc).getTime();
+  const windowEnd = Math.max(end, start + BOOKING_JOIN_DEADLINE_MINUTES * 60_000);
+  if (windowEnd <= now.getTime()) return true;
   return false;
 }
 
 /** Paid booking whose session is over — eligible for booking PDF invoice download. */
 export function canDownloadBookingInvoice(
-  booking: Pick<Booking, "status" | "payment_status" | "end_at_utc">,
+  booking: Pick<Booking, "status" | "payment_status" | "start_at_utc" | "end_at_utc">,
   linkedChat?: LinkedChat | null,
   now = new Date(),
 ): boolean {
