@@ -327,6 +327,8 @@ export interface ChatSession {
   ends_at: string;
   remaining_seconds: number;
   timer_started: boolean;
+  /** True while billed time is frozen during Mollie extend checkout. */
+  timer_paused_for_payment?: boolean;
   waiting_for: "user" | "mentor" | "both" | null;
   allocated_duration_minutes: number | null;
   partner_is_online?: boolean | null;

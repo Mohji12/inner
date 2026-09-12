@@ -316,6 +316,10 @@ def extend_session_checkout(
     amount_eur_base = (session_amount + Decimal(str(settings.chat_session_transaction_fee_eur))).quantize(
         Decimal("0.01")
     )
+    # Freeze billed countdown so Mollie checkout time does not eat remaining session minutes.
+    from services.live_session_service import freeze_session_timer_for_payment
+
+    freeze_session_timer_for_payment(session)
     session.updated_at = _utcnow()
     purchase, checkout_url = create_chat_purchase_checkout(
         db,

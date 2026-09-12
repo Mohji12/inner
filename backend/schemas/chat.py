@@ -49,6 +49,7 @@ class ChatSessionOut(BaseModel):
     ends_at: UtcDateTime
     remaining_seconds: int
     timer_started: bool = False
+    timer_paused_for_payment: bool = False
     waiting_for: str | None = None
     allocated_duration_minutes: int | None = None
     partner_is_online: bool | None = None

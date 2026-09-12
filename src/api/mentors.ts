@@ -114,17 +114,27 @@ export function heartbeatMentorPresence(): Promise<void> {
   return apiFetch<void>("/mentors/me/presence", { method: "POST" });
 }
 
+export type MentorPresenceMode = "online" | "offline" | "paused" | "occupied";
+
 export interface MentorPresenceStatus {
   is_online: boolean;
   chat_busy: boolean;
   unavailable_now?: boolean;
   manual_occupied?: boolean;
   chat_available?: boolean;
-  status: "online" | "offline" | "busy" | "unavailable" | "occupied";
+  presence_mode?: MentorPresenceMode;
+  status: "online" | "offline" | "busy" | "unavailable" | "occupied" | "paused";
 }
 
 export function getMentorPresenceStatus(): Promise<MentorPresenceStatus> {
   return apiFetch<MentorPresenceStatus>("/mentors/me/presence-status");
+}
+
+export function patchMentorPresenceMode(mode: MentorPresenceMode): Promise<MentorPresenceStatus> {
+  return apiFetch<MentorPresenceStatus>("/mentors/me/presence-mode", {
+    method: "PATCH",
+    body: JSON.stringify({ mode }),
+  });
 }
 
 export function patchMentorManualOccupied(occupied: boolean): Promise<MentorPresenceStatus> {

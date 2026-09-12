@@ -204,6 +204,17 @@ def submit_mentor_support(
 @router.post("/presence", status_code=status.HTTP_204_NO_CONTENT)
 def mentor_presence_heartbeat(db: DbSession, me: CurrentMentor) -> Response:
     """Mark mentor online when dashboard/app is open and accrue weekly platform time."""
+    from services.mentor_presence_mode_service import normalize_presence_mode
+
+    mode = normalize_presence_mode(
+        getattr(me, "presence_mode", None),
+        manual_occupied=bool(getattr(me, "manual_occupied", False)),
+    )
+    # Offline mode: do not keep the coach visible via heartbeat.
+    if mode == "offline":
+        presence_service.set_offline(me.id, "mentor")
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
     presence_service.set_online(me.id, "mentor")
     now = datetime.now(timezone.utc)
     try:
@@ -228,11 +239,16 @@ class MentorPresenceStatusOut(BaseModel):
     unavailable_now: bool = False
     manual_occupied: bool = False
     chat_available: bool = False
+    presence_mode: str = "online"
     status: str
 
 
 class MentorManualOccupiedIn(BaseModel):
     occupied: bool
+
+
+class MentorPresenceModeIn(BaseModel):
+    mode: str
 
 
 class MentorPresenceWeekStatOut(BaseModel):
@@ -262,12 +278,18 @@ class MentorPresenceSelfStatsOut(BaseModel):
 def mentor_presence_status(db: DbSession, me: CurrentMentor) -> MentorPresenceStatusOut:
     from services.chat_service import mentor_chat_busy
     from services.mentor_availability_service import compute_chat_available, mentor_manual_occupied
+    from services.mentor_presence_mode_service import effective_is_online, normalize_presence_mode
     from services.mentor_unavailability_service import mentor_unavailable_now
 
-    online = presence_service.is_online(me.id, "mentor", last_seen_at=me.last_seen_at)
+    mentor = db.query(Mentor).filter(Mentor.id == me.id).first() or me
+    mode = normalize_presence_mode(
+        getattr(mentor, "presence_mode", None),
+        manual_occupied=bool(getattr(mentor, "manual_occupied", False)),
+    )
+    online = effective_is_online(mentor)
     busy = mentor_chat_busy(db, me.id)
     unavailable = mentor_unavailable_now(db, me.id)
-    occupied = mentor_manual_occupied(db, me.id)
+    occupied = mentor_manual_occupied(db, me.id) or mode in ("paused", "occupied")
     chat_available = compute_chat_available(
         online=online,
         busy=busy,
@@ -276,22 +298,48 @@ def mentor_presence_status(db: DbSession, me: CurrentMentor) -> MentorPresenceSt
     )
     if busy:
         status_label = "busy"
-    elif occupied:
-        status_label = "occupied"
+    elif mode == "offline" or not online:
+        status_label = "offline"
     elif unavailable:
         status_label = "unavailable"
-    elif online:
-        status_label = "online"
+    elif mode == "paused":
+        status_label = "paused"
+    elif mode == "occupied":
+        status_label = "occupied"
     else:
-        status_label = "offline"
+        status_label = "online"
     return MentorPresenceStatusOut(
         is_online=online,
         chat_busy=busy,
         unavailable_now=unavailable,
         manual_occupied=occupied,
         chat_available=chat_available,
+        presence_mode=mode,
         status=status_label,
     )
+
+
+@router.patch("/presence-mode", response_model=MentorPresenceStatusOut)
+def mentor_set_presence_mode(
+    db: DbSession,
+    me: CurrentMentor,
+    payload: MentorPresenceModeIn,
+) -> MentorPresenceStatusOut:
+    from services.mentor_presence_mode_service import PRESENCE_MODES, apply_presence_mode
+
+    mode = (payload.mode or "").strip().lower()
+    if mode not in PRESENCE_MODES:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail=f"mode must be one of: {', '.join(sorted(PRESENCE_MODES))}",
+        )
+    mentor = db.query(Mentor).filter(Mentor.id == me.id).first()
+    if not mentor:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Coach not found")
+    apply_presence_mode(mentor, mode)
+    db.commit()
+    db.refresh(mentor)
+    return mentor_presence_status(db, mentor)
 
 
 @router.patch("/manual-occupied", response_model=MentorPresenceStatusOut)
@@ -300,11 +348,13 @@ def mentor_set_manual_occupied(
     me: CurrentMentor,
     payload: MentorManualOccupiedIn,
 ) -> MentorPresenceStatusOut:
+    """Legacy toggle: occupied=true → paused, occupied=false → online."""
+    from services.mentor_presence_mode_service import apply_presence_mode
+
     mentor = db.query(Mentor).filter(Mentor.id == me.id).first()
     if not mentor:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Coach not found")
-    mentor.manual_occupied = bool(payload.occupied)
-    mentor.updated_at = datetime.now(timezone.utc)
+    apply_presence_mode(mentor, "paused" if payload.occupied else "online")
     db.commit()
     db.refresh(mentor)
     return mentor_presence_status(db, mentor)

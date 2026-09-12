@@ -91,7 +91,7 @@ export function SessionExtendDialog({
         communication_mode: communicationMode,
       }),
     onSuccess: (out) => {
-      toast.success(c.redirectingCheckout);
+      toast.success(c.toastTimerPausedCheckout);
       onOpenChange(false);
       stashPendingMolliePaymentId(out.mollie_payment_id);
       window.location.href = out.checkout_url;

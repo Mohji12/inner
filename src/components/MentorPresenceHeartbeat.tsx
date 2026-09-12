@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ensureFreshAccessToken } from "@/api/client";
-import { heartbeatMentorPresence } from "@/api/mentors";
+import { getMentorPresenceStatus, heartbeatMentorPresence } from "@/api/mentors";
 import { useAuthOptional } from "@/auth/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { toast } from "sonner";
@@ -19,8 +19,19 @@ export default function MentorPresenceHeartbeat() {
   const failCountRef = useRef(0);
   const toastShownRef = useRef(false);
 
+  const presenceQuery = useQuery({
+    queryKey: ["mentor", "presence-status"],
+    queryFn: getMentorPresenceStatus,
+    enabled: role === "mentor" && Boolean(mentorAccessToken),
+    staleTime: 5_000,
+    refetchInterval: 15_000,
+  });
+
+  const presenceMode = presenceQuery.data?.presence_mode ?? "online";
+  const heartbeatEnabled = role === "mentor" && Boolean(mentorAccessToken) && presenceMode !== "offline";
+
   useEffect(() => {
-    if (role !== "mentor" || !mentorAccessToken) return;
+    if (!heartbeatEnabled) return;
 
     let disposed = false;
     const ping = async () => {
@@ -60,7 +71,7 @@ export default function MentorPresenceHeartbeat() {
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [role, mentorAccessToken, queryClient, d.presenceHeartbeatFailed]);
+  }, [heartbeatEnabled, queryClient, d.presenceHeartbeatFailed]);
 
   return null;
 }

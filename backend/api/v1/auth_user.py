@@ -8,7 +8,6 @@ from core.security import (
     create_access_token, 
     create_2fa_temp_token,
     decode_access_token,
-    hash_password, 
     new_uuid, 
     verify_password, 
     validate_password_strength
@@ -26,7 +25,7 @@ from schemas.auth import (
     TwoFactorDisableRequest,
     VerifyEmailRequest
 )
-from schemas.user import UserLogin, UserOut, UserRegister, UserRegisterResponse
+from schemas.user import UserLogin, UserRegister, UserRegisterResponse
 from services.otp_service import create_and_send_otp, verify_otp
 from services.token_service import revoke_refresh_token, rotate_refresh_token, store_refresh_token
 from services.two_factor_service import two_factor_service
@@ -77,43 +76,36 @@ def _expose_dev_otp() -> bool:
 @router.post("/register", response_model=UserRegisterResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/minute")
 def register_user(request: Request, db: DbSession, payload: UserRegister) -> UserRegisterResponse:
+    """Start signup: store pending details and email OTP. User row is created only after verify."""
+    from services.pending_user_registration_service import upsert_pending_user_registration
+
     email = str(payload.email).lower()
-    if db.query(User).filter(User.email == email).first():
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Email already registered")
-    if db.query(User).filter(User.phone_number == payload.phone_number).first():
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Phone number already registered")
-    
     password_error = validate_password_strength(payload.password)
     if password_error:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, password_error)
-    now = datetime.now(timezone.utc)
-    user = User(
-        id=new_uuid(),
-        full_name=payload.full_name,
-        email=email,
-        phone_number=payload.phone_number,
-        password_hash=hash_password(payload.password),
-        profile_image=None,
-        gender=None,
-        date_of_birth=None,
-        location=None,
-        country_code=None,
-        timezone=resolve_account_timezone(payload.timezone),
-        preferred_language=payload.preferred_language,
-        interests=None,
-        goals=None,
-        preferred_categories=None,
-        preferred_communication_mode=None,
-        last_login=None,
-        account_status="active",
-        email_verified=False,
-        created_at=now,
-        updated_at=now,
-    )
-    db.add(user)
-    db.flush()
+
     try:
-        code = create_and_send_otp(db, email=email, role="user", subject_id=user.id, otp_id=new_uuid())
+        pending = upsert_pending_user_registration(
+            db,
+            full_name=payload.full_name,
+            email=email,
+            phone_number=payload.phone_number,
+            password=payload.password,
+            preferred_language=payload.preferred_language,
+            timezone_name=payload.timezone,
+        )
+    except ValueError as e:
+        code = str(e)
+        if code == "email_taken":
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Email already registered") from e
+        if code == "phone_taken":
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Phone number already registered") from e
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Could not start registration") from e
+
+    try:
+        code = create_and_send_otp(
+            db, email=email, role="user", subject_id=pending.id, otp_id=new_uuid()
+        )
     except Exception:
         db.rollback()
         raise HTTPException(
@@ -121,20 +113,85 @@ def register_user(request: Request, db: DbSession, payload: UserRegister) -> Use
             "Could not send verification email. Please try again later.",
         )
     db.commit()
-    db.refresh(user)
-    base = UserOut.model_validate(user)
+    db.refresh(pending)
+
+    # Shape matches the old UserOut so the SPA verify step keeps working.
+    # email_verified stays false until OTP succeeds and the users row is created.
     return UserRegisterResponse(
-        **base.model_dump(),
+        id=pending.id,
+        full_name=pending.full_name,
+        email=pending.email,
+        phone_number=pending.phone_number,
+        profile_image=None,
+        gender=None,
+        date_of_birth=None,
+        location=None,
+        country_code=None,
+        timezone=pending.timezone,
+        preferred_language=pending.preferred_language,
+        interests=None,
+        goals=None,
+        preferred_categories=None,
+        preferred_communication_mode=None,
+        last_login=None,
+        account_status="pending_verification",
+        email_verified=False,
+        is_totp_enabled=False,
+        created_at=pending.created_at,
+        updated_at=pending.updated_at,
         dev_verification_code=code if _expose_dev_otp() else None,
     )
 
 
 @router.post("/verify-email", response_model=MessageResponse)
 def verify_user_email(db: DbSession, payload: VerifyEmailRequest) -> MessageResponse:
+    from services.pending_user_registration_service import (
+        create_user_from_pending,
+        get_pending_by_email,
+    )
+
     email = str(payload.email).lower()
     subject_id = verify_otp(db, email=email, role="user", code=payload.code)
     if not subject_id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or expired verification code")
+
+    pending = get_pending_by_email(db, email)
+    if pending and pending.id == subject_id:
+        try:
+            user = create_user_from_pending(db, pending)
+        except ValueError as e:
+            db.rollback()
+            code = str(e)
+            if code == "pending_expired":
+                raise HTTPException(
+                    status.HTTP_400_BAD_REQUEST,
+                    "Registration expired. Please register again.",
+                ) from e
+            if code in ("email_taken", "phone_taken"):
+                raise HTTPException(
+                    status.HTTP_400_BAD_REQUEST,
+                    "This email or phone is already registered. Please sign in.",
+                ) from e
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid verification") from e
+        db.commit()
+        db.refresh(user)
+        track_user_registration_verified(
+            user_id=user.id,
+            email=user.email,
+            phone_number=user.phone_number,
+        )
+        promo = get_welcome_promo_row(db)
+        if promo:
+            send_user_welcome_promo_email(
+                to_email=user.email,
+                full_name=user.full_name,
+                code=promo.code,
+                duration_minutes=promo.allowed_duration_minutes or 5,
+                preferred_language=user.preferred_language,
+            )
+        return MessageResponse(message="Email verified. You can sign in now.")
+
+    # Legacy path: older signups that already created a users row before verify.
     user = db.query(User).filter(User.id == subject_id, User.email == email).first()
     if not user:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid verification")
@@ -182,12 +239,25 @@ def user_meta_lead(
 
 @router.post("/resend-verify-email", response_model=MessageResponse)
 def resend_user_verify_email(db: DbSession, payload: ResendVerifyEmailRequest) -> MessageResponse:
+    from services.pending_user_registration_service import get_pending_by_email
+
     email = str(payload.email).lower()
+    pending = get_pending_by_email(db, email)
     user = db.query(User).filter(User.email == email).first()
-    if not user or user.email_verified:
+
+    if user and user.email_verified:
         return MessageResponse(message="If an account exists, a verification code was sent.")
+
+    subject_id: str | None = None
+    if pending:
+        subject_id = pending.id
+    elif user and not user.email_verified:
+        subject_id = user.id
+    else:
+        return MessageResponse(message="If an account exists, a verification code was sent.")
+
     try:
-        create_and_send_otp(db, email=email, role="user", subject_id=user.id, otp_id=new_uuid())
+        create_and_send_otp(db, email=email, role="user", subject_id=subject_id, otp_id=new_uuid())
         db.commit()
     except Exception:
         db.rollback()

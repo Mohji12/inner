@@ -45,11 +45,13 @@ from db.startup_schema import (
     ensure_mentor_kvk_number_column,
     ensure_mentor_public_card_visibility_column,
     ensure_mentor_manual_occupied_column,
+    ensure_mentor_presence_mode_column,
     ensure_mentor_presence_tracking,
     ensure_admin_announcements_table,
     ensure_platform_pricing_table,
     ensure_platform_pricing_60_min_column,
     ensure_email_otp_role_width,
+    ensure_pending_user_registrations_table,
 )
 from services.background_scheduler import start_scheduler, shutdown_scheduler
 
@@ -112,6 +114,7 @@ async def lifespan(app: FastAPI):
         ensure_mentor_public_card_visibility_column,
     )
     _run_startup_step("ensure_mentor_manual_occupied_column", ensure_mentor_manual_occupied_column)
+    _run_startup_step("ensure_mentor_presence_mode_column", ensure_mentor_presence_mode_column)
     _run_startup_step("ensure_mentor_presence_tracking", ensure_mentor_presence_tracking)
     _run_startup_step("ensure_admin_announcements_table", ensure_admin_announcements_table)
     _run_startup_step("ensure_localization_i18n_columns", ensure_localization_i18n_columns)
@@ -139,6 +142,7 @@ async def lifespan(app: FastAPI):
     _run_startup_step("ensure_support_inquiries_table", ensure_support_inquiries_table)
     _run_startup_step("ensure_site_page_views_table", ensure_site_page_views_table)
     _run_startup_step("ensure_email_otp_role_width", ensure_email_otp_role_width)
+    _run_startup_step("ensure_pending_user_registrations_table", ensure_pending_user_registrations_table)
     start_scheduler()
     yield
     shutdown_scheduler()

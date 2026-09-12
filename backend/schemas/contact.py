@@ -10,6 +10,9 @@ class SupportContactCreate(BaseModel):
     role: Literal["user", "coach", "other"] = "user"
     subject: str = Field(min_length=3, max_length=200)
     message: str = Field(min_length=10, max_length=5000)
+    # Anti-spam: honeypot (must stay empty) + unix timestamp when the form was opened.
+    website: str | None = Field(default=None, max_length=255)
+    form_started_at: float | None = None
 
 
 class AuthenticatedSupportCreate(BaseModel):

@@ -5,6 +5,73 @@ Living log of work done on this project.
 
 ---
 
+## 2026-09-12
+
+### Contact form anti-spam
+**Goal:** Stop bot spam from the public website contact form flooding support inboxes.
+
+- Honeypot field (`website`) — bots that fill it get a fake success, no email
+- Minimum form fill time (~3s) via `form_started_at`
+- Gibberish name/subject/message filter (blocks random alphanumeric spam)
+- Public contact rate limit tightened to 5/hour
+- Key paths: `backend/services/contact_anti_spam.py`, `backend/api/v1/contact.py`, `src/components/SupportQueryForm.tsx`
+
+### Support mail Reply-To = user/coach
+**Goal:** `support_contact_emails` get inquiries that reply to the real user/coach; OTP, session, and admin→coach stay on platform SMTP.
+
+- Support emails still send via SMTP From (`SMTP_FROM_EMAIL`) for deliverability
+- From display name shows the sender; `Reply-To` is their email (contact / user / coach)
+- OTP, admin announcements to coaches unchanged (platform SMTP only)
+- Key paths: `backend/services/email_service.py`, `backend/services/support_inquiry_service.py`
+
+## 2026-09-11
+
+### Bulk-verify all user emails
+**Goal:** Admin Users list shows Email verified = Yes for existing accounts.
+
+- Set `email_verified=true` for all users that were still unverified
+- Script: `backend/scripts/verify_all_user_emails.py`
+
+### Create user account only after email OTP
+**Goal:** Unverified signups no longer appear in Admin → Users.
+
+- Register stores details in `pending_user_registrations` and emails OTP
+- `users` row is created only after successful OTP verify (`email_verified=true`)
+- Resend OTP works against pending signups; legacy unverified users still supported
+- Key paths: `backend/services/pending_user_registration_service.py`, `backend/api/v1/auth_user.py`, `backend/models/pending_user_registration.py`
+
+### Coach dashboard status buttons (online / offline / paused / occupied)
+**Goal:** Coaches can set their status with four explicit buttons on the dashboard.
+
+- Added `presence_mode` on mentors and `PATCH /mentors/me/presence-mode`
+- Replaced availability toggle with Online, Offline, Paused, Occupied buttons
+- Offline stops heartbeats and hides the coach; paused/occupied block new bookings
+- Key paths: `src/components/CoachPresenceBanner.tsx`, `backend/services/mentor_presence_mode_service.py`, `backend/api/v1/mentor_me.py`
+
+### Coach mobile join UX (toasts vs CTA)
+**Goal:** Coaches can accept/join a live session on phone without notifications covering the Join button.
+
+- Sticky bottom Join bar on mentor dashboard (mobile) above the fold, z-index above content
+- Sonner toasts moved to top-center with close button; mentors only get “session ready” toast + Join action
+- Skip stacking “booking started” toast for mentors (sound still plays)
+- Key paths: `src/components/CoachLiveJoinBar.tsx`, `src/components/ui/sonner.tsx`, `src/components/NotificationBell.tsx`, `src/pages/mentor/MentorDashboardHomePage.tsx`
+
+### Stop automatic session-booked emails to coaches
+**Goal:** Coaches no longer get email when a session is booked; only admin can email coaches.
+
+- Removed booking-confirmed SMTP email from payment success path
+- Coaches still get in-app (bell) “Session ready to join” notifications
+- Admin announcements can still email coaches
+- Key paths: `backend/services/mollie_service.py`, `backend/services/booking_notify.py`
+
+### Pause session timer during extend payment
+**Goal:** When a user pays to extend an ongoing session, billed time freezes until Mollie settles (or payment fails).
+
+- Freeze remaining seconds on extend checkout; resume + add minutes on paid
+- Restore frozen time if Mollie fails/cancels/expires
+- Faster post-checkout Mollie sync polling; UI banner while timer is paused
+- Key paths: `backend/services/live_session_service.py`, `backend/services/chat_service.py`, `backend/services/mollie_service.py`, `src/pages/chat/ChatSessionPage.tsx`
+
 ## 2026-09-08
 
 ### Coach no-show alert after 5 minutes

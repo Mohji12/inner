@@ -58,12 +58,68 @@ def session_remaining_seconds(session: ChatSession) -> int:
     """Remaining billed session time (or join deadline before timer starts)."""
     if session.status == CHAT_SESSION_ENDED:
         return 0
+    frozen = getattr(session, "timer_paused_remaining_seconds", None)
+    if frozen is not None:
+        return max(0, int(frozen))
     if is_booking_session(session) and not timer_started(session):
         if join_deadline_expired(session):
             return 0
         allocated = max(1, int(session.allocated_duration_minutes or 1))
         return allocated * 60
     return remaining_seconds(session.ends_at)
+
+
+def is_timer_frozen_for_payment(session: ChatSession) -> bool:
+    """True while billed time is held during Mollie extend checkout."""
+    return getattr(session, "timer_paused_remaining_seconds", None) is not None
+
+
+def freeze_session_timer_for_payment(session: ChatSession) -> int:
+    """
+    Stop the billed countdown while the user pays to extend.
+    Stores remaining seconds and marks the session paused.
+    Returns the frozen remaining seconds (0 if nothing to freeze).
+    """
+    if is_timer_frozen_for_payment(session):
+        return max(0, int(session.timer_paused_remaining_seconds or 0))
+    if session.status == CHAT_SESSION_ENDED or not timer_started(session):
+        return 0
+    rem = session_remaining_seconds(session)
+    if rem <= 0:
+        return 0
+    now = _utcnow()
+    session.timer_paused_remaining_seconds = rem
+    session.status = CHAT_SESSION_PAUSED
+    session.updated_at = now
+    return rem
+
+
+def resume_frozen_session_timer(session: ChatSession, *, add_minutes: int = 0) -> None:
+    """
+    Clear a payment freeze. Restores ends_at from frozen remaining (+ optional purchased minutes).
+    If there was no freeze, optionally extends from current ends_at / now (paid-extend path).
+    """
+    now = _utcnow()
+    add = max(0, int(add_minutes))
+    frozen = getattr(session, "timer_paused_remaining_seconds", None)
+    if frozen is not None:
+        session.timer_paused_remaining_seconds = None
+        session.ends_at = now + timedelta(seconds=max(0, int(frozen))) + timedelta(minutes=add)
+    elif add > 0:
+        base = session.ends_at
+        if base.tzinfo is None:
+            base = base.replace(tzinfo=timezone.utc)
+        if session.status == CHAT_SESSION_ENDED or base <= now:
+            session.ends_at = now + timedelta(minutes=add)
+        else:
+            session.ends_at = base + timedelta(minutes=add)
+    if session.timer_started_at is None and (add > 0 or remaining_seconds(session.ends_at) > 0):
+        session.timer_started_at = now
+    if remaining_seconds(session.ends_at) > 0 and session.status != CHAT_SESSION_ENDED:
+        session.status = CHAT_SESSION_ACTIVE
+    elif session.status != CHAT_SESSION_ENDED:
+        session.status = CHAT_SESSION_PAUSED
+    session.updated_at = now
 
 
 def waiting_for_participant(session: ChatSession) -> WaitingFor:
@@ -172,6 +228,8 @@ def communication_mode_for_session(db: Session, session_id: str) -> str | None:
 
 def sync_session_time_state(session: ChatSession) -> None:
     """If billed time expired while still marked active, move to paused (lazy transition)."""
+    if is_timer_frozen_for_payment(session):
+        return
     if session.status != CHAT_SESSION_ACTIVE:
         return
     if is_booking_session(session) and not timer_started(session):
@@ -215,6 +273,9 @@ def record_participant_join(db: Session, session_id: str, role: str) -> bool:
         session.ends_at = now + timedelta(minutes=allocated)
         session.status = CHAT_SESSION_ACTIVE
         timer_just_started = True
+    elif is_timer_frozen_for_payment(session):
+        # Keep paused while Mollie extend checkout is in progress.
+        pass
     elif not is_booking_session(session):
         if session.status == CHAT_SESSION_PAUSED and session_remaining_seconds(session) > 0:
             session.status = CHAT_SESSION_ACTIVE

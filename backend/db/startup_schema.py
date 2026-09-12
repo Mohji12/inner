@@ -159,6 +159,7 @@ def ensure_chat_session_join_timer_columns() -> None:
     _safe_add_column("ALTER TABLE chat_sessions ADD COLUMN user_joined_at DATETIME(6) NULL")
     _safe_add_column("ALTER TABLE chat_sessions ADD COLUMN mentor_joined_at DATETIME(6) NULL")
     _safe_add_column("ALTER TABLE chat_sessions ADD COLUMN timer_started_at DATETIME(6) NULL")
+    _safe_add_column("ALTER TABLE chat_sessions ADD COLUMN timer_paused_remaining_seconds INT NULL")
 
 
 def backfill_booking_linked_chat_sessions() -> None:
@@ -848,6 +849,24 @@ def ensure_mentor_manual_occupied_column() -> None:
     _safe_add_column("ALTER TABLE mentors ADD COLUMN manual_occupied TINYINT(1) NOT NULL DEFAULT 0")
 
 
+def ensure_mentor_presence_mode_column() -> None:
+    _safe_add_column(
+        "ALTER TABLE mentors ADD COLUMN presence_mode VARCHAR(16) NOT NULL DEFAULT 'online'"
+    )
+    # Backfill: coaches already marked occupied become paused.
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                UPDATE mentors
+                SET presence_mode = 'paused'
+                WHERE manual_occupied = 1
+                  AND (presence_mode IS NULL OR presence_mode = '' OR presence_mode = 'online')
+                """
+            )
+        )
+
+
 def ensure_mentor_presence_tracking() -> None:
     """Weekly coach time-on-platform buckets + last accrual stamp."""
     _safe_add_column("ALTER TABLE mentors ADD COLUMN presence_accrued_at DATETIME(6) NULL")
@@ -990,4 +1009,26 @@ def ensure_email_otp_role_width() -> None:
             conn.execute(text("DELETE FROM email_otp_codes WHERE role = 'password_reset:m'"))
     except DBAPIError:
         pass
+
+
+def ensure_pending_user_registrations_table() -> None:
+    """Hold user signups until email OTP succeeds (no users row until verified)."""
+    ddl = """
+    CREATE TABLE IF NOT EXISTS pending_user_registrations (
+        id CHAR(36) NOT NULL PRIMARY KEY,
+        full_name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        phone_number VARCHAR(64) NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        timezone VARCHAR(64) NOT NULL DEFAULT 'UTC',
+        preferred_language VARCHAR(32) NOT NULL DEFAULT 'en',
+        expires_at DATETIME(6) NOT NULL,
+        created_at DATETIME(6) NOT NULL,
+        updated_at DATETIME(6) NOT NULL,
+        UNIQUE KEY uq_pending_user_email (email),
+        UNIQUE KEY uq_pending_user_phone (phone_number),
+        KEY ix_pending_user_expires (expires_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    """
+    _execute_ddl(ddl)
 

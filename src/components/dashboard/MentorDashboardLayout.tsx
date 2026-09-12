@@ -31,6 +31,7 @@ import { DashboardContentArea } from "@/components/dashboard/DashboardContentAre
 import { DashboardNavLink } from "@/components/dashboard/DashboardNavLink";
 import { dashboardLogoutButtonClass, dashboardChromeHeaderClass, dashboardChromeBodyClass } from "@/components/dashboard/dashboardNav";
 import { DashboardBrandHeader } from "@/components/dashboard/DashboardBrandHeader";
+import { CoachLiveJoinBar } from "@/components/CoachLiveJoinBar";
 
 function MentorDashboardSidebar() {
   const navigate = useNavigate();
@@ -212,6 +213,7 @@ function MentorDashboardSidebar() {
         <div className={dashboardChromeBodyClass}>
           <DashboardContentArea />
         </div>
+        <CoachLiveJoinBar />
       </SidebarInset>
     </>
   );

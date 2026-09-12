@@ -917,17 +917,28 @@ export const appEn = {
     presenceOnlineHint: "Users can see you and book appointments",
     presenceBusy: "In an appointment",
     presenceBusyHint: "You appear busy until you leave the live appointment",
-    presenceOccupied: "Paused",
+    presencePaused: "Paused",
+    presencePausedHint:
+      "You are logged in, but bookings and live chat are paused until you switch back to Online.",
+    presenceOccupied: "Occupied",
     presenceOccupiedHint:
-      "You are logged in, but your status is paused. Users cannot book or start live chat until you switch back to available.",
+      "You are marked occupied. Users cannot book or start live chat until you switch back to Online.",
     presenceUnavailable: "Unavailable (schedule)",
     presenceUnavailableHint:
       "You are logged in, but users cannot book you until your unavailability block ends. Check Availability in the menu.",
     presenceOffline: "You are offline",
     presenceOfflineHint:
-      "Keep this dashboard open in an active browser tab to appear online. If you are logged out often, allow cookies for mijnlevenspad.com.",
+      "You are hidden from users. Choose Online when you want to appear available again.",
     presenceConnecting: "Connecting…",
     presenceToastOnline: "You are now online — users can see you on the platform",
+    presenceToastOffline: "You are now offline — users cannot see you as available",
+    presenceToastPaused: "Status set to paused — new bookings and live chat are blocked",
+    presenceToastOccupied: "Status set to occupied — new bookings and live chat are blocked",
+    presenceModeGroupLabel: "Coach status",
+    presenceModeOnline: "Online",
+    presenceModeOffline: "Offline",
+    presenceModePaused: "Paused",
+    presenceModeOccupied: "Occupied",
     presenceAvailableSwitchLabel: "Available for appointments",
     presenceAvailableSwitchOn: "Available for appointments",
     presenceAvailableSwitchOff: "Paused",
@@ -1320,8 +1331,11 @@ export const appEn = {
     liveSessionActive: "Your appointment with {name} is live.",
     liveSessionGeneric: "A client appointment is ready — join the chatroom now.",
     joinLiveSession: "Join appointment now",
+    joinLiveSessionHint: "Use the Join button fixed at the bottom of the screen.",
+    joinToastAction: "Join",
     viewAppointments: "View appointments",
   },
+
   invoice: {
     invoice: "Invoice",
     issued: "Issued",
@@ -1460,7 +1474,7 @@ export const appEn = {
     extendDescResume:
       "Choose how many minutes to buy. After payment, this same conversation unlocks for chat, call, and video.",
     extendDescAdd:
-      "Pay per minute at your coach's rate plus a transaction fee. Minutes are added after successful payment.",
+      "Pay per minute at your coach's rate plus a transaction fee. The session timer pauses while you pay; minutes are added after successful payment.",
     minutesToAdd: "Minutes to add",
     minimumPurchase: "Minimum purchase: {minutes} minutes",
     calculatingPrice: "Calculating price…",
@@ -1474,6 +1488,9 @@ export const appEn = {
     payAndExtend: "Pay & extend",
     payWithAmount: "{action} — EUR {amount}",
     redirectingCheckout: "Redirecting to Mollie checkout",
+    timerPausedForPayment:
+      "Session timer is paused while you complete payment. Remaining time will resume after checkout.",
+    toastTimerPausedCheckout: "Timer paused — complete payment, then your remaining time continues.",
     expiryTitleInitial: "Session ending soon",
     expiryTitleFinal: "Session about to end",
     expiryBodyInitial: "Your session expires in {time}. Would you like to extend?",

@@ -131,7 +131,7 @@ export const chatOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
       extendDescResume:
         "Kies hoeveel minuten je wilt kopen. Na betaling ontgrendelt ditzelfde gesprek voor chat, bel en video.",
       extendDescAdd:
-        "Betaal per minuut tegen het tarief van je coach plus een transactiekosten. Minuten worden toegevoegd na succesvolle betaling.",
+        "Betaal per minuut tegen het tarief van je coach plus een transactiekosten. De sessietimer pauzeert tijdens betalen; minuten worden toegevoegd na succesvolle betaling.",
       minutesToAdd: "Minuten toevoegen",
       minimumPurchase: "Minimumaankoop: {minutes} minuten",
       calculatingPrice: "Prijs berekenen…",
@@ -145,6 +145,9 @@ export const chatOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
       payAndExtend: "Betalen & verlengen",
       payWithAmount: "{action} — EUR {amount}",
       redirectingCheckout: "Doorsturen naar Mollie-checkout",
+      timerPausedForPayment:
+        "De sessietimer is gepauzeerd terwijl je betaalt. De resterende tijd gaat verder na de checkout.",
+      toastTimerPausedCheckout: "Timer gepauzeerd — rond de betaling af; daarna loopt je resterende tijd weer door.",
       expiryTitleInitial: "Sessie eindigt binnenkort",
       expiryTitleFinal: "Sessie eindigt bijna",
       expiryBodyInitial: "Je sessie verloopt over {time}. Wil je verlengen?",

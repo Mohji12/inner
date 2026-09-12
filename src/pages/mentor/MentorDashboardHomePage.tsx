@@ -221,7 +221,7 @@ export default function MentorDashboardHomePage() {
       </div>
 
       {liveJoin ? (
-        <Card className="border-emerald-500/50 bg-emerald-500/10 shadow-sm">
+        <Card className="border-emerald-500/50 bg-emerald-500/10 shadow-sm max-md:mb-24">
           <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2">
@@ -244,7 +244,7 @@ export default function MentorDashboardHomePage() {
                   : d.liveSessionGeneric}
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="hidden flex-wrap gap-2 sm:flex">
               <Button asChild size="lg" className="gradient-cta text-white">
                 <Link to={liveJoin.path}>
                   <Video className="mr-2 h-4 w-4" />
@@ -255,6 +255,7 @@ export default function MentorDashboardHomePage() {
                 <Link to="/mentor/appointments">{d.viewAppointments}</Link>
               </Button>
             </div>
+            <p className="text-sm text-muted-foreground sm:hidden">{d.joinLiveSessionHint}</p>
           </CardContent>
         </Card>
       ) : null}

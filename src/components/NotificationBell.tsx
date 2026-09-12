@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Bell, Check, Trash2, CalendarDays, MessageSquare, Receipt, Info, FileUser, Users } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -15,6 +15,7 @@ import { fetchAdminCoachApplications, fetchAdminMentors } from "@/api/admin";
 import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification } from "@/api/notifications";
 import { listChatSessions } from "@/api/chat";
 import { useAuth } from "@/auth/AuthContext";
+import { useLanguage } from "@/i18n/LanguageContext";
 import { isBookingNotificationType, playNotificationChime } from "@/lib/notificationSound";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +31,8 @@ type BellItem = {
 
 export function NotificationBell() {
   const { role } = useAuth();
+  const { t } = useLanguage();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
   const isActor = role === "user" || role === "mentor";
@@ -39,6 +42,7 @@ export function NotificationBell() {
     : role === "admin"
       ? "/admin/coach-applications"
       : "/user/notifications";
+  const joinToastLabel = t.app.mentorDashboardHome.joinToastAction;
 
   const toastSeenRef = useRef<Set<string>>(new Set());
   const toastInitRef = useRef(false);
@@ -135,12 +139,30 @@ export function NotificationBell() {
     }
     for (const notif of list) {
       if (toastSeenRef.current.has(notif.id) || notif.is_read) continue;
-      if (notif.type === "booking_started" || notif.type === "booking_confirmed") {
-        toast(notif.title, { description: notif.body, duration: 10_000 });
+      // Mentors: only surface "session ready" toasts (skip noisy "booking started"),
+      // keep them short, and offer a Join action that goes to the chat/appointments link.
+      if (role === "mentor" && notif.type === "booking_confirmed") {
+        toast(notif.title, {
+          id: `booking-confirmed-${notif.id}`,
+          description: notif.body,
+          duration: 8_000,
+          action: notif.link
+            ? {
+                label: joinToastLabel,
+                onClick: () => {
+                  navigate(notif.link!);
+                },
+              }
+            : undefined,
+        });
+      } else if (role === "mentor" && notif.type === "booking_started") {
+        // Sound still plays via CoachBookingAlert; avoid stacking a second toast over Join.
+      } else if (notif.type === "booking_started" || notif.type === "booking_confirmed") {
+        toast(notif.title, { description: notif.body, duration: 8_000 });
       }
       toastSeenRef.current.add(notif.id);
     }
-  }, [data?.notifications, isActor, actorNotifReady, role]);
+  }, [data?.notifications, isActor, actorNotifReady, role, joinToastLabel, navigate]);
 
   useEffect(() => {
     if (!isActor || !inboxQuery.isSuccess) return;

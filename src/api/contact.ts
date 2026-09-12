@@ -9,6 +9,10 @@ export interface PublicSupportBody {
   role: SupportRole;
   subject: string;
   message: string;
+  /** Honeypot — must be empty. */
+  website?: string | null;
+  /** Unix seconds when the form was opened (anti-bot timing). */
+  form_started_at?: number | null;
 }
 
 export interface AuthenticatedSupportBody {

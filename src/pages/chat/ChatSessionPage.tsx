@@ -126,17 +126,28 @@ const ChatSessionPage = () => {
     mollieSyncedRef.current = true;
 
     let cancelled = false;
+    const settled = (status: string) =>
+      ["paid", "failed", "canceled", "cancelled", "expired"].includes(status);
+
     void (async () => {
       try {
         let paymentStatus: string | null = null;
         if (pending) {
-          const out = await syncMolliePaymentAfterCheckout(pending);
+          // Poll Mollie sync briefly so paid status applies without waiting on webhook lag.
+          let out = await syncMolliePaymentAfterCheckout(pending);
+          for (let attempt = 0; attempt < 8 && !cancelled; attempt++) {
+            paymentStatus = String(out.status || "").toLowerCase();
+            if (settled(paymentStatus)) break;
+            await new Promise((r) => window.setTimeout(r, 700));
+            if (cancelled) return;
+            out = await syncMolliePaymentAfterCheckout(pending);
+          }
           if (cancelled) return;
           clearPendingMolliePaymentId();
           paymentStatus = String(out.status || "").toLowerCase();
           if (paymentStatus === "paid") {
             toast.success(extendedFlag ? c.toastTimeAdded : c.toastPaymentConfirmed);
-          } else if (["failed", "canceled", "cancelled", "expired", "open"].includes(paymentStatus)) {
+          } else if (["failed", "canceled", "cancelled", "expired"].includes(paymentStatus)) {
             toast.message(c.toastPaymentNotCompleted);
           } else toast.info(c.toastPaymentProcessing);
         }
@@ -153,7 +164,9 @@ const ChatSessionPage = () => {
         if (
           !cancelled &&
           sessionNeedsInitialPayment(refreshed) &&
-          (checkoutReturn || paidFlag || (paymentStatus && ["failed", "canceled", "cancelled", "expired", "open"].includes(paymentStatus)))
+          (checkoutReturn ||
+            paidFlag ||
+            (paymentStatus && ["failed", "canceled", "cancelled", "expired", "open"].includes(paymentStatus)))
         ) {
           toast.message(c.toastPayBelow);
           setExtendOpen(true);
@@ -266,12 +279,12 @@ const ChatSessionPage = () => {
   }, [waitingForCoachOnly, session?.timer_started, session?.status]);
 
   useEffect(() => {
-    if (!session?.timer_started || session.status === "ended") return;
+    if (!session?.timer_started || session.status === "ended" || session.timer_paused_for_payment) return;
     const interval = window.setInterval(() => {
       setLocalRemaining((prev) => (prev != null ? Math.max(0, prev - 1) : prev));
     }, 1000);
     return () => window.clearInterval(interval);
-  }, [session?.timer_started, session?.status]);
+  }, [session?.timer_started, session?.status, session?.timer_paused_for_payment]);
 
   useEffect(() => {
     if (role !== "user" || !session?.timer_started || localRemaining == null) return;
@@ -480,6 +493,12 @@ const ChatSessionPage = () => {
           </Button>
         </div>
       </div>
+
+      {session.timer_paused_for_payment ? (
+        <div className="rounded-lg border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-950 dark:text-sky-100">
+          {c.timerPausedForPayment}
+        </div>
+      ) : null}
 
       {role === "user" && isEnded && !session.timer_started ? (
         <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-900 dark:text-emerald-100 flex items-center justify-between gap-3">

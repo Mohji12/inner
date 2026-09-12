@@ -522,16 +522,8 @@ def _mark_booking_paid(db: Session, payment: Payment) -> None:
                 link=f"/user/chat/{session_id}?mode={mode}",
                 user_id=booking.user_id,
             )
-        from services.booking_notify import notify_coach_booking_confirmed
-
-        notify_coach_booking_confirmed(
-            db,
-            booking=booking,
-            session_id=session_id,
-            user_name=user_name,
-            duration_minutes=duration_minutes,
-            comm_label=comm_label,
-        )
+        # Coaches no longer get automatic booking emails; only admin announcements may email them.
+        # In-app bell notifications above still notify the coach to join.
 
 
 def _mark_monthly_invoice_paid(db: Session, invoice: MentorMonthlyInvoice) -> None:
@@ -545,20 +537,10 @@ def _apply_chat_purchase_paid(db: Session, purchase: ChatPurchase) -> None:
     session = db.query(ChatSession).filter(ChatSession.id == purchase.session_id).with_for_update().first()
     if not session:
         return
-    now = datetime.now(timezone.utc)
-    base = session.ends_at
-    if base.tzinfo is None:
-        base = base.replace(tzinfo=timezone.utc)
-    # Mid-session extend: grow from current end. Resume after ended/expired: start from now.
-    if session.status == CHAT_SESSION_ENDED or base <= now:
-        session.ends_at = now + timedelta(minutes=int(purchase.minutes))
-    else:
-        session.ends_at = base + timedelta(minutes=int(purchase.minutes))
-    # Resume messaging/calls immediately after paid continue (including previously ended threads).
-    if session.timer_started_at is None:
-        session.timer_started_at = now
-    session.status = CHAT_SESSION_ACTIVE
-    session.updated_at = now
+    from services.live_session_service import resume_frozen_session_timer
+
+    # Restore any frozen remaining time, then add purchased minutes and reactivate.
+    resume_frozen_session_timer(session, add_minutes=int(purchase.minutes))
     try:
         from services.notification_service import create_notification
 
@@ -696,6 +678,21 @@ def process_mollie_webhook_by_payment_id(db: Session, mollie_payment_id: str) ->
                 _apply_chat_purchase_paid(db, chat_purchase)
         elif status_str in ("failed", "canceled", "expired"):
             chat_purchase.status = CHAT_PURCHASE_FAILED
+            # Restore frozen countdown so unpaid checkout does not keep the session locked.
+            session = (
+                db.query(ChatSession)
+                .filter(ChatSession.id == chat_purchase.session_id)
+                .with_for_update()
+                .first()
+            )
+            if session is not None:
+                from services.live_session_service import (
+                    is_timer_frozen_for_payment,
+                    resume_frozen_session_timer,
+                )
+
+                if is_timer_frozen_for_payment(session):
+                    resume_frozen_session_timer(session, add_minutes=0)
         db.commit()
         return {"status": status_str, "type": "chat_purchase"}
 

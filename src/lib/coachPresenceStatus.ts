@@ -5,6 +5,8 @@ type PresenceCopy = {
   presenceOnlineHint: string;
   presenceBusy: string;
   presenceBusyHint: string;
+  presencePaused: string;
+  presencePausedHint: string;
   presenceOccupied: string;
   presenceOccupiedHint: string;
   presenceUnavailable: string;
@@ -16,6 +18,7 @@ type PresenceCopy = {
 export function mentorPresenceLabel(status: MentorPresenceStatus["status"], copy: PresenceCopy): string {
   if (status === "online") return copy.presenceOnline;
   if (status === "busy") return copy.presenceBusy;
+  if (status === "paused") return copy.presencePaused;
   if (status === "occupied") return copy.presenceOccupied;
   if (status === "unavailable") return copy.presenceUnavailable;
   return copy.presenceOffline;
@@ -24,6 +27,7 @@ export function mentorPresenceLabel(status: MentorPresenceStatus["status"], copy
 export function mentorPresenceHint(status: MentorPresenceStatus["status"], copy: PresenceCopy): string {
   if (status === "online") return copy.presenceOnlineHint;
   if (status === "busy") return copy.presenceBusyHint;
+  if (status === "paused") return copy.presencePausedHint;
   if (status === "occupied") return copy.presenceOccupiedHint;
   if (status === "unavailable") return copy.presenceUnavailableHint;
   return copy.presenceOfflineHint;

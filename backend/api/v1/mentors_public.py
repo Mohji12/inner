@@ -130,12 +130,18 @@ def _mentor_public_out(
     next_window: MentorAvailabilityWindow | None = None,
 ) -> MentorPublicOut:
     base = MentorPublicOut.model_validate(mentor)
-    is_online = presence_service.is_online(mentor.id, "mentor", last_seen_at=mentor.last_seen_at)
+    from services.mentor_presence_mode_service import effective_is_online, normalize_presence_mode
+
+    is_online = effective_is_online(mentor)
     chat_rate = effective_chat_price_per_minute_eur(mentor)
     unavailable_now, unavail_snap = public_block_for_rows(unavailability_rows or [])
     from services.mentor_availability_service import compute_chat_available
 
-    occupied = bool(getattr(mentor, "manual_occupied", False))
+    mode = normalize_presence_mode(
+        getattr(mentor, "presence_mode", None),
+        manual_occupied=bool(getattr(mentor, "manual_occupied", False)),
+    )
+    occupied = mode in ("paused", "occupied") or bool(getattr(mentor, "manual_occupied", False))
     # Free for live engagement (packages and/or chat). Talk-now still requires chat_rate > 0 in UI/API.
     chat_available = compute_chat_available(
         online=is_online,
@@ -344,12 +350,18 @@ def mentor_chat_availability(mentor_id: str, db: DbSession) -> ChatAvailabilityO
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Coach not found")
     enabled = effective_chat_price_per_minute_eur(mentor) > 0
     busy = mentor_chat_busy(db, mentor_id)
-    online = presence_service.is_online(mentor.id, "mentor", last_seen_at=mentor.last_seen_at)
+    from services.mentor_presence_mode_service import effective_is_online, normalize_presence_mode
+
+    online = effective_is_online(mentor)
     umap = load_unavailability_by_mentor(db, [mentor_id])
     unavailable = is_unavailable_now(umap.get(mentor_id, []))
-    from services.mentor_availability_service import compute_chat_available, mentor_manual_occupied
+    from services.mentor_availability_service import compute_chat_available
 
-    occupied = mentor_manual_occupied(db, mentor_id)
+    mode = normalize_presence_mode(
+        getattr(mentor, "presence_mode", None),
+        manual_occupied=bool(getattr(mentor, "manual_occupied", False)),
+    )
+    occupied = mode in ("paused", "occupied") or bool(getattr(mentor, "manual_occupied", False))
     available = compute_chat_available(
         online=online,
         busy=busy,

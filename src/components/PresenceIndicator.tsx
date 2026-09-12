@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-export type PresenceStatus = "online" | "offline" | "busy" | "unavailable" | "occupied";
+export type PresenceStatus = "online" | "offline" | "busy" | "unavailable" | "occupied" | "paused";
 
 type Props = {
   status: PresenceStatus;
@@ -13,7 +13,8 @@ const LABELS: Record<PresenceStatus, string> = {
   offline: "Offline",
   busy: "In session",
   unavailable: "Unavailable",
-  occupied: "Paused",
+  occupied: "Occupied",
+  paused: "Paused",
 };
 
 const DOT: Record<PresenceStatus, string> = {
@@ -22,13 +23,18 @@ const DOT: Record<PresenceStatus, string> = {
   busy: "bg-amber-500",
   unavailable: "bg-sky-500",
   occupied: "bg-orange-500",
+  paused: "bg-violet-500",
 };
 
 export function PresenceIndicator({ status, showLabel = false, className }: Props) {
   return (
     <span className={cn("inline-flex items-center gap-1.5", className)}>
       <span
-        className={cn("h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-background", DOT[status], status === "online" && "animate-pulse")}
+        className={cn(
+          "h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-background",
+          DOT[status],
+          status === "online" && "animate-pulse",
+        )}
         aria-hidden="true"
       />
       {showLabel ? <span className="text-xs font-medium text-muted-foreground">{LABELS[status]}</span> : null}

@@ -23,13 +23,29 @@ def _from_parts() -> tuple[str, str]:
     return from_email, from_name
 
 
-def _build_message(*, to_email: str, subject: str, body: str) -> EmailMessage:
-    from_email, from_name = _from_parts()
-    domain = from_email.split("@")[-1] if "@" in from_email else "mijnlevenspad.com"
+def _build_message(
+    *,
+    to_email: str,
+    subject: str,
+    body: str,
+    reply_to: str | None = None,
+    from_name: str | None = None,
+) -> EmailMessage:
+    """
+    Always send via platform SMTP (From address = SMTP_FROM_EMAIL) for OTP,
+    session mail, admin→coach, etc. Optional reply_to / from_name let support
+    mail show the user/coach identity without spoofing their mailbox.
+    """
+    smtp_from, default_name = _from_parts()
+    display_name = _stripped(from_name) or default_name
+    domain = smtp_from.split("@")[-1] if "@" in smtp_from else "mijnlevenspad.com"
     msg = EmailMessage()
     msg["Subject"] = subject
-    msg["From"] = formataddr((from_name, from_email))
+    msg["From"] = formataddr((display_name, smtp_from))
     msg["To"] = to_email
+    reply = _stripped(reply_to)
+    if reply and "@" in reply:
+        msg["Reply-To"] = reply
     msg["Date"] = formatdate(localtime=False)
     msg["Message-ID"] = make_msgid(domain=domain)
     msg.set_content(body or "")
@@ -63,7 +79,14 @@ def _connect_smtp() -> smtplib.SMTP:
     return server
 
 
-def send_plain_email(*, to_email: str, subject: str, body: str) -> bool:
+def send_plain_email(
+    *,
+    to_email: str,
+    subject: str,
+    body: str,
+    reply_to: str | None = None,
+    from_name: str | None = None,
+) -> bool:
     """Send email via SMTP. Returns True only if the server accepted the message."""
     recipient = _stripped(to_email)
     if not recipient or "@" not in recipient:
@@ -79,7 +102,13 @@ def send_plain_email(*, to_email: str, subject: str, body: str) -> bool:
         return False
 
     from_email, _ = _from_parts()
-    msg = _build_message(to_email=recipient, subject=subject, body=body)
+    msg = _build_message(
+        to_email=recipient,
+        subject=subject,
+        body=body,
+        reply_to=reply_to,
+        from_name=from_name,
+    )
     with _connect_smtp() as server:
         refused = server.sendmail(from_email, [recipient], msg.as_string())
     if refused:
@@ -91,6 +120,7 @@ def send_plain_email(*, to_email: str, subject: str, body: str) -> bool:
 def send_plain_emails(items: list[tuple[str, str, str]]) -> tuple[int, str | None]:
     """Send many (to_email, subject, body) messages on one SMTP connection.
 
+    Platform SMTP From only (OTP / admin announcements / coach broadcasts).
     Returns (accepted_count, warning_or_none).
     """
     pending: list[tuple[str, EmailMessage]] = []

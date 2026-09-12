@@ -9,6 +9,7 @@ from models.chat_bridge_session import ChatBridgeSession
 from models.chat_session import ChatSession
 from models.coach_application import CoachApplication
 from models.email_otp import EmailOtpCode
+from models.pending_user_registration import PendingUserRegistration
 from models.mentor import Mentor
 from models.mentor_availability_window import MentorAvailabilityWindow
 from models.mentor_unavailability import MentorUnavailability

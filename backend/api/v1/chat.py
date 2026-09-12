@@ -239,6 +239,7 @@ def _session_out(session, db: Session | None = None) -> ChatSessionOut:
         ends_at=session.ends_at,
         remaining_seconds=session_remaining_seconds(session),
         timer_started=session_timer_started(session),
+        timer_paused_for_payment=bool(getattr(session, "timer_paused_remaining_seconds", None) is not None),
         waiting_for=waiting_for_participant(session),
         allocated_duration_minutes=session.allocated_duration_minutes,
         partner_is_online=None,

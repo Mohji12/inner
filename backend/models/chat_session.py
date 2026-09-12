@@ -21,6 +21,8 @@ class ChatSession(Base):
     user_joined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     mentor_joined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     timer_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    #: Remaining billed seconds held while user completes Mollie extend checkout (timer frozen).
+    timer_paused_remaining_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 

@@ -10,6 +10,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
+      // Keep toasts at the top so they never cover mobile join CTAs at the bottom.
+      position="top-center"
+      closeButton
+      richColors
       toastOptions={{
         classNames: {
           toast:

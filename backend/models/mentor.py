@@ -52,6 +52,8 @@ class Mentor(Base):
     presence_accrued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     #: When true, coach stays online but users cannot start chat or new bookings.
     manual_occupied: Mapped[bool] = mapped_column(Boolean, default=False)
+    #: Coach-selected dashboard status: online | offline | paused | occupied.
+    presence_mode: Mapped[str] = mapped_column(String(16), default="online")
     failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

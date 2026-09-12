@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,8 @@ type PublicProps = {
     role: SupportRole;
     subject: string;
     message: string;
+    website?: string | null;
+    form_started_at?: number | null;
   }) => Promise<{ message: string }>;
 };
 
@@ -59,6 +61,13 @@ export function SupportQueryForm(props: Props) {
   const [role, setRole] = useState<SupportRole>("user");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  // Honeypot — leave empty; bots often auto-fill hidden fields.
+  const [website, setWebsite] = useState("");
+  const formStartedAt = useRef<number>(Date.now() / 1000);
+
+  useEffect(() => {
+    formStartedAt.current = Date.now() / 1000;
+  }, []);
 
   const mut = useMutation({
     mutationFn: async () => {
@@ -70,6 +79,8 @@ export function SupportQueryForm(props: Props) {
           role,
           subject: subject.trim(),
           message: message.trim(),
+          website: website.trim() || "",
+          form_started_at: formStartedAt.current,
         });
       }
       return props.onSubmit({
@@ -83,6 +94,8 @@ export function SupportQueryForm(props: Props) {
       setSubject("");
       setMessage("");
       setPhone("");
+      setWebsite("");
+      formStartedAt.current = Date.now() / 1000;
       if (props.mode === "public") {
         setFullName("");
         setEmail("");
@@ -129,6 +142,22 @@ export function SupportQueryForm(props: Props) {
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
+            />
+          </div>
+          {/* Honeypot: visually hidden from people, still in the DOM for bots. */}
+          <div
+            aria-hidden="true"
+            className="absolute -left-[9999px] top-auto h-0 w-0 overflow-hidden opacity-0"
+          >
+            <label htmlFor="support-website">Website</label>
+            <input
+              id="support-website"
+              name="website"
+              type="text"
+              tabIndex={-1}
+              autoComplete="off"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
             />
           </div>
           <div className="space-y-2">

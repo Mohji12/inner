@@ -989,17 +989,28 @@ Je erkent en accepteert deze voorwaarden op het moment van registratie.
       presenceOnlineHint: "Gebruikers kunnen je zien en afspraken boeken",
       presenceBusy: "In een afspraak",
       presenceBusyHint: "Je bent bezig tot je de live afspraak verlaat",
-      presenceOccupied: "Gepauzeerd",
+      presencePaused: "Gepauzeerd",
+      presencePausedHint:
+        "Je bent ingelogd, maar boekingen en live chat zijn gepauzeerd tot je weer Online kiest.",
+      presenceOccupied: "Bezet",
       presenceOccupiedHint:
-        "Je bent ingelogd, maar je status is gepauzeerd. Gebruikers kunnen geen live chat starten of boeken tot je weer beschikbaar bent.",
+        "Je bent gemarkeerd als bezet. Gebruikers kunnen geen live chat starten of boeken tot je weer Online kiest.",
       presenceUnavailable: "Niet beschikbaar (planning)",
       presenceUnavailableHint:
         "Je bent ingelogd, maar gebruikers kunnen je niet boeken tot je afwezigheidsperiode voorbij is. Controleer Beschikbaarheid in het menu.",
       presenceOffline: "Je bent offline",
       presenceOfflineHint:
-        "Houd dit dashboard open in een actief tabblad om online te verschijnen. Sta cookies toe voor mijnlevenspad.com als je vaak wordt uitgelogd.",
+        "Je bent verborgen voor gebruikers. Kies Online wanneer je weer beschikbaar wilt zijn.",
       presenceConnecting: "Verbinden…",
       presenceToastOnline: "Je bent nu online — gebruikers kunnen je op het platform zien",
+      presenceToastOffline: "Je bent nu offline — gebruikers zien je niet als beschikbaar",
+      presenceToastPaused: "Status op gepauzeerd gezet — nieuwe boekingen en live chat geblokkeerd",
+      presenceToastOccupied: "Status op bezet gezet — nieuwe boekingen en live chat geblokkeerd",
+      presenceModeGroupLabel: "Coachstatus",
+      presenceModeOnline: "Online",
+      presenceModeOffline: "Offline",
+      presenceModePaused: "Gepauzeerd",
+      presenceModeOccupied: "Bezet",
       presenceAvailableSwitchLabel: "Beschikbaar voor afspraken",
       presenceAvailableSwitchOn: "Beschikbaar voor afspraken",
       presenceAvailableSwitchOff: "Gepauzeerd",
@@ -1328,6 +1339,8 @@ Je erkent en accepteert deze voorwaarden op het moment van registratie.
       liveSessionActive: "Je afspraak met {name} is live.",
       liveSessionGeneric: "Er staat een cliëntafspraak klaar — ga nu naar de chatroom.",
       joinLiveSession: "Nu deelnemen aan afspraak",
+      joinLiveSessionHint: "Gebruik de knop onderaan het scherm om deel te nemen.",
+      joinToastAction: "Deelnemen",
       viewAppointments: "Afspraken bekijken",
     },
     invoice: {
@@ -1351,6 +1364,7 @@ Je erkent en accepteert deze voorwaarden op het moment van registratie.
       sessionInvoice: "Afspraakfactuur",
       backToAppointments: "Terug naar afspraken",
     },
+
     chatCallPanel: {
       title: "Spraak en video",
       descriptionStart: "Browsergesprekken gebruiken WebRTC via LiveKit. Je kunt ook het",
