@@ -19,13 +19,13 @@ def test_support_style_message_sets_reply_to_and_display_name():
         "services.email_service._from_parts",
         return_value=("info@mijnlevenspad.com", "Mijn Levenspad"),
     ):
-        msg = _build_message(
-            to_email="info@mijnlevenspad.com",
-            subject="Help",
-            body="Hello",
-            reply_to="user@example.com",
-            from_name="Ada via User support",
-        )
+    msg = _build_message(
+        to_email="info@mijnlevenspad.com",
+        subject="Help",
+        body="Hello",
+        reply_to="user@example.com",
+        from_name="Mijn Levenspad Support",
+    )
     assert "user@example.com" in msg["Reply-To"]
-    assert "Ada via User support" in msg["From"]
+    assert "Mijn Levenspad Support" in msg["From"]
     assert "info@mijnlevenspad.com" in msg["From"]

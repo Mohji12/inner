@@ -30,12 +30,6 @@ _SUBJECT_PREFIX = {
     "coach_dashboard": "[Support · Coach]",
 }
 
-_FROM_NAME_SUFFIX = {
-    "contact_page": "via Contact",
-    "user_dashboard": "via User support",
-    "coach_dashboard": "via Coach support",
-}
-
 
 def support_recipients() -> list[str]:
     raw = (settings.support_contact_emails or "").strip()
@@ -53,11 +47,6 @@ def support_recipients() -> list[str]:
         seen.add(key)
         out.append(email)
     return out
-
-
-def _support_from_display_name(*, source: SupportSource, full_name: str) -> str:
-    name = (full_name or "").strip() or "Unknown"
-    return f"{name} {_FROM_NAME_SUFFIX[source]}"
 
 
 def build_support_email_body(
@@ -109,8 +98,9 @@ def send_support_inquiry(
 ) -> str:
     """Persist inquiry (when db given) and email support recipients. Returns inquiry id.
 
-    Delivered via platform SMTP, but From display name + Reply-To use the user/coach
-    so support_contact_emails can reply directly to them.
+    Delivered via platform SMTP. Reply-To is the user/coach so support can answer them.
+    From display name stays 'Mijn Levenspad Support' (custom names + Gmail Reply-To
+    often land in Yourhosting spam).
     """
     inquiry_id = new_uuid()
     if db is not None:
@@ -149,24 +139,28 @@ def send_support_inquiry(
         account_id=account_id,
     )
     reply_to = (email or "").strip()
-    from_name = _support_from_display_name(source=source, full_name=full_name)
     errors: list[str] = []
     for to_email in recipients:
         try:
-            send_plain_email(
+            ok = send_plain_email(
                 to_email=to_email,
                 subject=mail_subject,
                 body=body,
                 reply_to=reply_to,
-                from_name=from_name,
+                from_name="Mijn Levenspad Support",
             )
+            if not ok:
+                errors.append(f"not_accepted:{to_email}")
+                logger.error("Support email not accepted by SMTP for %s", to_email)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Failed to send support email to %s", to_email)
             errors.append(str(exc))
 
-    if len(errors) == len(recipients):
+    if errors and len(errors) == len(recipients):
         raise HTTPException(
             status.HTTP_502_BAD_GATEWAY,
             "Could not send your message right now. Please try again or email info@mijnlevenspad.com.",
         )
+    if errors:
+        logger.warning("Support email partially failed recipients=%s errors=%s", recipients, errors)
     return inquiry_id
