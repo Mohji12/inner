@@ -24,6 +24,13 @@ Living log of work done on this project.
 - Treat SMTP non-acceptance as a send failure; keep OTP/admin announcements on platform SMTP
 - Key paths: `backend/services/email_service.py`, `backend/services/support_inquiry_service.py`
 
+### Support mailto button for user and coach
+**Goal:** Users and coaches can open their default mail app to email `info@mijnlevenspad.com` directly.
+
+- Added outline button next to Send message on user/coach Support pages
+- Prefills subject/body (and account name/email) via `mailto:`
+- Key paths: `src/components/SupportQueryForm.tsx`, `src/pages/user/UserSupportPage.tsx`, `src/pages/mentor/MentorSupportPage.tsx`
+
 ## 2026-09-11
 
 ### Bulk-verify all user emails

@@ -1209,6 +1209,9 @@ Je erkent en accepteert deze voorwaarden op het moment van registratie.
       description: "Stel een vraag over boekingen, betalingen of je account. We reageren per e-mail.",
       formTitle: "Jouw vraag",
       formHint: "Je accountnaam en e-mail worden automatisch meegestuurd.",
+      emailDirectHint: "Liever je eigen e-mailapp gebruiken?",
+      emailDirectCta: "Mail info@mijnlevenspad.com",
+      mailSubject: "Supportverzoek (gebruiker)",
     },
     mentorSupport: {
       label: "Hulp",
@@ -1216,6 +1219,9 @@ Je erkent en accepteert deze voorwaarden op het moment van registratie.
       description: "Vragen over verdiensten, beschikbaarheid, onboarding of coachtools. We reageren per e-mail.",
       formTitle: "Jouw vraag",
       formHint: "Je coachnaam en e-mail worden automatisch meegestuurd.",
+      emailDirectHint: "Liever je eigen e-mailapp gebruiken?",
+      emailDirectCta: "Mail info@mijnlevenspad.com",
+      mailSubject: "Supportverzoek (coach)",
     },
     userProfile: {
       title: "Jouw profiel",

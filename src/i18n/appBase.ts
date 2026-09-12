@@ -426,6 +426,9 @@ export const appEn = {
     description: "Send a question about bookings, payments, or your account. We will reply by email.",
     formTitle: "Your query",
     formHint: "Your account name and email are included automatically.",
+    emailDirectHint: "Prefer your own email app?",
+    emailDirectCta: "Email info@mijnlevenspad.com",
+    mailSubject: "Support request (user)",
   },
   mentorSupport: {
     label: "Help",
@@ -433,6 +436,9 @@ export const appEn = {
     description: "Ask about earnings, availability, onboarding, or the coach tools. We will reply by email.",
     formTitle: "Your query",
     formHint: "Your coach profile name and email are included automatically.",
+    emailDirectHint: "Prefer your own email app?",
+    emailDirectCta: "Email info@mijnlevenspad.com",
+    mailSubject: "Support request (coach)",
   },
   userRegister: {
     title: "User Registration",

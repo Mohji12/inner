@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { humanizeApiError } from "@/lib/humanizeApiError";
 import { toast } from "sonner";
 import type { SupportRole } from "@/api/contact";
+
+const SUPPORT_MAILBOX = "info@mijnlevenspad.com";
 
 export type SupportFormCopy = {
   fullName: string;
@@ -22,6 +25,9 @@ export type SupportFormCopy = {
   submit: string;
   submitting: string;
   success: string;
+  emailDirectHint?: string;
+  emailDirectCta?: string;
+  mailSubject?: string;
 };
 
 type PublicProps = {
@@ -68,6 +74,23 @@ export function SupportQueryForm(props: Props) {
   useEffect(() => {
     formStartedAt.current = Date.now() / 1000;
   }, []);
+
+  const mailtoHref = useMemo(() => {
+    if (props.mode !== "authenticated") return null;
+    const mailSubject = (subject.trim() || copy.mailSubject || "Support request").slice(0, 120);
+    const lines = [
+      message.trim() || "",
+      "",
+      "---",
+      `Name: ${props.accountName}`,
+      `Email: ${props.accountEmail}`,
+      phone.trim() ? `Phone: ${phone.trim()}` : null,
+    ].filter((line): line is string => line != null);
+    const params = new URLSearchParams();
+    params.set("subject", mailSubject);
+    params.set("body", lines.join("\n"));
+    return `mailto:${SUPPORT_MAILBOX}?${params.toString()}`;
+  }, [props, copy.mailSubject, subject, message, phone]);
 
   const mut = useMutation({
     mutationFn: async () => {
@@ -144,7 +167,6 @@ export function SupportQueryForm(props: Props) {
               autoComplete="email"
             />
           </div>
-          {/* Honeypot: visually hidden from people, still in the DOM for bots. */}
           <div
             aria-hidden="true"
             className="absolute -left-[9999px] top-auto h-0 w-0 overflow-hidden opacity-0"
@@ -217,9 +239,22 @@ export function SupportQueryForm(props: Props) {
         />
       </div>
 
-      <Button type="submit" disabled={!canSubmit} className="w-full sm:w-auto">
-        {mut.isPending ? copy.submitting : copy.submit}
-      </Button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <Button type="submit" disabled={!canSubmit} className="w-full sm:w-auto">
+          {mut.isPending ? copy.submitting : copy.submit}
+        </Button>
+        {props.mode === "authenticated" && mailtoHref && copy.emailDirectCta ? (
+          <Button asChild type="button" variant="outline" className="w-full sm:w-auto">
+            <a href={mailtoHref}>
+              <Mail className="mr-2 h-4 w-4" />
+              {copy.emailDirectCta}
+            </a>
+          </Button>
+        ) : null}
+      </div>
+      {props.mode === "authenticated" && copy.emailDirectHint ? (
+        <p className="text-xs text-muted-foreground">{copy.emailDirectHint}</p>
+      ) : null}
     </form>
   );
 }

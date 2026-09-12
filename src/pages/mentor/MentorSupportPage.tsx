@@ -50,6 +50,9 @@ const MentorSupportPage = () => {
                 submit: form.submit,
                 submitting: form.submitting,
                 success: form.success,
+                emailDirectHint: s.emailDirectHint,
+                emailDirectCta: s.emailDirectCta,
+                mailSubject: s.mailSubject,
               }}
               onSubmit={submitMentorSupport}
             />
