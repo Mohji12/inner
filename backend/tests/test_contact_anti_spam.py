@@ -32,7 +32,7 @@ class ContactAntiSpamTests(TestCase):
             now=now,
         )
         self.assertTrue(result.blocked)
-        self.assertFalse(result.silent)
+        self.assertTrue(result.silent)
         self.assertEqual(result.reason, "too_fast")
 
     def test_gibberish_like_screenshot_block(self) -> None:
@@ -43,6 +43,20 @@ class ContactAntiSpamTests(TestCase):
             message="Dsv2JCDKH5IcinePAwzyKgOuLywPy92bNqC8GMFY7wzTxR4UTGqcprM",
             website=None,
             form_started_at=now - 15,
+            now=now,
+        )
+        self.assertTrue(result.blocked)
+        self.assertTrue(result.silent)
+        self.assertEqual(result.reason, "gibberish")
+
+    def test_latest_spam_sample_block(self) -> None:
+        now = time.time()
+        result = evaluate_public_contact_spam(
+            full_name="zsMSEqMR7F",
+            subject="FFjFTtCqaX",
+            message="ux6e9HktxdOB72omjvix7gCX5gUjqFXMvRU4tI6ZGH2az8C9oBg50l0",
+            website="",
+            form_started_at=now - 20,
             now=now,
         )
         self.assertTrue(result.blocked)

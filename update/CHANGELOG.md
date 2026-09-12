@@ -12,16 +12,16 @@ Living log of work done on this project.
 
 - Honeypot field (`website`) — bots that fill it get a fake success, no email
 - Minimum form fill time (~3s) via `form_started_at`
-- Gibberish name/subject/message filter (blocks random alphanumeric spam)
-- Public contact rate limit tightened to 5/hour
+- Stronger gibberish filter (blocks `zsMSEqMR7F` / `FFjFTtCqaX`-style spam silently)
+- Public contact rate limit tightened to 3/hour
 - Key paths: `backend/services/contact_anti_spam.py`, `backend/api/v1/contact.py`, `src/components/SupportQueryForm.tsx`
 
 ### Support mail Reply-To = user/coach
 **Goal:** `support_contact_emails` get inquiries that reply to the real user/coach; OTP, session, and admin→coach stay on platform SMTP.
 
 - Support emails still send via SMTP From (`SMTP_FROM_EMAIL`) for deliverability
-- From display name shows the sender; `Reply-To` is their email (contact / user / coach)
-- OTP, admin announcements to coaches unchanged (platform SMTP only)
+- From display name is `Mijn Levenspad Support`; `Reply-To` is the user/coach email
+- Treat SMTP non-acceptance as a send failure; keep OTP/admin announcements on platform SMTP
 - Key paths: `backend/services/email_service.py`, `backend/services/support_inquiry_service.py`
 
 ## 2026-09-11

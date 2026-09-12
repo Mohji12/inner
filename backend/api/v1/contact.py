@@ -16,7 +16,7 @@ _SUCCESS = "Thank you! Your message was sent. Our team will get back to you by e
 
 
 @router.post("/support", response_model=SupportContactMessage, status_code=status.HTTP_200_OK)
-@limiter.limit("5/hour")
+@limiter.limit("3/hour")
 def submit_support_inquiry(
     request: Request,
     payload: SupportContactCreate,
@@ -30,8 +30,8 @@ def submit_support_inquiry(
         form_started_at=payload.form_started_at,
     )
     if spam.blocked:
-        if spam.silent:
-            # Honeypot: pretend success so bots do not adapt.
+        # Always pretend success for spam so bots do not learn the filter.
+        if spam.silent or spam.reason in {"honeypot", "gibberish", "too_fast", "missing_timing", "invalid_timing", "stale_timing"}:
             return SupportContactMessage(message=_SUCCESS)
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
