@@ -401,7 +401,12 @@ const MentorRegisterPage = () => {
                     {m.verifyDescription.replace("{email}", verifyCtx?.email ?? formData.email)}
                   </p>
                 </div>
-                <OtpEmailHint title={m.otpHintTitle} body={m.otpHintBody} />
+                <OtpEmailHint
+                  title={m.otpHintTitle}
+                  body={m.otpHintBody}
+                  badge={m.otpHintBadge}
+                  spamTip={m.otpHintSpamTip}
+                />
                 <div className="space-y-2">
                   <Label htmlFor="otp">{m.otpLabel}</Label>
                   <InputOTP
@@ -488,7 +493,12 @@ const MentorRegisterPage = () => {
 
                 <TabsContent value="account" className="mt-6 space-y-4">
                   <p className="text-sm text-muted-foreground">{m.accountHint}</p>
-                  <OtpEmailHint title={m.otpHintTitle} body={m.otpHintBody} />
+                  <OtpEmailHint
+                  title={m.otpHintTitle}
+                  body={m.otpHintBody}
+                  badge={m.otpHintBadge}
+                  spamTip={m.otpHintSpamTip}
+                />
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="space-y-2 md:col-span-2">
                       <Label htmlFor="name">{m.fullName}</Label>

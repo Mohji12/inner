@@ -64,6 +64,8 @@ export const appEn = {
     otpHintTitle: "Check your inbox for the verification code",
     otpHintBody:
       "We send a 6-digit OTP to your email. If it is not in your inbox within a few minutes, open Spam or Junk and mark the message as Not spam so the next emails arrive normally.",
+    otpHintBadge: "Important",
+    otpHintSpamTip: "Look in Inbox first — then Spam / Junk if it is missing",
   },
   securitySettings: {
     title: "Security Settings",
@@ -474,6 +476,8 @@ export const appEn = {
     otpHintTitle: "Check your inbox for the verification code",
     otpHintBody:
       "After you register we email a 6-digit OTP. Open your inbox first. If you do not see it within a few minutes, check Spam or Junk and mark the message as Not spam so future emails arrive in your inbox.",
+    otpHintBadge: "Important",
+    otpHintSpamTip: "Look in Inbox first — then Spam / Junk if it is missing",
     helpTitle: "How to register",
     helpIntro: "Follow these steps to create your account and start booking sessions.",
     helpStep1: "Fill in your full name, email, phone number, and a strong password (at least 8 characters).",
@@ -582,6 +586,8 @@ export const appEn = {
     otpHintTitle: "Check your inbox for the verification code",
     otpHintBody:
       "After you create your coach account we email a 6-digit OTP. Open your inbox first. If you do not see it within a few minutes, check Spam or Junk and mark the message as Not spam so future emails arrive in your inbox.",
+    otpHintBadge: "Important",
+    otpHintSpamTip: "Look in Inbox first — then Spam / Junk if it is missing",
     onboardingPaymentPlanLabel: "Onboarding fee payment",
     onboardingPayOnce: "Pay once — €{amount} (incl. tax)",
     onboardingPayInstallments: "Pay in 2 installments — €{amount} now, then €{amount} later",

@@ -163,7 +163,12 @@ const UserRegisterPage = () => {
                     {a.verifyDescription.replace("{email}", verifyCtx?.email ?? formData.email)}
                   </p>
                 </div>
-                <OtpEmailHint title={a.otpHintTitle} body={a.otpHintBody} />
+                <OtpEmailHint
+                  title={a.otpHintTitle}
+                  body={a.otpHintBody}
+                  badge={a.otpHintBadge}
+                  spamTip={a.otpHintSpamTip}
+                />
                 <div className="space-y-2">
                   <Label htmlFor="otp">{a.otpLabel}</Label>
                   <InputOTP
@@ -207,7 +212,12 @@ const UserRegisterPage = () => {
               </div>
             ) : (
               <form lang={htmlLang} onSubmit={(e) => void onSubmit(e)} className="grid grid-cols-1 gap-5">
-                <OtpEmailHint title={a.otpHintTitle} body={a.otpHintBody} />
+                <OtpEmailHint
+                  title={a.otpHintTitle}
+                  body={a.otpHintBody}
+                  badge={a.otpHintBadge}
+                  spamTip={a.otpHintSpamTip}
+                />
                 <div className="space-y-2">
                   <Label htmlFor="name">{a.fullName}</Label>
                   <Input

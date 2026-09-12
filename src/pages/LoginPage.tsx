@@ -229,7 +229,12 @@ const LoginPage = () => {
           {a.verifyEmailDescription.replace("{email}", email.trim())}
         </p>
       </div>
-      <OtpEmailHint title={a.otpHintTitle} body={a.otpHintBody} />
+      <OtpEmailHint
+        title={a.otpHintTitle}
+        body={a.otpHintBody}
+        badge={a.otpHintBadge}
+        spamTip={a.otpHintSpamTip}
+      />
       <form onSubmit={(e) => void onEmailOtpSubmit(e)} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email-otp">{a.verifyEmailCodeLabel}</Label>
