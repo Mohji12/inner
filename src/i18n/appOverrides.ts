@@ -656,6 +656,8 @@ const baseOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
       otpHintTitle: "Controleer je inbox voor de verificatiecode",
       otpHintBody:
         "Na registratie sturen we een 6-cijferige OTP naar je e-mail. Kijk eerst in je inbox. Zie je hem niet binnen een paar minuten, open dan Spam of Ongewenst en markeer het bericht als Geen spam, zodat volgende mails wel aankomen.",
+      otpHintBadge: "Belangrijk",
+      otpHintSpamTip: "Kijk eerst in Inbox — daarna Spam / Ongewenst als hij ontbreekt",
       otpLabel: "Verificatiecode",
       verifySubmit: "Verifiëren & doorgaan",
       resendCode: "Code opnieuw sturen",
