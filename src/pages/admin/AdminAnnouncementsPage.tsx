@@ -1,6 +1,11 @@
 import { FormEvent, useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createAdminAnnouncement, fetchAdminAnnouncements, fetchAdminMentors } from "@/api/admin";
+import {
+  createAdminAnnouncement,
+  fetchAdminAnnouncements,
+  fetchAdminMentors,
+  fetchAdminUsers,
+} from "@/api/admin";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,7 +15,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useLanguage } from "@/i18n/LanguageContext";
 import { toast } from "sonner";
 
-type Audience = "all" | "one";
+type TargetGroup = "coach" | "user";
+type AudienceScope = "all" | "one";
 
 export default function AdminAnnouncementsPage() {
   const { t } = useLanguage();
@@ -19,9 +25,11 @@ export default function AdminAnnouncementsPage() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [sendEmail, setSendEmail] = useState(true);
-  const [audience, setAudience] = useState<Audience>("all");
+  const [targetGroup, setTargetGroup] = useState<TargetGroup>("coach");
+  const [audience, setAudience] = useState<AudienceScope>("all");
   const [mentorId, setMentorId] = useState("");
-  const [coachQuery, setCoachQuery] = useState("");
+  const [userId, setUserId] = useState("");
+  const [pickerQuery, setPickerQuery] = useState("");
 
   const listQ = useQuery({
     queryKey: ["admin", "announcements"],
@@ -29,14 +37,25 @@ export default function AdminAnnouncementsPage() {
   });
 
   const mentorsQ = useQuery({
-    queryKey: ["admin", "mentors", "announcement-picker", coachQuery],
-    queryFn: () => fetchAdminMentors(0, 100, coachQuery.trim() || undefined),
-    enabled: audience === "one",
+    queryKey: ["admin", "mentors", "announcement-picker", pickerQuery],
+    queryFn: () => fetchAdminMentors(0, 100, pickerQuery.trim() || undefined),
+    enabled: targetGroup === "coach" && audience === "one",
+  });
+
+  const usersQ = useQuery({
+    queryKey: ["admin", "users", "announcement-picker", pickerQuery],
+    queryFn: () => fetchAdminUsers(0, 100, pickerQuery.trim() || undefined),
+    enabled: targetGroup === "user" && audience === "one",
   });
 
   const selectedCoach = useMemo(
     () => (mentorsQ.data?.items ?? []).find((m) => m.id === mentorId) ?? null,
     [mentorsQ.data, mentorId],
+  );
+
+  const selectedUser = useMemo(
+    () => (usersQ.data?.items ?? []).find((u) => u.id === userId) ?? null,
+    [usersQ.data, userId],
   );
 
   const createMut = useMutation({
@@ -45,7 +64,9 @@ export default function AdminAnnouncementsPage() {
         title: title.trim(),
         body: body.trim(),
         send_email: sendEmail,
-        mentor_id: audience === "one" ? mentorId : null,
+        audience: targetGroup,
+        mentor_id: targetGroup === "coach" && audience === "one" ? mentorId : null,
+        user_id: targetGroup === "user" && audience === "one" ? userId : null,
       }),
     onSuccess: (row) => {
       const emails = row.emails_sent ?? 0;
@@ -65,22 +86,25 @@ export default function AdminAnnouncementsPage() {
             .replace("{emails}", String(emails))
             .replace("{recipients}", String(recipients)),
         );
-      } else if (audience === "one" && selectedCoach) {
+      } else if (audience === "one") {
+        const name =
+          targetGroup === "coach"
+            ? selectedCoach?.full_name ?? ""
+            : selectedUser?.full_name ?? "";
         toast.success(
-          d.announcementSentOne
-            .replace("{name}", selectedCoach.full_name)
-            .replace("{emails}", String(emails)),
+          d.announcementSentOne.replace("{name}", name).replace("{emails}", String(emails)),
         );
       } else {
+        const sentTpl =
+          targetGroup === "user" ? d.announcementSentUsers : d.announcementSent;
         toast.success(
-          d.announcementSent
-            .replace("{recipients}", String(recipients))
-            .replace("{emails}", String(emails)),
+          sentTpl.replace("{recipients}", String(recipients)).replace("{emails}", String(emails)),
         );
       }
       setTitle("");
       setBody("");
       setMentorId("");
+      setUserId("");
       void queryClient.invalidateQueries({ queryKey: ["admin", "announcements"] });
     },
     onError: (e: Error) => toast.error(e.message || d.announcementFailed),
@@ -92,11 +116,23 @@ export default function AdminAnnouncementsPage() {
       toast.error(d.announcementRequired);
       return;
     }
-    if (audience === "one" && !mentorId) {
+    if (audience === "one" && targetGroup === "coach" && !mentorId) {
       toast.error(d.announcementCoachRequired);
       return;
     }
+    if (audience === "one" && targetGroup === "user" && !userId) {
+      toast.error(d.announcementUserRequired);
+      return;
+    }
     createMut.mutate();
+  };
+
+  const switchTargetGroup = (next: TargetGroup) => {
+    setTargetGroup(next);
+    setAudience("all");
+    setMentorId("");
+    setUserId("");
+    setPickerQuery("");
   };
 
   return (
@@ -114,6 +150,32 @@ export default function AdminAnnouncementsPage() {
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4 max-w-2xl">
             <fieldset className="space-y-2">
+              <Legend className="text-sm font-medium">{d.announcementTargetGroup}</Legend>
+              <div className="flex flex-wrap gap-4 text-sm">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="target-group"
+                    checked={targetGroup === "coach"}
+                    onChange={() => switchTargetGroup("coach")}
+                    className="h-4 w-4"
+                  />
+                  {d.announcementTargetCoaches}
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="target-group"
+                    checked={targetGroup === "user"}
+                    onChange={() => switchTargetGroup("user")}
+                    className="h-4 w-4"
+                  />
+                  {d.announcementTargetUsers}
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset className="space-y-2">
               <Legend className="text-sm font-medium">{d.announcementAudience}</Legend>
               <div className="flex flex-wrap gap-4 text-sm">
                 <label className="flex items-center gap-2">
@@ -124,10 +186,13 @@ export default function AdminAnnouncementsPage() {
                     onChange={() => {
                       setAudience("all");
                       setMentorId("");
+                      setUserId("");
                     }}
                     className="h-4 w-4"
                   />
-                  {d.announcementAudienceAll}
+                  {targetGroup === "user"
+                    ? d.announcementAudienceAllUsers
+                    : d.announcementAudienceAll}
                 </label>
                 <label className="flex items-center gap-2">
                   <input
@@ -137,18 +202,20 @@ export default function AdminAnnouncementsPage() {
                     onChange={() => setAudience("one")}
                     className="h-4 w-4"
                   />
-                  {d.announcementAudienceOne}
+                  {targetGroup === "user"
+                    ? d.announcementAudienceOneUser
+                    : d.announcementAudienceOne}
                 </label>
               </div>
             </fieldset>
 
-            {audience === "one" ? (
+            {audience === "one" && targetGroup === "coach" ? (
               <div className="space-y-2">
                 <Label htmlFor="announcement-coach-search">{d.announcementSelectCoach}</Label>
                 <Input
                   id="announcement-coach-search"
-                  value={coachQuery}
-                  onChange={(e) => setCoachQuery(e.target.value)}
+                  value={pickerQuery}
+                  onChange={(e) => setPickerQuery(e.target.value)}
                   placeholder={d.announcementSelectCoachPlaceholder}
                 />
                 <select
@@ -172,6 +239,36 @@ export default function AdminAnnouncementsPage() {
               </div>
             ) : null}
 
+            {audience === "one" && targetGroup === "user" ? (
+              <div className="space-y-2">
+                <Label htmlFor="announcement-user-search">{d.announcementSelectUser}</Label>
+                <Input
+                  id="announcement-user-search"
+                  value={pickerQuery}
+                  onChange={(e) => setPickerQuery(e.target.value)}
+                  placeholder={d.announcementSelectUserPlaceholder}
+                />
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={userId}
+                  onChange={(e) => setUserId(e.target.value)}
+                  required
+                >
+                  <option value="">{d.announcementSelectUserPlaceholder}</option>
+                  {(usersQ.data?.items ?? []).map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.full_name} — {u.email}
+                    </option>
+                  ))}
+                </select>
+                {selectedUser ? (
+                  <p className="text-xs text-muted-foreground">
+                    {selectedUser.full_name} · {selectedUser.email}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
             <div className="space-y-2">
               <Label htmlFor="announcement-title">{d.announcementTitle}</Label>
               <Input
@@ -189,7 +286,11 @@ export default function AdminAnnouncementsPage() {
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 rows={6}
-                placeholder={d.announcementBodyPlaceholder}
+                placeholder={
+                  targetGroup === "user"
+                    ? d.announcementBodyPlaceholderUsers
+                    : d.announcementBodyPlaceholder
+                }
               />
             </div>
             <label className="flex items-center gap-2 text-sm">
@@ -199,14 +300,24 @@ export default function AdminAnnouncementsPage() {
                 onChange={(e) => setSendEmail(e.target.checked)}
                 className="h-4 w-4 rounded border"
               />
-              {audience === "one" ? d.announcementSendEmailOne : d.announcementSendEmail}
+              {audience === "one"
+                ? targetGroup === "user"
+                  ? d.announcementSendEmailOneUser
+                  : d.announcementSendEmailOne
+                : targetGroup === "user"
+                  ? d.announcementSendEmailUsers
+                  : d.announcementSendEmail}
             </label>
             <Button type="submit" className="gradient-cta text-white" disabled={createMut.isPending}>
               {createMut.isPending
                 ? d.announcementSending
                 : audience === "one"
-                  ? d.announcementSubmitOne
-                  : d.announcementSubmit}
+                  ? targetGroup === "user"
+                    ? d.announcementSubmitOneUser
+                    : d.announcementSubmitOne
+                  : targetGroup === "user"
+                    ? d.announcementSubmitUsers
+                    : d.announcementSubmit}
             </Button>
           </form>
         </CardContent>
@@ -226,6 +337,7 @@ export default function AdminAnnouncementsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>{d.announcementColDate}</TableHead>
+                <TableHead>{d.announcementColAudience}</TableHead>
                 <TableHead>{d.announcementTitle}</TableHead>
                 <TableHead>{d.announcementColRecipients}</TableHead>
                 <TableHead>{d.announcementColEmails}</TableHead>
@@ -237,9 +349,16 @@ export default function AdminAnnouncementsPage() {
                   <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                     {new Date(row.created_at).toLocaleString()}
                   </TableCell>
+                  <TableCell className="text-sm">
+                    {(row.audience || "coach") === "user"
+                      ? d.announcementTargetUsers
+                      : d.announcementTargetCoaches}
+                  </TableCell>
                   <TableCell>
                     <p className="font-medium">{row.title}</p>
-                    <p className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap line-clamp-3">{row.body}</p>
+                    <p className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap line-clamp-3">
+                      {row.body}
+                    </p>
                   </TableCell>
                   <TableCell>{row.recipient_count}</TableCell>
                   <TableCell>{row.emails_sent}</TableCell>
@@ -247,7 +366,7 @@ export default function AdminAnnouncementsPage() {
               ))}
               {!listQ.isLoading && (listQ.data?.items?.length ?? 0) === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     {d.announcementEmpty}
                   </TableCell>
                 </TableRow>

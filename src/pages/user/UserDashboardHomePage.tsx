@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { ArrowRight, CalendarDays, Gift, MessageSquare, Receipt, Users, Wallet } from "lucide-react";
 import { useLanguage } from "@/i18n/LanguageContext";
@@ -26,6 +26,7 @@ import type { Booking, MentorDetail, PlatformPricing } from "@/api/types";
 import { bookingAmountEur, slotPriceForDuration } from "@/api/types";
 import { getMyWallet } from "@/api/wallets";
 import { listChatInvoices } from "@/api/chat";
+import { getNotifications, markNotificationAsRead } from "@/api/notifications";
 import { formatDateLocal, formatTimeLocal } from "@/lib/timeZone";
 import { useEffectiveTimeZone } from "@/hooks/useEffectiveTimeZone";
 
@@ -34,6 +35,7 @@ const UserDashboardHomePage = () => {
   const du = t.app.dashboardUser;
   const personName = useDashboardPerson(du.role);
   const effectiveTimeZone = useEffectiveTimeZone();
+  const queryClient = useQueryClient();
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ["user-dashboard-stats"],
@@ -87,6 +89,28 @@ const UserDashboardHomePage = () => {
     queryFn: listChatInvoices,
   });
 
+  const announcementsQ = useQuery({
+    queryKey: ["user", "admin-announcements"],
+    queryFn: () => getNotifications(20, 0),
+    refetchInterval: 30_000,
+  });
+
+  const adminMessages = useMemo(
+    () =>
+      (announcementsQ.data?.notifications ?? []).filter(
+        (n) => n.type === "admin_announcement" && !n.is_read,
+      ),
+    [announcementsQ.data],
+  );
+
+  const markReadMut = useMutation({
+    mutationFn: (id: string) => markNotificationAsRead(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["user", "admin-announcements"] });
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+
   const chartData = useMemo(() => {
     const data = spendingQ.data;
     if (!data) return [];
@@ -116,6 +140,36 @@ const UserDashboardHomePage = () => {
         <h1 className="text-3xl font-serif font-bold">{du.welcomeBackNamed.replace("{name}", personName)}</h1>
         <p className="text-muted-foreground mt-1">{du.overviewSub}</p>
       </div>
+
+      {adminMessages.length > 0 ? (
+        <Card className="border-accent/40 bg-accent/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">{du.adminMessagesTitle}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {adminMessages.map((msg) => (
+              <div key={msg.id} className="rounded-lg border border-border/60 bg-background/80 p-4">
+                <p className="font-medium">{msg.title}</p>
+                <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{msg.body}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={markReadMut.isPending}
+                    onClick={() => markReadMut.mutate(msg.id)}
+                  >
+                    {du.adminMessageMarkRead}
+                  </Button>
+                  <Button asChild type="button" size="sm" variant="ghost">
+                    <Link to="/user/notifications">{du.adminMessageViewAll}</Link>
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {welcomePromoQ.data?.eligible && welcomePromoQ.data.code ? (
         <Card className="border-primary/30 bg-primary/5">

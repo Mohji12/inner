@@ -7,6 +7,16 @@ Living log of work done on this project.
 
 ## 2026-09-12
 
+### Admin messages to users
+**Goal:** Let admins email/message users the same way as coaches.
+
+- Extended announcements with `audience` (`coach` | `user`) and optional `user_id`
+- In-app notification + optional SMTP for all/one active verified user
+- Admin UI: choose Coaches or Users, then all/one recipient
+- User dashboard shows unread admin messages (like coach dashboard)
+- Schema: `admin_announcements.audience` via startup ensure
+- Key paths: `backend/services/admin_announcement_service.py`, `src/pages/admin/AdminAnnouncementsPage.tsx`, `src/pages/user/UserDashboardHomePage.tsx`
+
 ### Contact form anti-spam
 **Goal:** Stop bot spam from the public website contact form flooding support inboxes.
 

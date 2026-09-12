@@ -514,14 +514,19 @@ class AdminAnnouncementCreate(BaseModel):
     title: str
     body: str
     send_email: bool = True
-    #: If set, message goes only to this coach (in-app + optional email).
+    #: "coach" (default) or "user"
+    audience: str = "coach"
+    #: If set with audience=coach, message goes only to this coach.
     mentor_id: str | None = None
+    #: If set with audience=user, message goes only to this user.
+    user_id: str | None = None
 
 
 class AdminAnnouncementRow(BaseModel):
     id: str
     title: str
     body: str
+    audience: str = "coach"
     recipient_count: int
     emails_sent: int
     created_at: datetime

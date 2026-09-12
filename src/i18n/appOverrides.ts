@@ -972,6 +972,9 @@ Je erkent en accepteert deze voorwaarden op het moment van registratie.
       kpiTotalSpentHint: "Levenslange investering",
       kpiActiveChats: "Actieve chats",
       kpiActiveChatsHint: "Lopende gesprekken",
+      adminMessagesTitle: "Berichten van beheer",
+      adminMessageMarkRead: "Markeer als gelezen",
+      adminMessageViewAll: "Meldingen openen",
     },
     dashboardMentor: {
       role: "Coach",

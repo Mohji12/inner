@@ -2381,7 +2381,9 @@ def admin_create_announcement(
             title=payload.title,
             body=payload.body,
             send_email=payload.send_email,
+            audience=payload.audience or "coach",
             mentor_id=payload.mentor_id,
+            user_id=payload.user_id,
         )
     except ValueError as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
@@ -2389,6 +2391,7 @@ def admin_create_announcement(
         id=row.id,
         title=row.title,
         body=row.body,
+        audience=getattr(row, "audience", None) or "coach",
         recipient_count=row.recipient_count,
         emails_sent=row.emails_sent,
         created_at=row.created_at,
@@ -2412,6 +2415,7 @@ def admin_list_announcements(
                 id=r.id,
                 title=r.title,
                 body=r.body,
+                audience=getattr(r, "audience", None) or "coach",
                 recipient_count=r.recipient_count,
                 emails_sent=r.emails_sent,
                 created_at=r.created_at,

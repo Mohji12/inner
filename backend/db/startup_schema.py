@@ -890,13 +890,14 @@ def ensure_mentor_presence_tracking() -> None:
 
 
 def ensure_admin_announcements_table() -> None:
-    """Admin → coach broadcast messages history."""
+    """Admin → coach/user broadcast messages history."""
     ddl = """
     CREATE TABLE IF NOT EXISTS admin_announcements (
         id CHAR(36) NOT NULL PRIMARY KEY,
         admin_id CHAR(36) NULL,
         title VARCHAR(255) NOT NULL,
         body TEXT NOT NULL,
+        audience VARCHAR(16) NOT NULL DEFAULT 'coach',
         recipient_count INT NOT NULL DEFAULT 0,
         emails_sent INT NOT NULL DEFAULT 0,
         created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -905,6 +906,9 @@ def ensure_admin_announcements_table() -> None:
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """
     _execute_ddl(ddl)
+    _safe_add_column(
+        "ALTER TABLE admin_announcements ADD COLUMN audience VARCHAR(16) NOT NULL DEFAULT 'coach'"
+    )
 
 
 def ensure_mentor_availability_windows_table() -> None:

@@ -7,7 +7,7 @@ from db.session import Base
 
 
 class AdminAnnouncement(Base):
-    """Message posted by an admin and broadcast to coaches."""
+    """Message posted by an admin and broadcast to coaches or users."""
 
     __tablename__ = "admin_announcements"
 
@@ -17,6 +17,8 @@ class AdminAnnouncement(Base):
     )
     title: Mapped[str] = mapped_column(String(255))
     body: Mapped[str] = mapped_column(Text)
+    #: "coach" (default) or "user"
+    audience: Mapped[str] = mapped_column(String(16), default="coach")
     recipient_count: Mapped[int] = mapped_column(Integer, default=0)
     emails_sent: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

@@ -1,21 +1,26 @@
-"""Admin broadcast messages to coaches (in-app notification + email)."""
+"""Admin broadcast messages to coaches or users (in-app notification + email)."""
 from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
+from typing import Literal
 
 from sqlalchemy.orm import Session
 
 from core.security import new_uuid
 from models.admin_announcement import AdminAnnouncement
 from models.mentor import Mentor
+from models.user import User
 from services.email_service import send_plain_emails
 from services.notification_service import create_notification
 
 logger = logging.getLogger(__name__)
 
 ANNOUNCEMENT_TYPE = "admin_announcement"
-DASHBOARD_LINK = "/mentor/dashboard"
+Audience = Literal["coach", "user"]
+
+COACH_DASHBOARD_LINK = "/mentor/dashboard"
+USER_DASHBOARD_LINK = "/user/dashboard"
 
 
 def _coach_email_parts(*, coaches: list[Mentor], title: str, body: str) -> list[tuple[str, str, str]]:
@@ -42,6 +47,63 @@ def _coach_email_parts(*, coaches: list[Mentor], title: str, body: str) -> list[
     return items
 
 
+def _user_email_parts(*, users: list[User], title: str, body: str) -> list[tuple[str, str, str]]:
+    subject = f"Admin message: {title}"
+    items: list[tuple[str, str, str]] = []
+    for user in users:
+        mail_body = "\n".join(
+            [
+                f"Hello {user.full_name},",
+                "",
+                "You have a new message from the Mijn Levenspad admin team:",
+                "",
+                title,
+                "",
+                body,
+                "",
+                "Please open your dashboard to view it:",
+                "https://mijnlevenspad.com/user/dashboard",
+                "",
+                "— Mijn Levenspad",
+            ]
+        )
+        items.append(((user.email or "").strip(), subject, mail_body))
+    return items
+
+
+def _active_coaches(db: Session, *, mentor_id: str | None) -> list[Mentor]:
+    if mentor_id:
+        coach = db.query(Mentor).filter(Mentor.id == mentor_id.strip()).first()
+        if not coach:
+            raise ValueError("Coach not found")
+        return [coach]
+    return (
+        db.query(Mentor)
+        .filter(
+            Mentor.is_approved.is_(True),
+            Mentor.status == "active",
+            Mentor.email_verified.is_(True),
+        )
+        .all()
+    )
+
+
+def _active_users(db: Session, *, user_id: str | None) -> list[User]:
+    if user_id:
+        user = db.query(User).filter(User.id == user_id.strip()).first()
+        if not user:
+            raise ValueError("User not found")
+        return [user]
+    return (
+        db.query(User)
+        .filter(
+            User.account_status == "active",
+            User.email_verified.is_(True),
+        )
+        .all()
+    )
+
+
 def broadcast_admin_announcement(
     db: Session,
     *,
@@ -49,28 +111,32 @@ def broadcast_admin_announcement(
     title: str,
     body: str,
     send_email: bool = True,
+    audience: Audience = "coach",
     mentor_id: str | None = None,
+    user_id: str | None = None,
 ) -> tuple[AdminAnnouncement, str | None]:
     title_clean = title.strip()
     body_clean = body.strip()
     if not title_clean or not body_clean:
         raise ValueError("Title and message body are required")
 
-    if mentor_id:
-        coach = db.query(Mentor).filter(Mentor.id == mentor_id.strip()).first()
-        if not coach:
-            raise ValueError("Coach not found")
-        coaches = [coach]
+    audience_clean: Audience = "user" if (audience or "coach").strip().lower() == "user" else "coach"
+    mentor_id_clean = (mentor_id or "").strip() or None
+    user_id_clean = (user_id or "").strip() or None
+
+    if audience_clean == "coach" and user_id_clean:
+        raise ValueError("user_id is only valid when audience is user")
+    if audience_clean == "user" and mentor_id_clean:
+        raise ValueError("mentor_id is only valid when audience is coach")
+
+    if audience_clean == "coach":
+        recipients = _active_coaches(db, mentor_id=mentor_id_clean)
+        link = COACH_DASHBOARD_LINK
+        empty_email_warning = "No coaches matched this send, so no emails were delivered."
     else:
-        coaches = (
-            db.query(Mentor)
-            .filter(
-                Mentor.is_approved.is_(True),
-                Mentor.status == "active",
-                Mentor.email_verified.is_(True),
-            )
-            .all()
-        )
+        recipients = _active_users(db, user_id=user_id_clean)
+        link = USER_DASHBOARD_LINK
+        empty_email_warning = "No users matched this send, so no emails were delivered."
 
     now = datetime.now(timezone.utc)
     announcement = AdminAnnouncement(
@@ -78,23 +144,35 @@ def broadcast_admin_announcement(
         admin_id=admin_id,
         title=title_clean,
         body=body_clean,
-        recipient_count=len(coaches),
+        audience=audience_clean,
+        recipient_count=len(recipients),
         emails_sent=0,
         created_at=now,
     )
     db.add(announcement)
     db.flush()
 
-    for coach in coaches:
-        create_notification(
-            db,
-            type=ANNOUNCEMENT_TYPE,
-            title=title_clean,
-            body=body_clean,
-            link=DASHBOARD_LINK,
-            mentor_id=coach.id,
-            commit=False,
-        )
+    for recipient in recipients:
+        if audience_clean == "coach":
+            create_notification(
+                db,
+                type=ANNOUNCEMENT_TYPE,
+                title=title_clean,
+                body=body_clean,
+                link=link,
+                mentor_id=recipient.id,
+                commit=False,
+            )
+        else:
+            create_notification(
+                db,
+                type=ANNOUNCEMENT_TYPE,
+                title=title_clean,
+                body=body_clean,
+                link=link,
+                user_id=recipient.id,
+                commit=False,
+            )
 
     # Persist in-app notifications before SMTP so a mail timeout cannot roll them back.
     db.commit()
@@ -102,15 +180,25 @@ def broadcast_admin_announcement(
 
     email_warning: str | None = None
     emails_sent = 0
-    if send_email and coaches:
-        emails_sent, email_warning = send_plain_emails(
-            _coach_email_parts(coaches=coaches, title=title_clean, body=body_clean)
-        )
+    if send_email and recipients:
+        if audience_clean == "coach":
+            email_parts = _coach_email_parts(
+                coaches=recipients,  # type: ignore[arg-type]
+                title=title_clean,
+                body=body_clean,
+            )
+        else:
+            email_parts = _user_email_parts(
+                users=recipients,  # type: ignore[arg-type]
+                title=title_clean,
+                body=body_clean,
+            )
+        emails_sent, email_warning = send_plain_emails(email_parts)
         announcement.emails_sent = emails_sent
         db.commit()
         db.refresh(announcement)
-    elif send_email and not coaches:
-        email_warning = "No coaches matched this send, so no emails were delivered."
+    elif send_email and not recipients:
+        email_warning = empty_email_warning
 
     return announcement, email_warning
 

@@ -886,6 +886,7 @@ export interface AdminAnnouncementRow {
   id: string;
   title: string;
   body: string;
+  audience?: "coach" | "user" | string;
   recipient_count: number;
   emails_sent: number;
   created_at: string;
@@ -907,7 +908,9 @@ export function createAdminAnnouncement(body: {
   title: string;
   body: string;
   send_email?: boolean;
+  audience?: "coach" | "user";
   mentor_id?: string | null;
+  user_id?: string | null;
 }) {
   return apiFetch<AdminAnnouncementRow>(`/admin/announcements`, {
     method: "POST",
@@ -915,7 +918,9 @@ export function createAdminAnnouncement(body: {
       title: body.title,
       body: body.body,
       send_email: body.send_email ?? true,
+      audience: body.audience ?? "coach",
       mentor_id: body.mentor_id || null,
+      user_id: body.user_id || null,
     }),
   });
 }
