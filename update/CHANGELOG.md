@@ -31,6 +31,20 @@ Living log of work done on this project.
 - Prefills subject/body (and account name/email) via `mailto:`
 - Key paths: `src/components/SupportQueryForm.tsx`, `src/pages/user/UserSupportPage.tsx`, `src/pages/mentor/MentorSupportPage.tsx`
 
+### Bold OTP inbox hint on register/login
+**Goal:** Make the “check your inbox for the verification code” notice impossible to miss.
+
+- Restyled `OtpEmailHint` with amber attention badge, stronger border, and spam tip line
+- Used on user/coach register and login verify flows
+- Key paths: `src/components/OtpEmailHint.tsx`
+
+### Session extend: wallet or Mollie
+**Goal:** Users can pay to extend an ongoing session from wallet or via Mollie.
+
+- New `POST /chat/sessions/{id}/extend/wallet` debits wallet and adds minutes instantly
+- Extend dialog shows Pay from wallet and Pay with Mollie options
+- Key paths: `backend/services/chat_service.py`, `src/components/chat/SessionExtendDialog.tsx`
+
 ## 2026-09-11
 
 ### Bulk-verify all user emails

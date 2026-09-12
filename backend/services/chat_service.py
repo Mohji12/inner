@@ -343,6 +343,139 @@ def extend_session_checkout(
     return session, checkout_url, purchase.transaction_id
 
 
+def extend_session_with_wallet(
+    db: Session,
+    *,
+    session_id: str,
+    user_id: str,
+    minutes: int,
+) -> tuple[ChatSession, str, str]:
+    """Pay for session extension from wallet credits (instant, no Mollie). Returns session, amount, currency."""
+    from core.chat_states import CHAT_PURCHASE_SUCCEEDED
+    from models.chat_purchase import ChatPurchase
+    from models.wallet import Wallet
+    from services.ledger_service import (
+        ACCOUNT_USER_AVAILABLE,
+        OWNER_USER,
+        LedgerError,
+        get_account_balance,
+        get_or_create_wallet_account,
+        q2,
+        spend_user_available_for_chat_purchase,
+    )
+    from services.live_session_service import (
+        freeze_session_timer_for_payment,
+        resume_frozen_session_timer,
+    )
+    from services.mollie_service import _apply_chat_purchase_paid
+    from services.wallet_service import WalletError, debit_wallet, get_or_create_wallet
+
+    if minutes < 1:
+        raise ChatError("Minutes must be at least 1", "invalid_minutes")
+
+    session = (
+        db.query(ChatSession)
+        .filter(ChatSession.id == session_id)
+        .with_for_update()
+        .first()
+    )
+    if not session:
+        raise ChatError("Session not found", "session_not_found")
+    if session.user_id != user_id:
+        raise ChatError("Forbidden", "forbidden")
+
+    mentor = db.query(Mentor).filter(Mentor.id == session.mentor_id).first()
+    if not mentor:
+        raise ChatError("Mentor not found", "mentor_not_found")
+    if minutes < mentor.chat_min_purchase_minutes:
+        raise ChatError(
+            f"Minimum purchase is {mentor.chat_min_purchase_minutes} minutes",
+            "below_min_minutes",
+        )
+
+    rate_per_min = effective_chat_price_per_minute_eur(mentor)
+    session_amount = (rate_per_min * minutes).quantize(Decimal("0.01"))
+    amount_eur = (session_amount + Decimal(str(settings.chat_session_transaction_fee_eur))).quantize(
+        Decimal("0.01")
+    )
+    amount_eur = q2(amount_eur)
+    currency = "EUR"
+
+    wallet = get_or_create_wallet(db, user_id, commit=False)
+    wallet = db.query(Wallet).filter(Wallet.id == wallet.id).with_for_update().first() or wallet
+    if amount_eur > 0 and q2(wallet.balance) < amount_eur:
+        raise ChatError("Insufficient wallet balance", "insufficient_wallet")
+
+    user_available = get_or_create_wallet_account(
+        db,
+        owner_type=OWNER_USER,
+        owner_id=user_id,
+        account_kind=ACCOUNT_USER_AVAILABLE,
+        currency=currency,
+    )
+    if amount_eur > 0 and get_account_balance(db, user_available.id) < amount_eur:
+        raise ChatError("Insufficient wallet balance", "insufficient_wallet")
+
+    freeze_session_timer_for_payment(session)
+    session.updated_at = _utcnow()
+
+    purchase_id = new_uuid()
+    txn_id = f"wallet_{purchase_id.replace('-', '')}"
+
+    try:
+        if amount_eur > 0:
+            spend_user_available_for_chat_purchase(
+                db,
+                user_id=user_id,
+                amount=amount_eur,
+                currency=currency,
+                purchase_id=purchase_id,
+                session_id=session.id,
+            )
+            debit_wallet(
+                db,
+                user_id=user_id,
+                amount=amount_eur,
+                description=f"Chat extension {minutes} min",
+                reference_type="chat_purchase",
+                reference_id=purchase_id,
+                commit=False,
+            )
+        purchase = ChatPurchase(
+            id=purchase_id,
+            session_id=session.id,
+            user_id=user_id,
+            minutes=minutes,
+            amount=amount_eur,
+            amount_base_eur=amount_eur,
+            currency=currency,
+            fx_rate_used=None,
+            status=CHAT_PURCHASE_SUCCEEDED,
+            transaction_id=txn_id,
+            created_at=_utcnow(),
+        )
+        db.add(purchase)
+        db.flush()
+        _apply_chat_purchase_paid(db, purchase)
+    except (LedgerError, WalletError) as e:
+        resume_frozen_session_timer(session, add_minutes=0)
+        msg = str(e)
+        if "Insufficient" in msg:
+            raise ChatError("Insufficient wallet balance", "insufficient_wallet") from e
+        raise ChatError(msg, "wallet_pay_failed") from e
+    except Exception:
+        resume_frozen_session_timer(session, add_minutes=0)
+        raise
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    db.refresh(session)
+    return session, str(amount_eur), currency
+
+
 def get_session_for_participant(db: Session, session_id: str, user_id: str | None, mentor_id: str | None) -> ChatSession:
     session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
     if not session:

@@ -1499,6 +1499,11 @@ export const appEn = {
     payAndContinue: "Pay & continue",
     payAndExtend: "Pay & extend",
     payWithAmount: "{action} — EUR {amount}",
+    choosePaymentMethod: "Choose how to pay",
+    payFromWalletAmount: "Pay from wallet — EUR {amount}",
+    payingFromWallet: "Paying from wallet…",
+    payWithMollieAmount: "{action} with Mollie — EUR {amount}",
+    addMoneyToWallet: "Add money to wallet",
     redirectingCheckout: "Redirecting to Mollie checkout",
     timerPausedForPayment:
       "Session timer is paused while you complete payment. Remaining time will resume after checkout.",

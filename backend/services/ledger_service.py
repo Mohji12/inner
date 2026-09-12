@@ -364,6 +364,51 @@ def spend_user_available_for_booking(
     )
 
 
+def spend_user_available_for_chat_purchase(
+    db: Session,
+    *,
+    user_id: str,
+    amount: Decimal,
+    currency: str,
+    purchase_id: str,
+    session_id: str,
+) -> LedgerTransaction:
+    """Move user_available to platform_cash for a chat extend/purchase. Idempotent per purchase."""
+    amt = q2(amount)
+    if amt <= 0:
+        raise LedgerError("Amount must be greater than zero")
+    idempotency_key = f"chat_wallet_pay:{purchase_id}"
+    existing = db.query(LedgerTransaction).filter(LedgerTransaction.idempotency_key == idempotency_key).first()
+    if existing:
+        return existing
+    revenue, cash = ensure_platform_accounts(db, currency=currency)
+    _ = revenue
+    user_available = get_or_create_wallet_account(
+        db,
+        owner_type=OWNER_USER,
+        owner_id=user_id,
+        account_kind=ACCOUNT_USER_AVAILABLE,
+        currency=currency,
+    )
+    balance = get_account_balance(db, user_available.id)
+    if balance < amt:
+        raise LedgerError("Insufficient wallet balance")
+    return post_double_entry(
+        db,
+        txn_type="chat_wallet_pay",
+        amount=amt,
+        currency=currency,
+        debit_account=user_available,
+        credit_account=cash,
+        reference_type="chat_purchase",
+        reference_id=purchase_id,
+        idempotency_key=idempotency_key,
+        metadata={"user_id": user_id, "session_id": session_id, "purchase_id": purchase_id},
+        debit_memo="Chat session paid from wallet",
+        credit_memo="Platform cash from wallet chat purchase",
+    )
+
+
 def refund_user_wallet_for_booking(
     db: Session,
     *,

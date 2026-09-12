@@ -33,6 +33,7 @@ from schemas.chat import (
     ChatSessionExtendQuoteOut,
     ChatSessionOut,
     ChatSessionCheckoutOut,
+    ChatSessionWalletPayOut,
     ChatSessionStartIn,
     ChatInboxOut,
     ChatInboxSessionOut,
@@ -44,6 +45,7 @@ from services.chat_service import (
     ChatError,
     end_session,
     extend_session_checkout,
+    extend_session_with_wallet,
     quote_session_extension,
     get_active_session_for_mentor,
     get_session_for_participant,
@@ -185,6 +187,8 @@ def _chat_http(e: ChatError) -> HTTPException:
         "mentor_unavailable": status.HTTP_409_CONFLICT,
         "mentor_occupied": status.HTTP_409_CONFLICT,
         "promo_invalid": status.HTTP_400_BAD_REQUEST,
+        "insufficient_wallet": status.HTTP_400_BAD_REQUEST,
+        "wallet_pay_failed": status.HTTP_400_BAD_REQUEST,
         "livekit_not_configured": status.HTTP_503_SERVICE_UNAVAILABLE,
     }
     st = code_map.get(e.code, status.HTTP_400_BAD_REQUEST)
@@ -343,6 +347,32 @@ def extend_chat_session(
     background_tasks.add_task(_ws_push_session, session_id, session)
     return ChatSessionCheckoutOut(
         session=_session_out(session), checkout_url=checkout_url, mollie_payment_id=mollie_pid
+    )
+
+
+@router.post("/sessions/{session_id}/extend/wallet", response_model=ChatSessionWalletPayOut)
+def extend_chat_session_with_wallet(
+    session_id: str,
+    db: DbSession,
+    me: CurrentUser,
+    payload: ChatSessionExtendIn,
+    background_tasks: BackgroundTasks,
+) -> ChatSessionWalletPayOut:
+    try:
+        session, amount, currency = extend_session_with_wallet(
+            db,
+            session_id=session_id,
+            user_id=me.id,
+            minutes=payload.minutes,
+        )
+    except ChatError as e:
+        raise _chat_http(e) from e
+    background_tasks.add_task(_ws_push_session, session_id, session)
+    return ChatSessionWalletPayOut(
+        session=_session_out(session, db),
+        paid_from="wallet",
+        amount=amount,
+        currency=currency,
     )
 
 

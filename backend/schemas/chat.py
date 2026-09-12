@@ -67,6 +67,13 @@ class ChatSessionCheckoutOut(BaseModel):
     mollie_payment_id: str
 
 
+class ChatSessionWalletPayOut(BaseModel):
+    session: ChatSessionOut
+    paid_from: str = "wallet"
+    amount: str
+    currency: str
+
+
 class ChatCallTokenOut(BaseModel):
     provider: str = "livekit"
     url: str

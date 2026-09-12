@@ -144,6 +144,11 @@ export const chatOverrides: Partial<Record<Language, DeepPartial<AppCopy>>> = {
       payAndContinue: "Betalen & doorgaan",
       payAndExtend: "Betalen & verlengen",
       payWithAmount: "{action} — EUR {amount}",
+      choosePaymentMethod: "Kies hoe je betaalt",
+      payFromWalletAmount: "Betalen vanuit wallet — EUR {amount}",
+      payingFromWallet: "Betalen vanuit wallet…",
+      payWithMollieAmount: "{action} via Mollie — EUR {amount}",
+      addMoneyToWallet: "Geld toevoegen aan wallet",
       redirectingCheckout: "Doorsturen naar Mollie-checkout",
       timerPausedForPayment:
         "De sessietimer is gepauzeerd terwijl je betaalt. De resterende tijd gaat verder na de checkout.",

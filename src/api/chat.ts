@@ -56,6 +56,23 @@ export function extendChatSession(sessionId: string, body: ChatSessionExtendBody
   });
 }
 
+export interface ChatSessionWalletPay {
+  session: ChatSession;
+  paid_from: "wallet" | string;
+  amount: string;
+  currency: string;
+}
+
+export function extendChatSessionWithWallet(
+  sessionId: string,
+  body: Pick<ChatSessionExtendBody, "minutes" | "communication_mode">,
+): Promise<ChatSessionWalletPay> {
+  return apiFetch<ChatSessionWalletPay>(`/chat/sessions/${sessionId}/extend/wallet`, {
+    method: "POST",
+    body: JSON.stringify({ minutes: body.minutes, communication_mode: body.communication_mode }),
+  });
+}
+
 export function getChatSessionExtendQuote(
   sessionId: string,
   params: { minutes: number; checkout_currency?: string },

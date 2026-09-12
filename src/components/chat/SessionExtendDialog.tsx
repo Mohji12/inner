@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { extendChatSession, getChatSessionExtendQuote } from "@/api/chat";
+import { Link } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Wallet } from "lucide-react";
+import { extendChatSession, extendChatSessionWithWallet, getChatSessionExtendQuote } from "@/api/chat";
 import { getCheckoutCurrencies } from "@/api/payments";
+import { getMyWallet } from "@/api/wallets";
 import { CheckoutCurrencySelect } from "@/components/CheckoutCurrencySelect";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,12 +47,20 @@ export function SessionExtendDialog({
 }: Props) {
   const { t } = useLanguage();
   const c = t.app.chatSession;
+  const p = t.app.payment;
+  const queryClient = useQueryClient();
   const [minutes, setMinutes] = useState(defaultMinutes);
   const [checkoutCurrency, setCheckoutCurrency] = useState("EUR");
 
   const currenciesQuery = useQuery({
     queryKey: ["checkout-currencies"],
     queryFn: getCheckoutCurrencies,
+    enabled: open,
+  });
+
+  const walletQuery = useQuery({
+    queryKey: ["wallet", "me"],
+    queryFn: getMyWallet,
     enabled: open,
   });
 
@@ -81,8 +92,21 @@ export function SessionExtendDialog({
   const quote = quoteQuery.data;
   const quoteError = quoteQuery.error as Error | undefined;
   const minMinutes = quote?.min_minutes ?? 1;
+  const totalDue = Number.parseFloat(quote?.total_eur ?? "0") || 0;
+  const walletBalance = Number(walletQuery.data?.balance ?? 0);
+  const canPayFromWallet = totalDue > 0 && walletBalance >= totalDue - 1e-9;
+  const walletShortfall = Math.max(0, totalDue - walletBalance);
 
-  const extendMut = useMutation({
+  const refreshAfterPay = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["chat", "session", sessionId] }),
+      queryClient.invalidateQueries({ queryKey: ["meeting", "session", sessionId] }),
+      queryClient.invalidateQueries({ queryKey: ["wallet"] }),
+      queryClient.invalidateQueries({ queryKey: ["chat", "sessions"] }),
+    ]);
+  };
+
+  const mollieMut = useMutation({
     mutationFn: () =>
       extendChatSession(sessionId, {
         minutes,
@@ -99,9 +123,25 @@ export function SessionExtendDialog({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const walletMut = useMutation({
+    mutationFn: () =>
+      extendChatSessionWithWallet(sessionId, {
+        minutes,
+        communication_mode: communicationMode,
+      }),
+    onSuccess: async () => {
+      toast.success(c.toastTimeAdded);
+      onOpenChange(false);
+      await refreshAfterPay();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const busy = mollieMut.isPending || walletMut.isPending;
   const checkoutCcy = quote?.checkout_currency ?? checkoutCurrency;
   const showCheckoutTotal = checkoutCcy !== "EUR" && quote?.checkout_amount;
   const payAction = resumeMode ? c.payAndContinue : c.payAndExtend;
+  const returnTo = typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : `/user/chat/${sessionId}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -119,7 +159,7 @@ export function SessionExtendDialog({
               value={checkoutCurrency}
               onChange={setCheckoutCurrency}
               currencies={currenciesQuery.data}
-              disabled={extendMut.isPending}
+              disabled={busy}
             />
           ) : null}
           <div className="space-y-2">
@@ -131,7 +171,7 @@ export function SessionExtendDialog({
               max={480}
               value={minutes}
               onChange={(e) => setMinutes(Math.max(1, Number(e.target.value) || 1))}
-              disabled={extendMut.isPending}
+              disabled={busy}
             />
             {quote?.min_minutes && quote.min_minutes > 1 ? (
               <p className="text-xs text-muted-foreground">
@@ -175,23 +215,59 @@ export function SessionExtendDialog({
               </div>
             ) : null}
           </div>
+
+          {quote && !quoteError ? (
+            <div className="rounded-lg border border-border/70 bg-background px-3 py-3 text-sm space-y-2">
+              <p className="font-medium">{c.choosePaymentMethod}</p>
+              <p className="text-muted-foreground">
+                {p.walletBalance.replace("{balance}", walletBalance.toFixed(2))}
+              </p>
+              {!canPayFromWallet && totalDue > 0 ? (
+                <p className="text-xs text-amber-800 dark:text-amber-200">
+                  {p.insufficientHint.replace("{needed}", walletShortfall.toFixed(2))}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={extendMut.isPending}>
-            {c.cancel}
-          </Button>
-          <Button
-            onClick={() => extendMut.mutate()}
-            disabled={extendMut.isPending || quoteQuery.isLoading || Boolean(quoteError) || !quote}
-          >
-            {extendMut.isPending
-              ? c.redirecting
-              : quote
-                ? c.payWithAmount
-                    .replace("{action}", payAction)
-                    .replace("{amount}", formatEur(quote.total_eur))
-                : payAction}
-          </Button>
+        <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+              {c.cancel}
+            </Button>
+            {canPayFromWallet ? (
+              <Button
+                variant="secondary"
+                disabled={busy || quoteQuery.isLoading || Boolean(quoteError) || !quote}
+                onClick={() => walletMut.mutate()}
+              >
+                <Wallet className="mr-2 h-4 w-4" />
+                {walletMut.isPending
+                  ? c.payingFromWallet
+                  : c.payFromWalletAmount.replace("{amount}", formatEur(totalDue))}
+              </Button>
+            ) : quote && totalDue > 0 ? (
+              <Button asChild variant="secondary">
+                <Link to={`/user/wallet?returnTo=${encodeURIComponent(returnTo)}`}>
+                  <Wallet className="mr-2 h-4 w-4" />
+                  {c.addMoneyToWallet}
+                </Link>
+              </Button>
+            ) : null}
+            <Button
+              className="gradient-cta text-white"
+              onClick={() => mollieMut.mutate()}
+              disabled={busy || quoteQuery.isLoading || Boolean(quoteError) || !quote}
+            >
+              {mollieMut.isPending
+                ? c.redirecting
+                : quote
+                  ? c.payWithMollieAmount
+                      .replace("{action}", payAction)
+                      .replace("{amount}", formatEur(quote.total_eur))
+                  : payAction}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
