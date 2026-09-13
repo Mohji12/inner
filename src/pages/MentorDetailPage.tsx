@@ -692,14 +692,14 @@ const MentorDetailPage = () => {
                           disabled={pricingInactive}
                           title={
                             pricingInactive
-                              ? "Session checkout is disabled"
+                              ? md.sessionCheckoutDisabled
                               : mentorOffline
                                 ? md.offline
                                 : mentorPaused
                                   ? md.paused
                                   : mentorBusy
                                     ? md.inSession
-                                    : `Select ${mins}-minute session`
+                                    : md.selectDurationSession.replace("{minutes}", String(mins))
                           }
                           onClick={() => handleDurationSelect(mins)}
                         >
@@ -719,9 +719,11 @@ const MentorDetailPage = () => {
                     <p className="mt-3 text-xs text-muted-foreground">{md.pricingInactive}</p>
                   ) : (
                     <p className="mt-3 text-xs text-muted-foreground">
-                      Choose a duration, then start an in-app <strong className="text-foreground">video meeting</strong> (mic
-                      + camera) or <strong className="text-foreground">voice meeting</strong> (mic only, no video). Chat
-                      works in both. Your session starts at the current local time once payment is complete.
+                      {md.pricingHelpBefore}
+                      <strong className="text-foreground">{md.pricingHelpVideo}</strong>
+                      {md.pricingHelpMid}
+                      <strong className="text-foreground">{md.pricingHelpVoice}</strong>
+                      {md.pricingHelpAfter}
                     </p>
                   )}
                   {pricing?.is_active && canBookLive ? (
@@ -731,7 +733,7 @@ const MentorDetailPage = () => {
                   ) : null}
                 </>
               ) : (
-                <p className="text-sm text-muted-foreground">Pricing unavailable right now.</p>
+                <p className="text-sm text-muted-foreground">{md.pricingUnavailable}</p>
               )}
               {Number(mentor.chat_price_per_minute) > 0 ? (
                 <p className="mt-3 text-sm text-muted-foreground">
@@ -773,7 +775,7 @@ const MentorDetailPage = () => {
                   {chatPromoCode && !chatPromoError ? (
                     <p className="text-xs text-green-600 dark:text-green-400">
                       {md.promoApplied}: -EUR {chatPromoDiscount.toFixed(2)}
-                      {chatPromoFinal != null && chatPromoFinal <= 0.01 ? " · Free Talk now session" : ""}
+                      {chatPromoFinal != null && chatPromoFinal <= 0.01 ? ` · ${md.freeTalkNowSession}` : ""}
                     </p>
                   ) : null}
                 </div>

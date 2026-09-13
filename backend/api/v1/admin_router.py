@@ -2371,6 +2371,7 @@ def admin_create_announcement(
     payload: AdminAnnouncementCreate,
     db: DbSession,
     admin: CurrentAdmin,
+    lang: RequestLang,
 ) -> AdminAnnouncementRow:
     from services.admin_announcement_service import broadcast_admin_announcement
 
@@ -2384,6 +2385,7 @@ def admin_create_announcement(
             audience=payload.audience or "coach",
             mentor_id=payload.mentor_id,
             user_id=payload.user_id,
+            source_lang=lang,
         )
     except ValueError as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e

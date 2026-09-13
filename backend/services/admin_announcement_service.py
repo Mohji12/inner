@@ -13,6 +13,8 @@ from models.mentor import Mentor
 from models.user import User
 from services.email_service import send_plain_emails
 from services.notification_service import create_notification
+from services.deepl_service import ensure_i18n_map
+from services.i18n_service import DEFAULT_LANG, normalize_lang
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +116,7 @@ def broadcast_admin_announcement(
     audience: Audience = "coach",
     mentor_id: str | None = None,
     user_id: str | None = None,
+    source_lang: str = DEFAULT_LANG,
 ) -> tuple[AdminAnnouncement, str | None]:
     title_clean = title.strip()
     body_clean = body.strip()
@@ -123,6 +126,7 @@ def broadcast_admin_announcement(
     audience_clean: Audience = "user" if (audience or "coach").strip().lower() == "user" else "coach"
     mentor_id_clean = (mentor_id or "").strip() or None
     user_id_clean = (user_id or "").strip() or None
+    lang = normalize_lang(source_lang)
 
     if audience_clean == "coach" and user_id_clean:
         raise ValueError("user_id is only valid when audience is user")
@@ -137,6 +141,10 @@ def broadcast_admin_announcement(
         recipients = _active_users(db, user_id=user_id_clean)
         link = USER_DASHBOARD_LINK
         empty_email_warning = "No users matched this send, so no emails were delivered."
+
+    # In-app bell: full i18n via DeepL (falls back to source text when key missing).
+    title_i18n = ensure_i18n_map(title_clean, lang)
+    body_i18n = ensure_i18n_map(body_clean, lang)
 
     now = datetime.now(timezone.utc)
     announcement = AdminAnnouncement(
@@ -161,6 +169,8 @@ def broadcast_admin_announcement(
                 body=body_clean,
                 link=link,
                 mentor_id=recipient.id,
+                title_i18n=title_i18n,
+                body_i18n=body_i18n,
                 commit=False,
             )
         else:
@@ -171,6 +181,8 @@ def broadcast_admin_announcement(
                 body=body_clean,
                 link=link,
                 user_id=recipient.id,
+                title_i18n=title_i18n,
+                body_i18n=body_i18n,
                 commit=False,
             )
 

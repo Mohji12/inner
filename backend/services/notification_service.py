@@ -17,6 +17,8 @@ def create_notification(
     link: Optional[str] = None,
     user_id: Optional[str] = None,
     mentor_id: Optional[str] = None,
+    title_i18n: dict[str, str] | None = None,
+    body_i18n: dict[str, str] | None = None,
     commit: bool = True,
 ) -> Notification:
     notification = Notification(
@@ -25,9 +27,9 @@ def create_notification(
         mentor_id=mentor_id,
         type=type,
         title=title,
-        title_i18n=to_i18n_map(title),
+        title_i18n=title_i18n if title_i18n is not None else to_i18n_map(title),
         body=body,
-        body_i18n=to_i18n_map(body),
+        body_i18n=body_i18n if body_i18n is not None else to_i18n_map(body),
         link=link,
         is_read=False,
         created_at=datetime.now(timezone.utc)

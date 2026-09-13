@@ -5,6 +5,41 @@ Living log of work done on this project.
 
 ---
 
+## 2026-09-14
+
+### Coach browse cards: headline + expertise tags via DeepL
+**Goal:** Translate coach card headlines and expertise tags for the viewer language (not only static UI).
+
+- Public mentor **list** translates headline + tags with a per-request DeepL budget (avoids Free-tier 429)
+- New `expertise_areas_i18n` / `skills_i18n` JSON caches on mentors; shared in-process tag memo
+- Chinese `mentorBrowseCard` status/labels added to generated overrides
+- Key paths: `backend/services/deepl_service.py`, `backend/api/v1/mentors_public.py`, `backend/models/mentor.py`, `src/i18n/deeplGeneratedOverrides.ts`
+
+### Coach detail UI via DeepL + similar coach headlines
+**Goal:** Translate coach-detail page copy (pricing help, buttons) and similar-coach headlines with DeepL.
+
+- Moved hardcoded English pricing/help strings on `MentorDetailPage` into `appBase` i18n keys
+- Filled missing `mentorDetail.*` locale gaps via DeepL into `deeplGeneratedOverrides.ts`
+- Similar coaches endpoint now translates request-lang headlines (detail path already did)
+- Key paths: `src/pages/MentorDetailPage.tsx`, `src/i18n/appBase.ts`, `src/i18n/deeplGeneratedOverrides.ts`, `backend/api/v1/mentors_public.py`
+
+### DeepL rate-limit hardening (coach list 429)
+**Goal:** Stop Free-tier DeepL 429 spam when browsing coaches.
+
+- Public mentor **list** no longer calls DeepL (resolve existing i18n / fallback only)
+- Coach **detail** translates only the request language (not all langs at once)
+- Failed translations are not cached as source text; 429 retries with backoff + pacing
+- Key paths: `backend/services/deepl_service.py`, `backend/api/v1/mentors_public.py`
+
+### DeepL translation (UI script + coach + announcements)
+**Goal:** Machine-translate coach public copy and admin notifications; operator script for website UI locale gaps.
+
+- Backend `deepl_service` (`translate_text`, `ensure_i18n_map`) with Free API defaults; soft-fail without `DEEPL_AUTH_KEY`
+- Public mentor GET fills/persists missing `headline_i18n` / `bio_i18n` for the request language
+- Admin announcements build full `title_i18n` / `body_i18n` before creating in-app notifications (email stays in source language)
+- Operator script `backend/scripts/translate_ui_copy.py` fills `src/i18n/deeplGeneratedOverrides.ts` from EN `appBase` (merged in `appOverrides`)
+- Key paths: `backend/services/deepl_service.py`, `backend/api/v1/mentors_public.py`, `backend/services/admin_announcement_service.py`, `backend/scripts/translate_ui_copy.py`, `backend/.env.example`
+
 ## 2026-09-13
 
 ### Registration QR uses production URL

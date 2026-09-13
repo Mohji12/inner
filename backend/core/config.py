@@ -148,6 +148,11 @@ class Settings(BaseSettings):
     #: If set, Celery stores task results in this backend. If empty, results are disabled — the API process will not open a result-backend connection on `.delay()` (avoids Redis reconnect loops when you only enqueue from the web app).
     celery_result_backend_url: str = ""
 
+    # DeepL (Free API by default). Leave auth key empty to skip machine translation.
+    deepl_auth_key: str = ""
+    deepl_api_url: str = "https://api-free.deepl.com"
+    deepl_http_timeout_seconds: float = 20.0
+
     @property
     def database_url(self) -> str:
         pwd = quote_plus(self.db_password)

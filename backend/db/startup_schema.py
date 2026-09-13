@@ -139,6 +139,8 @@ def ensure_localization_i18n_columns() -> None:
     _safe_add_column("ALTER TABLE mentors ADD COLUMN headline_i18n JSON NULL")
     _safe_add_column("ALTER TABLE mentors ADD COLUMN bio_i18n JSON NULL")
     _safe_add_column("ALTER TABLE mentors ADD COLUMN agreement_text_snapshot_i18n JSON NULL")
+    _safe_add_column("ALTER TABLE mentors ADD COLUMN expertise_areas_i18n JSON NULL")
+    _safe_add_column("ALTER TABLE mentors ADD COLUMN skills_i18n JSON NULL")
 
     _safe_add_column("ALTER TABLE bookings ADD COLUMN session_topic_i18n JSON NULL")
     _safe_add_column("ALTER TABLE bookings ADD COLUMN problem_description_i18n JSON NULL")

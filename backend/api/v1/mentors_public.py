@@ -21,6 +21,11 @@ from schemas.slot import SlotOut
 from services.mentor_card_visibility import apply_card_visibility_to_public, normalize_card_visibility
 from services.chat_service import mentor_ids_with_live_chat, mentor_chat_busy
 from services.i18n_service import resolve_i18n_text
+from services.deepl_service import (
+    TranslationBudget,
+    ensure_lang_in_i18n_map,
+    resolve_tag_list_i18n,
+)
 from services.presence_service import presence_service
 from services.pricing_service import PricingError, effective_chat_price_per_minute_eur, get_platform_pricing
 from services.mentor_ranking_service import availability_tier, rank_public_mentors
@@ -120,6 +125,62 @@ def _load_next_availability_windows(
     return out
 
 
+def _ensure_mentor_field_i18n(
+    mentor: Mentor,
+    *,
+    attr_i18n: str,
+    fallback_text: str | None,
+    lang: str,
+    budget: TranslationBudget | None = None,
+) -> bool:
+    """Fill missing lang in mentor *_i18n via DeepL. Returns True if the map changed."""
+    current = getattr(mentor, attr_i18n, None)
+    try:
+        updated = ensure_lang_in_i18n_map(current, fallback_text, lang, budget=budget)
+    except Exception as exc:  # noqa: BLE001 — never break public mentor responses
+        logger.warning("DeepL mentor %s failed for %s: %s", attr_i18n, getattr(mentor, "id", "?"), exc)
+        return False
+    if updated is None or updated == current:
+        return False
+    # Avoid persisting identical content under a new object identity.
+    if isinstance(current, dict) and dict(current) == updated:
+        return False
+    setattr(mentor, attr_i18n, updated)
+    return True
+
+
+def _ensure_mentor_tags_i18n(
+    mentor: Mentor,
+    *,
+    lang: str,
+    budget: TranslationBudget | None = None,
+    translate: bool = True,
+) -> tuple[list[str] | None, list[str] | None, bool]:
+    """Translate expertise/skills for display; persist per-tag i18n maps when changed."""
+    exp_out, exp_map, exp_dirty = resolve_tag_list_i18n(
+        getattr(mentor, "expertise_areas", None),
+        lang,
+        existing=getattr(mentor, "expertise_areas_i18n", None),
+        budget=budget,
+        translate=translate,
+    )
+    skills_out, skills_map, skills_dirty = resolve_tag_list_i18n(
+        getattr(mentor, "skills", None),
+        lang,
+        existing=getattr(mentor, "skills_i18n", None),
+        budget=budget,
+        translate=translate,
+    )
+    dirty = False
+    if exp_dirty:
+        mentor.expertise_areas_i18n = exp_map
+        dirty = True
+    if skills_dirty:
+        mentor.skills_i18n = skills_map
+        dirty = True
+    return exp_out, skills_out, dirty
+
+
 def _mentor_public_out(
     mentor: Mentor,
     busy_mentor_ids: set[str],
@@ -128,7 +189,9 @@ def _mentor_public_out(
     lang: str = "en",
     unavailability_rows: list[MentorUnavailability] | None = None,
     next_window: MentorAvailabilityWindow | None = None,
-) -> MentorPublicOut:
+    translate_i18n: bool = False,
+    budget: TranslationBudget | None = None,
+) -> tuple[MentorPublicOut, bool]:
     base = MentorPublicOut.model_validate(mentor)
     from services.mentor_presence_mode_service import effective_is_online
 
@@ -157,8 +220,28 @@ def _mentor_public_out(
     if mentor.total_sessions_completed >= 50:
         badges.append("Expert")
 
+    dirty = False
+    if translate_i18n:
+        dirty = _ensure_mentor_field_i18n(
+            mentor,
+            attr_i18n="headline_i18n",
+            fallback_text=mentor.headline,
+            lang=lang,
+            budget=budget,
+        )
+
+    expertise_out, skills_out, tags_dirty = _ensure_mentor_tags_i18n(
+        mentor,
+        lang=lang,
+        budget=budget,
+        translate=translate_i18n,
+    )
+    dirty = dirty or tags_dirty
+
     out = base.model_copy(update={
         "headline": resolve_i18n_text(getattr(mentor, "headline_i18n", None), mentor.headline, lang),
+        "expertise_areas": expertise_out if expertise_out is not None else mentor.expertise_areas,
+        "skills": skills_out if skills_out is not None else mentor.skills,
         "chat_price_per_minute": chat_rate,
         "chat_available": chat_available,
         "is_online": is_online,
@@ -172,7 +255,7 @@ def _mentor_public_out(
         "next_availability_end_at": next_window.end_at_utc if next_window else None,
     })
     visibility = normalize_card_visibility(getattr(mentor, "public_card_visibility", None))
-    return apply_card_visibility_to_public(out, visibility)
+    return apply_card_visibility_to_public(out, visibility), dirty
 
 
 def _listed_status_filter():
@@ -248,17 +331,32 @@ def list_mentors(
         mentor_ids = [m.id for m in rows]
         umap = load_unavailability_by_mentor(db, mentor_ids)
         next_windows = _load_next_availability_windows(db, mentor_ids)
-        public_rows = [
-            _mentor_public_out(
+        public_rows: list[MentorPublicOut] = []
+        i18n_dirty = False
+        # Cap live DeepL calls per list request (Free tier). Cache + tag memo fill over refreshes.
+        budget = TranslationBudget(36)
+        for m in rows:
+            row_out, dirty = _mentor_public_out(
                 m,
                 busy,
                 session_pricing_active=active_pricing,
                 lang=lang,
                 unavailability_rows=umap.get(m.id, []),
                 next_window=next_windows.get(m.id),
+                translate_i18n=True,
+                budget=budget,
             )
-            for m in rows
-        ]
+            public_rows.append(row_out)
+            i18n_dirty = i18n_dirty or dirty
+        if i18n_dirty:
+            try:
+                db.commit()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Failed to persist mentor i18n cache: %s", exc)
+                try:
+                    db.rollback()
+                except Exception:  # noqa: BLE001
+                    pass
         deduped = _dedupe_public_rows(public_rows)
         if sort_by in (None, "relevance", ""):
             return rank_public_mentors(deduped)
@@ -320,18 +418,40 @@ def get_mentor(mentor_id: str, db: DbSession, lang: RequestLang) -> MentorDetail
     pricing = get_platform_pricing(db)
     umap = load_unavailability_by_mentor(db, [mentor.id])
     next_windows = _load_next_availability_windows(db, [mentor.id])
-    out = _mentor_public_out(
+    out, dirty = _mentor_public_out(
         mentor,
         busy,
         session_pricing_active=bool(pricing.is_active),
         lang=lang,
         unavailability_rows=umap.get(mentor.id, []),
         next_window=next_windows.get(mentor.id),
+        translate_i18n=True,
+        budget=TranslationBudget(None),
     )
+
+    bio_dirty = _ensure_mentor_field_i18n(
+        mentor,
+        attr_i18n="bio_i18n",
+        fallback_text=mentor.bio,
+        lang=lang,
+        budget=TranslationBudget(None),
+    )
+    if dirty or bio_dirty:
+        try:
+            db.add(mentor)
+            db.commit()
+            db.refresh(mentor)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to persist mentor i18n cache: %s", exc)
+            try:
+                db.rollback()
+            except Exception:  # noqa: BLE001
+                pass
 
     base_detail = MentorDetailOut.model_validate(mentor)
     detail = {**base_detail.model_dump(), **out.model_dump()}
     detail["bio"] = resolve_i18n_text(getattr(mentor, "bio_i18n", None), mentor.bio, lang)
+    detail["headline"] = resolve_i18n_text(getattr(mentor, "headline_i18n", None), mentor.headline, lang)
     detail["chat_price_per_minute"] = effective_chat_price_per_minute_eur(mentor)
     # Never expose company / KVK on the public coach profile.
     detail["current_company"] = None
@@ -450,15 +570,29 @@ def get_similar_mentors(mentor_id: str, db: DbSession, lang: RequestLang, limit:
 
     umap = load_unavailability_by_mentor(db, [m.id for m in rows])
     next_windows = _load_next_availability_windows(db, [m.id for m in rows])
-    public_rows = [
-        _mentor_public_out(
+    public_rows: list[MentorPublicOut] = []
+    i18n_dirty = False
+    budget = TranslationBudget(10)
+    for m in rows:
+        row_out, dirty = _mentor_public_out(
             m,
             busy,
             session_pricing_active=active_pricing,
             lang=lang,
             unavailability_rows=umap.get(m.id, []),
             next_window=next_windows.get(m.id),
+            translate_i18n=True,
+            budget=budget,
         )
-        for m in rows
-    ]
+        public_rows.append(row_out)
+        i18n_dirty = i18n_dirty or dirty
+    if i18n_dirty:
+        try:
+            db.commit()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to persist mentor i18n cache: %s", exc)
+            try:
+                db.rollback()
+            except Exception:  # noqa: BLE001
+                pass
     return rank_public_mentors(_dedupe_public_rows(public_rows))[: max(1, min(limit, 12))]
