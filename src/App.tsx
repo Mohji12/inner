@@ -12,6 +12,7 @@ import { MentorDashboardLayout } from "@/components/dashboard/MentorDashboardLay
 import Index from "./pages/Index.tsx";
 import MentorRegisterPage from "./pages/MentorRegisterPage.tsx";
 import UserRegisterPage from "./pages/UserRegisterPage.tsx";
+import UserVerifyLinkPage from "./pages/UserVerifyLinkPage.tsx";
 import LoginPage from "./pages/LoginPage.tsx";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage.tsx";
 import ResetPasswordPage from "./pages/ResetPasswordPage.tsx";
@@ -106,6 +107,7 @@ const App = () => (
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
                 <Route path="/register" element={<UserRegisterPage />} />
                 <Route path="/user/register" element={<UserRegisterPage />} />
+                <Route path="/user/verify-link" element={<UserVerifyLinkPage />} />
                 <Route path="/user/register/thank-you" element={<UserRegisterThankYouPage />} />
                 <Route path="/register/thank-you" element={<UserRegisterThankYouPage />} />
                 <Route path="/mentor/register" element={<MentorRegisterPage />} />

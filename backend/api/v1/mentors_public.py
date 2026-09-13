@@ -130,18 +130,14 @@ def _mentor_public_out(
     next_window: MentorAvailabilityWindow | None = None,
 ) -> MentorPublicOut:
     base = MentorPublicOut.model_validate(mentor)
-    from services.mentor_presence_mode_service import effective_is_online, normalize_presence_mode
+    from services.mentor_presence_mode_service import effective_is_online
 
     is_online = effective_is_online(mentor)
     chat_rate = effective_chat_price_per_minute_eur(mentor)
     unavailable_now, unavail_snap = public_block_for_rows(unavailability_rows or [])
-    from services.mentor_availability_service import compute_chat_available
+    from services.mentor_availability_service import compute_chat_available, mentor_is_occupied
 
-    mode = normalize_presence_mode(
-        getattr(mentor, "presence_mode", None),
-        manual_occupied=bool(getattr(mentor, "manual_occupied", False)),
-    )
-    occupied = mode in ("paused", "occupied") or bool(getattr(mentor, "manual_occupied", False))
+    occupied = mentor_is_occupied(mentor)
     # Free for live engagement (packages and/or chat). Talk-now still requires chat_rate > 0 in UI/API.
     chat_available = compute_chat_available(
         online=is_online,
@@ -349,37 +345,16 @@ def mentor_chat_availability(mentor_id: str, db: DbSession) -> ChatAvailabilityO
     if not mentor or not _mentor_visible_for_public(mentor):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Coach not found")
     enabled = effective_chat_price_per_minute_eur(mentor) > 0
-    busy = mentor_chat_busy(db, mentor_id)
-    from services.mentor_presence_mode_service import effective_is_online, normalize_presence_mode
+    from services.mentor_availability_service import live_availability_block_reason
 
-    online = effective_is_online(mentor)
-    umap = load_unavailability_by_mentor(db, [mentor_id])
-    unavailable = is_unavailable_now(umap.get(mentor_id, []))
-    from services.mentor_availability_service import compute_chat_available
-
-    mode = normalize_presence_mode(
-        getattr(mentor, "presence_mode", None),
-        manual_occupied=bool(getattr(mentor, "manual_occupied", False)),
-    )
-    occupied = mode in ("paused", "occupied") or bool(getattr(mentor, "manual_occupied", False))
-    available = compute_chat_available(
-        online=online,
-        busy=busy,
-        unavailable_schedule=unavailable,
-        manual_occupied=occupied,
-    ) and enabled
-    reason: str | None = None
+    # Align reason codes with book/talk gates (effective online + mode-aware occupied).
+    block = live_availability_block_reason(db, mentor, require_chat_rate=False)
     if not enabled:
-        reason = "chat_disabled"
-    elif occupied:
-        reason = "mentor_occupied"
-    elif unavailable:
-        reason = "mentor_unavailable"
-    elif not online:
-        reason = "mentor_offline"
-    elif busy:
-        reason = "mentor_busy"
-    return ChatAvailabilityOut(available=available, reason=reason)
+        return ChatAvailabilityOut(available=False, reason="chat_disabled")
+    if block:
+        reason = "mentor_busy" if block == "mentor_busy" else block
+        return ChatAvailabilityOut(available=False, reason=reason)
+    return ChatAvailabilityOut(available=True, reason=None)
 
 
 @router.get("/{mentor_id}/availability-windows", response_model=list[AvailabilityWindowPublicOut])

@@ -5,6 +5,33 @@ Living log of work done on this project.
 
 ---
 
+## 2026-09-13
+
+### Remove gender/DOB from user registration
+**Goal:** Simplify the user signup form.
+
+- Removed Gender and Date of birth fields from `UserRegisterPage`
+- Help copy updated (EN + NL)
+- Key paths: `src/pages/UserRegisterPage.tsx`, `src/i18n/appBase.ts`, `src/i18n/appOverrides.ts`
+
+### QR + OTP user registration verification
+**Goal:** After register, users can verify via email OTP or by scanning a QR magic link.
+
+- Pending signup stores a one-time `verify_token_hash` (issued on register/resend)
+- `POST /auth/user/verify-link` creates the user and logs them in
+- Register verify UI shows QR + copy/open link alongside OTP
+- Landing page `/user/verify-link` consumes the token
+- Key paths: `backend/services/pending_user_registration_service.py`, `backend/api/v1/auth_user.py`, `src/pages/UserRegisterPage.tsx`, `src/pages/UserVerifyLinkPage.tsx`
+
+### Fix online badge vs not-available book/talk glitch
+**Goal:** Stop users seeing a coach as Online / bookable, then getting “not available” on Book or Talk now.
+
+- Unified live gates via `live_availability_block_reason` (effective online + mode-aware occupied)
+- Book/talk and `/chat-availability` use the same rules as the public badge
+- Coach detail refetches availability before Book/Talk now; dialog shows the real block reason
+- Faster presence refresh on coach detail (8s)
+- Key paths: `backend/services/mentor_availability_service.py`, `backend/services/chat_service.py`, `backend/services/booking_service.py`, `src/pages/MentorDetailPage.tsx`
+
 ## 2026-09-12
 
 ### Admin messages to users

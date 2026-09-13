@@ -17,16 +17,19 @@ from schemas.auth import (
     AccessTokenResponse, 
     LoginResponse,
     MessageResponse, 
-    ResendVerifyEmailRequest, 
+    ResendVerifyEmailRequest,
+    ResendVerifyEmailResponse,
     SocialLoginRequest,
     TwoFactorLoginRequest,
     TwoFactorSetupResponse,
     TwoFactorVerifyRequest,
     TwoFactorDisableRequest,
+    VerifyEmailLinkRequest,
+    VerifyEmailLinkResponse,
     VerifyEmailRequest
 )
 from schemas.user import UserLogin, UserRegister, UserRegisterResponse
-from services.otp_service import create_and_send_otp, verify_otp
+from services.otp_service import create_and_send_otp, delete_otp_for_email, verify_otp
 from services.token_service import revoke_refresh_token, rotate_refresh_token, store_refresh_token
 from services.two_factor_service import two_factor_service
 from services.social_auth_service import social_auth_service
@@ -76,8 +79,11 @@ def _expose_dev_otp() -> bool:
 @router.post("/register", response_model=UserRegisterResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/minute")
 def register_user(request: Request, db: DbSession, payload: UserRegister) -> UserRegisterResponse:
-    """Start signup: store pending details and email OTP. User row is created only after verify."""
-    from services.pending_user_registration_service import upsert_pending_user_registration
+    """Start signup: store pending details, email OTP, and QR verify-link token."""
+    from services.pending_user_registration_service import (
+        issue_verify_link_token,
+        upsert_pending_user_registration,
+    )
 
     email = str(payload.email).lower()
     password_error = validate_password_strength(payload.password)
@@ -112,11 +118,12 @@ def register_user(request: Request, db: DbSession, payload: UserRegister) -> Use
             status.HTTP_503_SERVICE_UNAVAILABLE,
             "Could not send verification email. Please try again later.",
         )
+    verification_token = issue_verify_link_token(pending)
     db.commit()
     db.refresh(pending)
 
     # Shape matches the old UserOut so the SPA verify step keeps working.
-    # email_verified stays false until OTP succeeds and the users row is created.
+    # email_verified stays false until OTP / link succeeds and the users row is created.
     return UserRegisterResponse(
         id=pending.id,
         full_name=pending.full_name,
@@ -140,12 +147,14 @@ def register_user(request: Request, db: DbSession, payload: UserRegister) -> Use
         created_at=pending.created_at,
         updated_at=pending.updated_at,
         dev_verification_code=code if _expose_dev_otp() else None,
+        verification_token=verification_token,
     )
 
 
 @router.post("/verify-email", response_model=MessageResponse)
 def verify_user_email(db: DbSession, payload: VerifyEmailRequest) -> MessageResponse:
     from services.pending_user_registration_service import (
+        clear_verify_link_token,
         create_user_from_pending,
         get_pending_by_email,
     )
@@ -157,6 +166,7 @@ def verify_user_email(db: DbSession, payload: VerifyEmailRequest) -> MessageResp
 
     pending = get_pending_by_email(db, email)
     if pending and pending.id == subject_id:
+        clear_verify_link_token(pending)
         try:
             user = create_user_from_pending(db, pending)
         except ValueError as e:
@@ -215,6 +225,80 @@ def verify_user_email(db: DbSession, payload: VerifyEmailRequest) -> MessageResp
     return MessageResponse(message="Email verified. You can sign in now.")
 
 
+def _finalize_new_user_verification(db: DbSession, user: User) -> None:
+    track_user_registration_verified(
+        user_id=user.id,
+        email=user.email,
+        phone_number=user.phone_number,
+    )
+    promo = get_welcome_promo_row(db)
+    if promo:
+        send_user_welcome_promo_email(
+            to_email=user.email,
+            full_name=user.full_name,
+            code=promo.code,
+            duration_minutes=promo.allowed_duration_minutes or 5,
+            preferred_language=user.preferred_language,
+        )
+
+
+@router.post("/verify-link", response_model=VerifyEmailLinkResponse)
+@limiter.limit("10/minute")
+def verify_user_email_link(
+    request: Request,
+    db: DbSession,
+    payload: VerifyEmailLinkRequest,
+    response: Response,
+) -> VerifyEmailLinkResponse:
+    """Verify pending signup via QR / magic link and create a logged-in session."""
+    from services.pending_user_registration_service import (
+        create_user_from_pending,
+        get_pending_by_verify_token,
+    )
+
+    pending = get_pending_by_verify_token(db, payload.token)
+    if not pending:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Invalid or expired verification link. Please register again or use the email code.",
+        )
+
+    email = pending.email
+    try:
+        user = create_user_from_pending(db, pending)
+    except ValueError as e:
+        db.rollback()
+        code = str(e)
+        if code == "pending_expired":
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Registration expired. Please register again.",
+            ) from e
+        if code in ("email_taken", "phone_taken"):
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "This email or phone is already registered. Please sign in.",
+            ) from e
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid verification") from e
+
+    delete_otp_for_email(db, email, "user")
+    user.last_login = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(user)
+    _finalize_new_user_verification(db, user)
+
+    raw_refresh = store_refresh_token(db, subject_id=user.id, role="user")
+    _set_refresh_cookie(response, raw_refresh)
+    access = create_access_token(user.id, "user")
+    return VerifyEmailLinkResponse(
+        access_token=access,
+        expires_in=settings.access_token_expire_minutes * 60,
+        two_factor_required=False,
+        user_id=user.id,
+        email=user.email,
+    )
+
+
 @router.post("/meta/lead", status_code=status.HTTP_204_NO_CONTENT)
 def user_meta_lead(
     request: Request,
@@ -237,16 +321,19 @@ def user_meta_lead(
     )
 
 
-@router.post("/resend-verify-email", response_model=MessageResponse)
-def resend_user_verify_email(db: DbSession, payload: ResendVerifyEmailRequest) -> MessageResponse:
-    from services.pending_user_registration_service import get_pending_by_email
+@router.post("/resend-verify-email", response_model=ResendVerifyEmailResponse)
+def resend_user_verify_email(db: DbSession, payload: ResendVerifyEmailRequest) -> ResendVerifyEmailResponse:
+    from services.pending_user_registration_service import (
+        get_pending_by_email,
+        issue_verify_link_token,
+    )
 
     email = str(payload.email).lower()
     pending = get_pending_by_email(db, email)
     user = db.query(User).filter(User.email == email).first()
 
     if user and user.email_verified:
-        return MessageResponse(message="If an account exists, a verification code was sent.")
+        return ResendVerifyEmailResponse(message="If an account exists, a verification code was sent.")
 
     subject_id: str | None = None
     if pending:
@@ -254,10 +341,13 @@ def resend_user_verify_email(db: DbSession, payload: ResendVerifyEmailRequest) -
     elif user and not user.email_verified:
         subject_id = user.id
     else:
-        return MessageResponse(message="If an account exists, a verification code was sent.")
+        return ResendVerifyEmailResponse(message="If an account exists, a verification code was sent.")
 
+    verification_token: str | None = None
     try:
         create_and_send_otp(db, email=email, role="user", subject_id=subject_id, otp_id=new_uuid())
+        if pending:
+            verification_token = issue_verify_link_token(pending)
         db.commit()
     except Exception:
         db.rollback()
@@ -265,7 +355,10 @@ def resend_user_verify_email(db: DbSession, payload: ResendVerifyEmailRequest) -
             status.HTTP_503_SERVICE_UNAVAILABLE,
             "Could not send verification email. Please try again later.",
         )
-    return MessageResponse(message="If an account exists, a verification code was sent.")
+    return ResendVerifyEmailResponse(
+        message="If an account exists, a verification code was sent.",
+        verification_token=verification_token,
+    )
 
 
 @router.post("/login", response_model=LoginResponse)

@@ -9,10 +9,8 @@ from models.booking import Booking
 from models.mentor import Mentor
 from models.user import User
 from schemas.booking import BookingCreate
-from services.chat_service import mentor_chat_busy
 from services.i18n_service import to_i18n_map
 from services.notification_service import create_notification
-from services.presence_service import presence_service
 from services.pricing_service import PricingError, booking_base_eur_amount
 
 ALLOWED_LIVE_DURATIONS = frozenset({5, 10, 20, 30, 60})
@@ -47,12 +45,6 @@ def _validate_mentor_for_booking(db: Session, mentor: Mentor | None) -> Mentor:
         raise BookingError("Mentor not found", "mentor_not_found")
     if not mentor.is_approved or mentor.status != "active":
         raise BookingError("Mentor is not available for booking", "mentor_inactive")
-    if mentor_chat_busy(db, mentor.id):
-        raise BookingError("Mentor is currently in a chat session", "mentor_in_chat")
-    from services.mentor_availability_service import mentor_manual_occupied
-
-    if mentor_manual_occupied(db, mentor.id):
-        raise BookingError("Coach is marked as occupied and not taking new sessions.", "mentor_occupied")
     return mentor
 
 
@@ -77,18 +69,25 @@ def create_live_booking_request(db: Session, user_id: str, payload: BookingCreat
         db,
         db.query(Mentor).filter(Mentor.id == payload.mentor_id).with_for_update().first(),
     )
-    if not presence_service.is_online(mentor.id, "mentor", last_seen_at=mentor.last_seen_at):
+    from services.mentor_availability_service import live_availability_block_reason
+
+    block = live_availability_block_reason(db, mentor, require_chat_rate=False)
+    if block == "mentor_busy":
+        raise BookingError("Mentor is currently in a chat session", "mentor_in_chat")
+    if block == "mentor_occupied":
+        raise BookingError("Coach is marked as occupied and not taking new sessions.", "mentor_occupied")
+    if block == "mentor_offline":
         raise BookingError(
             "Coach is offline. You can book a live session only while they are online on the platform.",
             "mentor_offline",
         )
-    from services.mentor_unavailability_service import mentor_unavailable_now
-
-    if mentor_unavailable_now(db, mentor.id):
+    if block == "mentor_unavailable":
         raise BookingError(
             "Coach is marked as unavailable at this time.",
             "mentor_unavailable",
         )
+    if block == "mentor_inactive":
+        raise BookingError("Mentor is not available for booking", "mentor_inactive")
 
     try:
         _amount = booking_base_eur_amount(db, mentor=mentor, duration_minutes=duration)

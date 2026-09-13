@@ -77,6 +77,9 @@ const MentorDetailPage = () => {
   const u = t.app.mentorUnavailability;
   const [selectedDuration, setSelectedDuration] = useState<(typeof SESSION_PACKAGES)[number]>(5);
   const [availabilityOpen, setAvailabilityOpen] = useState(false);
+  const [availabilityBlockReason, setAvailabilityBlockReason] = useState<
+    "busy" | "paused" | "unavailable" | "offline" | null
+  >(null);
   const [chatPromoInput, setChatPromoInput] = useState("");
   const [chatPromoCode, setChatPromoCode] = useState("");
   const [chatPromoError, setChatPromoError] = useState("");
@@ -90,7 +93,7 @@ const MentorDetailPage = () => {
     queryKey: ["mentor", mentorId, language],
     queryFn: () => getMentor(mentorId!),
     enabled: Boolean(mentorId),
-    refetchInterval: 15_000,
+    refetchInterval: 8_000,
     refetchOnWindowFocus: true,
   });
 
@@ -100,12 +103,56 @@ const MentorDetailPage = () => {
   const mentorOffline = availability === "offline";
   const mentorUnavailable = availability === "unavailable";
   const canBookLive = availability === "available";
+  const dialogBusy = availabilityBlockReason === "busy" || (!availabilityBlockReason && mentorBusy);
+  const dialogPaused = availabilityBlockReason === "paused" || (!availabilityBlockReason && mentorPaused);
+  const dialogUnavailable =
+    availabilityBlockReason === "unavailable" || (!availabilityBlockReason && mentorUnavailable);
   const unavailabilityLine = mentor
     ? formatUnavailabilityLine(mentor.unavailability, u, {
         unavailableNow: mentorUnavailable,
         timeZone: effectiveTimeZone,
       })
     : "";
+
+  const refreshMentorAvailability = async () => {
+    if (!mentorId) return "offline" as const;
+    const fresh = await queryClient.fetchQuery({
+      queryKey: ["mentor", mentorId, language],
+      queryFn: () => getMentor(mentorId),
+    });
+    return getMentorAvailabilityStatus(fresh);
+  };
+
+  const openAvailabilityDialog = (reason?: "busy" | "paused" | "unavailable" | "offline" | null) => {
+    setAvailabilityBlockReason(reason ?? null);
+    setAvailabilityOpen(true);
+  };
+
+  const reasonFromApiError = (e: Error): "busy" | "paused" | "unavailable" | "offline" | null => {
+    const lower = e.message.toLowerCase();
+    if (
+      lower.includes("occupied") ||
+      lower.includes("paused") ||
+      lower.includes("mentor_occupied")
+    ) {
+      return "paused";
+    }
+    if (
+      lower.includes("mentor_in_chat") ||
+      lower.includes("currently in a chat") ||
+      lower.includes("mentor_busy") ||
+      lower.includes("busy")
+    ) {
+      return "busy";
+    }
+    if (lower.includes("mentor_unavailable") || lower.includes("unavailable")) {
+      return "unavailable";
+    }
+    if (lower.includes("offline") || lower.includes("mentor_offline")) {
+      return "offline";
+    }
+    return null;
+  };
 
   const { data: upcomingWindows = [] } = useQuery({
     queryKey: ["mentor", mentorId, "availability-windows"],
@@ -149,9 +196,10 @@ const MentorDetailPage = () => {
   });
 
   const handleBookingError = (e: Error) => {
-    const lower = e.message.toLowerCase();
-    if (lower.includes("offline") || lower.includes("mentor_in_chat") || lower.includes("currently in a chat") || lower.includes("mentor_unavailable") || lower.includes("unavailable") || lower.includes("mentor_busy") || lower.includes("busy")) {
-      setAvailabilityOpen(true);
+    const reason = reasonFromApiError(e);
+    if (reason) {
+      void queryClient.invalidateQueries({ queryKey: ["mentor", mentorId, language] });
+      openAvailabilityDialog(reason);
       return;
     }
     toast.error(humanizeApiError(e));
@@ -318,40 +366,43 @@ const MentorDetailPage = () => {
   const profileSrc = mediaUrlFromApi(mentor.profile_image);
   const bannerSrc = mediaUrlFromApi(mentor.banner_image);
 
-  const handleDurationSelect = (minutes: (typeof SESSION_PACKAGES)[number]) => {
+  const handleDurationSelect = async (minutes: (typeof SESSION_PACKAGES)[number]) => {
     if (role !== "user" || !userAccessToken) {
       toast.message(md.loginToBook);
       navigate("/login?role=user", { state: { from: `/mentors/${mentorId}` } });
       return;
     }
-    if (!canBookLive) {
-      setAvailabilityOpen(true);
+    const status = await refreshMentorAvailability();
+    if (status !== "available") {
+      openAvailabilityDialog(status === "busy" || status === "paused" || status === "unavailable" || status === "offline" ? status : "offline");
       return;
     }
     setSelectedDuration(minutes);
   };
 
-  const handleLiveBook = (communicationMode: LiveCommunicationMode) => {
+  const handleLiveBook = async (communicationMode: LiveCommunicationMode) => {
     if (role !== "user" || !userAccessToken) {
       toast.message(md.loginToBook);
       navigate("/login?role=user", { state: { from: `/mentors/${mentorId}` } });
       return;
     }
-    if (!canBookLive) {
-      setAvailabilityOpen(true);
+    const status = await refreshMentorAvailability();
+    if (status !== "available") {
+      openAvailabilityDialog(status === "busy" || status === "paused" || status === "unavailable" || status === "offline" ? status : "offline");
       return;
     }
     liveBookMut.mutate({ durationMinutes: selectedDuration, communicationMode });
   };
 
-  const handleTalkNow = () => {
+  const handleTalkNow = async () => {
     if (role !== "user" || !userAccessToken) {
       toast.message(md.loginToTalk);
       navigate("/login?role=user", { state: { from: `/mentors/${mentorId}` } });
       return;
     }
-    if (!canBookLive) {
-      setAvailabilityOpen(true);
+    const status = await refreshMentorAvailability();
+    if (status !== "available") {
+      openAvailabilityDialog(status === "busy" || status === "paused" || status === "unavailable" || status === "offline" ? status : "offline");
       return;
     }
     const minPurchase = Math.max(1, Number(mentor?.chat_min_purchase_minutes) || 5);
@@ -815,7 +866,7 @@ const MentorDetailPage = () => {
                 )
               ) : null}
               {bookSessionDisabled ? (
-                <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setAvailabilityOpen(true)}>
+                <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => openAvailabilityDialog()}>
                   {md.seeWhenAvailable}
                 </Button>
               ) : null}
@@ -823,16 +874,22 @@ const MentorDetailPage = () => {
           </CardContent>
         </Card>
 
-        <Dialog open={availabilityOpen} onOpenChange={setAvailabilityOpen}>
+        <Dialog
+          open={availabilityOpen}
+          onOpenChange={(open) => {
+            setAvailabilityOpen(open);
+            if (!open) setAvailabilityBlockReason(null);
+          }}
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{md.notAvailableTitle}</DialogTitle>
               <DialogDescription>
-                {mentorBusy
+                {dialogBusy
                   ? md.notAvailableBusyBody
-                  : mentorPaused
+                  : dialogPaused
                     ? md.notAvailablePausedBody
-                    : mentorUnavailable
+                    : dialogUnavailable
                     ? md.notAvailableUnavailableBody
                     : md.notAvailableOfflineBody}{" "}
                 {md.bookWhenOnline}

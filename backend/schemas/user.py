@@ -49,6 +49,8 @@ class UserRegisterResponse(UserOut):
     """Register response; `dev_verification_code` is set only when SMTP is not configured (local dev)."""
 
     dev_verification_code: str | None = None
+    #: One-time token for QR / magic-link verification (plaintext, returned once).
+    verification_token: str | None = None
 
 
 class UserUpdate(BaseModel):

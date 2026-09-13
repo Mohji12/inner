@@ -1,11 +1,14 @@
-"""Hold user signup details until email OTP is verified (no users row until then)."""
+"""Hold user signup details until email OTP or verify-link is verified (no users row until then)."""
 
 from __future__ import annotations
 
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
+from core.config import settings
 from core.security import hash_password, new_uuid
 from models.pending_user_registration import PendingUserRegistration
 from models.user import User
@@ -23,6 +26,45 @@ def _aware(dt: datetime) -> datetime:
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
     return dt
+
+
+def hash_verify_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def issue_verify_link_token(pending: PendingUserRegistration) -> str:
+    """Attach a fresh one-time verify-link token to pending; returns plaintext token."""
+    token = secrets.token_urlsafe(32)
+    now = _utcnow()
+    pending.verify_token_hash = hash_verify_token(token)
+    pending.verify_token_expires_at = now + timedelta(minutes=settings.otp_expire_minutes)
+    pending.updated_at = now
+    return token
+
+
+def clear_verify_link_token(pending: PendingUserRegistration) -> None:
+    pending.verify_token_hash = None
+    pending.verify_token_expires_at = None
+
+
+def get_pending_by_verify_token(db: Session, token: str) -> PendingUserRegistration | None:
+    token = (token or "").strip()
+    if not token:
+        return None
+    digest = hash_verify_token(token)
+    pending = (
+        db.query(PendingUserRegistration)
+        .filter(PendingUserRegistration.verify_token_hash == digest)
+        .first()
+    )
+    if not pending:
+        return None
+    now = _utcnow()
+    if not pending.verify_token_expires_at or _aware(pending.verify_token_expires_at) <= now:
+        return None
+    if _aware(pending.expires_at) <= now:
+        return None
+    return pending
 
 
 def purge_expired_pending_registrations(db: Session) -> int:
@@ -91,6 +133,7 @@ def upsert_pending_user_registration(
         pending.preferred_language = preferred_language or "en"
         pending.expires_at = expires
         pending.updated_at = now
+        clear_verify_link_token(pending)
         db.add(pending)
         db.flush()
         return pending
@@ -109,6 +152,8 @@ def upsert_pending_user_registration(
         timezone=tz,
         preferred_language=preferred_language or "en",
         expires_at=expires,
+        verify_token_hash=None,
+        verify_token_expires_at=None,
         created_at=now,
         updated_at=now,
     )

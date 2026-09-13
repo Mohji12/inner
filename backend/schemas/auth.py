@@ -26,6 +26,15 @@ class MessageResponse(BaseModel):
     message: str
 
 
+class ResendVerifyEmailResponse(BaseModel):
+    message: str
+    verification_token: str | None = None
+
+
+class VerifyEmailLinkRequest(BaseModel):
+    token: str = Field(min_length=16, max_length=128)
+
+
 class TwoFactorSetupResponse(BaseModel):
     secret: str
     provisioning_uri: str
@@ -58,3 +67,8 @@ class SocialLoginRequest(BaseModel):
 class LoginResponse(AccessTokenResponse):
     two_factor_required: bool = False
     temp_token: Optional[str] = None
+
+
+class VerifyEmailLinkResponse(LoginResponse):
+    user_id: str
+    email: str

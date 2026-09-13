@@ -1016,7 +1016,7 @@ def ensure_email_otp_role_width() -> None:
 
 
 def ensure_pending_user_registrations_table() -> None:
-    """Hold user signups until email OTP succeeds (no users row until verified)."""
+    """Hold user signups until email OTP / verify-link succeeds (no users row until verified)."""
     ddl = """
     CREATE TABLE IF NOT EXISTS pending_user_registrations (
         id CHAR(36) NOT NULL PRIMARY KEY,
@@ -1027,12 +1027,25 @@ def ensure_pending_user_registrations_table() -> None:
         timezone VARCHAR(64) NOT NULL DEFAULT 'UTC',
         preferred_language VARCHAR(32) NOT NULL DEFAULT 'en',
         expires_at DATETIME(6) NOT NULL,
+        verify_token_hash VARCHAR(64) NULL,
+        verify_token_expires_at DATETIME(6) NULL,
         created_at DATETIME(6) NOT NULL,
         updated_at DATETIME(6) NOT NULL,
         UNIQUE KEY uq_pending_user_email (email),
         UNIQUE KEY uq_pending_user_phone (phone_number),
-        KEY ix_pending_user_expires (expires_at)
+        KEY ix_pending_user_expires (expires_at),
+        KEY ix_pending_user_verify_token_hash (verify_token_hash)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """
     _execute_ddl(ddl)
+    _safe_add_column("ALTER TABLE pending_user_registrations ADD COLUMN verify_token_hash VARCHAR(64) NULL")
+    _safe_add_column(
+        "ALTER TABLE pending_user_registrations ADD COLUMN verify_token_expires_at DATETIME(6) NULL"
+    )
+    try:
+        _execute_ddl(
+            "CREATE INDEX ix_pending_user_verify_token_hash ON pending_user_registrations (verify_token_hash)"
+        )
+    except Exception:
+        pass
 

@@ -67,6 +67,7 @@ export interface UserOut {
 /** POST /auth/user/register — includes dev OTP when SMTP is not configured */
 export interface UserRegisterResult extends UserOut {
   dev_verification_code?: string | null;
+  verification_token?: string | null;
 }
 
 export interface MentorPublic {

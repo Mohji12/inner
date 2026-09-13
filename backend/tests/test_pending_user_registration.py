@@ -6,6 +6,9 @@ from unittest.mock import MagicMock, patch
 from services.pending_user_registration_service import (
     PENDING_REGISTRATION_HOURS,
     create_user_from_pending,
+    get_pending_by_verify_token,
+    hash_verify_token,
+    issue_verify_link_token,
     upsert_pending_user_registration,
 )
 
@@ -39,7 +42,6 @@ class PendingUserRegistrationServiceTests(TestCase):
             expires_at=now + timedelta(hours=PENDING_REGISTRATION_HOURS),
         )
         db = MagicMock()
-        # first() for email check, then phone check → neither exists
         db.query.return_value.filter.return_value.first.side_effect = [None, None]
 
         with patch("services.pending_user_registration_service.User") as UserCls:
@@ -69,6 +71,45 @@ class PendingUserRegistrationServiceTests(TestCase):
             create_user_from_pending(db, pending)
         self.assertEqual(str(ctx.exception), "pending_expired")
         db.delete.assert_called_once_with(pending)
+
+    def test_issue_verify_link_token_sets_hash_and_expiry(self) -> None:
+        pending = SimpleNamespace(
+            verify_token_hash=None,
+            verify_token_expires_at=None,
+            updated_at=None,
+        )
+        with patch(
+            "services.pending_user_registration_service.settings"
+        ) as settings:
+            settings.otp_expire_minutes = 15
+            token = issue_verify_link_token(pending)
+        self.assertTrue(len(token) >= 32)
+        self.assertEqual(pending.verify_token_hash, hash_verify_token(token))
+        self.assertIsNotNone(pending.verify_token_expires_at)
+
+    def test_get_pending_by_verify_token_rejects_expired_token(self) -> None:
+        now = datetime.now(timezone.utc)
+        token = "a" * 40
+        pending = SimpleNamespace(
+            verify_token_hash=hash_verify_token(token),
+            verify_token_expires_at=now - timedelta(minutes=1),
+            expires_at=now + timedelta(hours=1),
+        )
+        db = MagicMock()
+        db.query.return_value.filter.return_value.first.return_value = pending
+        self.assertIsNone(get_pending_by_verify_token(db, token))
+
+    def test_get_pending_by_verify_token_accepts_valid_token(self) -> None:
+        now = datetime.now(timezone.utc)
+        token = "b" * 40
+        pending = SimpleNamespace(
+            verify_token_hash=hash_verify_token(token),
+            verify_token_expires_at=now + timedelta(minutes=10),
+            expires_at=now + timedelta(hours=1),
+        )
+        db = MagicMock()
+        db.query.return_value.filter.return_value.first.return_value = pending
+        self.assertIs(get_pending_by_verify_token(db, token), pending)
 
 
 if __name__ == "__main__":

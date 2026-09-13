@@ -1,6 +1,7 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Mail } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import AppPageHeader from "@/components/AppPageHeader";
 import { useAuth } from "@/auth/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
@@ -31,6 +32,7 @@ const UserRegisterPage = () => {
   const [error, setError] = useState("");
   const [phase, setPhase] = useState<"form" | "verify">("form");
   const [otp, setOtp] = useState("");
+  const [verificationToken, setVerificationToken] = useState<string | null>(null);
   const [verifyCtx, setVerifyCtx] = useState<{ email: string; password: string; userId: string } | null>(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -41,13 +43,16 @@ const UserRegisterPage = () => {
     city: "",
     goals: "",
     preferredLanguage: language,
-    gender: "",
-    dateOfBirth: "",
   });
 
   useEffect(() => {
     setFormData((prev) => ({ ...prev, preferredLanguage: language }));
   }, [language]);
+
+  const verifyLinkUrl = useMemo(() => {
+    if (!verificationToken || typeof window === "undefined") return "";
+    return `${window.location.origin}/user/verify-link?token=${encodeURIComponent(verificationToken)}`;
+  }, [verificationToken]);
 
   const finishRegistration = (userId: string) => {
     const params = new URLSearchParams();
@@ -63,8 +68,6 @@ const UserRegisterPage = () => {
     await patchUserMe({
       location: formData.city.trim() || null,
       goals: formData.goals.trim() || null,
-      gender: formData.gender.trim() || null,
-      date_of_birth: formData.dateOfBirth.trim() || null,
     });
     finishRegistration(userId);
   };
@@ -96,6 +99,7 @@ const UserRegisterPage = () => {
         preferred_language: formData.preferredLanguage.trim() || language,
       });
       setVerifyCtx({ email, password: formData.password, userId: reg.id });
+      setVerificationToken(reg.verification_token ?? null);
       setOtp("");
       setPhase("verify");
       toast.message(a.verifyDescription.replace("{email}", email));
@@ -128,11 +132,27 @@ const UserRegisterPage = () => {
   const onResendOtp = async () => {
     if (!verifyCtx) return;
     try {
-      await resendUserVerifyEmail(verifyCtx.email);
+      const res = await resendUserVerifyEmail(verifyCtx.email);
+      if (res.verification_token) {
+        setVerificationToken(res.verification_token);
+      }
       toast.message(a.resendToast);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : a.errFailed;
       toast.error(msg);
+    }
+  };
+
+  const onCopyVerifyLink = async () => {
+    if (!verifyLinkUrl) {
+      toast.error(a.qrMissing);
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(verifyLinkUrl);
+      toast.success(a.qrCopied);
+    } catch {
+      toast.error(a.errFailed);
     }
   };
 
@@ -188,6 +208,27 @@ const UserRegisterPage = () => {
                     </InputOTPGroup>
                   </InputOTP>
                 </div>
+                <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
+                  <h4 className="font-medium">{a.qrTitle}</h4>
+                  <p className="mt-1 text-sm text-muted-foreground">{a.qrHint}</p>
+                  {verifyLinkUrl ? (
+                    <div className="mt-4 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+                      <div className="rounded-lg bg-white p-3">
+                        <QRCodeSVG value={verifyLinkUrl} size={160} />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <Button type="button" variant="outline" onClick={() => void onCopyVerifyLink()}>
+                          {a.qrCopyLink}
+                        </Button>
+                        <Button type="button" variant="ghost" asChild>
+                          <a href={verifyLinkUrl}>{a.qrOpenLink}</a>
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-sm text-muted-foreground">{a.qrMissing}</p>
+                  )}
+                </div>
                 {error ? <p className="text-sm font-medium text-destructive">{error}</p> : null}
                 <div className="flex flex-wrap gap-3">
                   <Button
@@ -196,6 +237,7 @@ const UserRegisterPage = () => {
                     onClick={() => {
                       setPhase("form");
                       setVerifyCtx(null);
+                      setVerificationToken(null);
                       setOtp("");
                       setError("");
                     }}
@@ -267,27 +309,6 @@ const UserRegisterPage = () => {
                     placeholder={a.cityPlaceholder}
                     value={formData.city}
                     onChange={(event) => setFormData((prev) => ({ ...prev, city: event.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="gender">{a.gender}</Label>
-                  <Input
-                    id="gender"
-                    lang={htmlLang}
-                    spellCheck
-                    placeholder={a.genderPlaceholder}
-                    value={formData.gender}
-                    onChange={(event) => setFormData((prev) => ({ ...prev, gender: event.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="dob">{a.dob}</Label>
-                  <Input
-                    id="dob"
-                    type="date"
-                    lang={htmlLang}
-                    value={formData.dateOfBirth}
-                    onChange={(event) => setFormData((prev) => ({ ...prev, dateOfBirth: event.target.value }))}
                   />
                 </div>
                 <div className="space-y-2">

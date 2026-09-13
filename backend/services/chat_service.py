@@ -162,18 +162,19 @@ def start_session_checkout(
             "below_min_minutes",
         )
 
-    if mentor_chat_busy(db, mentor_id):
+    from services.mentor_availability_service import live_availability_block_reason
+
+    block = live_availability_block_reason(db, mentor, require_chat_rate=False)
+    if block == "mentor_busy":
         raise ChatError("Mentor is currently in another chat session", "mentor_busy")
-    if not presence_service.is_online(mentor_id, "mentor", last_seen_at=mentor.last_seen_at):
+    if block == "mentor_offline":
         raise ChatError("Mentor is currently offline", "mentor_offline")
-    from services.mentor_unavailability_service import mentor_unavailable_now
-
-    if mentor_unavailable_now(db, mentor_id):
+    if block == "mentor_unavailable":
         raise ChatError("Mentor is marked as unavailable at this time", "mentor_unavailable")
-    from services.mentor_availability_service import mentor_manual_occupied
-
-    if mentor_manual_occupied(db, mentor_id):
+    if block == "mentor_occupied":
         raise ChatError("Mentor is marked as occupied and not taking new sessions", "mentor_occupied")
+    if block == "mentor_inactive":
+        raise ChatError("Mentor is not available for chat", "mentor_inactive")
 
     now = _utcnow()
     # Session starts as paused and gets activated when Mollie webhook confirms payment.

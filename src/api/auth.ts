@@ -143,6 +143,14 @@ export function verifyUserEmail(body: VerifyEmailBody): Promise<{ message: strin
   });
 }
 
+export function verifyUserEmailLink(token: string): Promise<LoginResponse & { user_id: string; email: string }> {
+  return apiFetch<LoginResponse & { user_id: string; email: string }>("/auth/user/verify-link", {
+    method: "POST",
+    body: JSON.stringify({ token }),
+    skipAuth: true,
+  });
+}
+
 export function sendMentorMetaCompleteRegistration(mentorId: string): Promise<void> {
   return apiFetch<void>("/auth/mentor/meta/complete-registration", {
     method: "POST",
@@ -169,8 +177,10 @@ export function verifyMentorEmail(
   });
 }
 
-export function resendUserVerifyEmail(email: string): Promise<{ message: string }> {
-  return apiFetch<{ message: string }>("/auth/user/resend-verify-email", {
+export function resendUserVerifyEmail(
+  email: string,
+): Promise<{ message: string; verification_token?: string | null }> {
+  return apiFetch<{ message: string; verification_token?: string | null }>("/auth/user/resend-verify-email", {
     method: "POST",
     body: JSON.stringify({ email }),
     skipAuth: true,
