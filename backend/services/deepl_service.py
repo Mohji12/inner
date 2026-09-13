@@ -30,7 +30,7 @@ _APP_TO_DEEPL: dict[str, str] = {
 # Free-tier friendly pacing (shared across workers in this process).
 _RATE_LOCK = threading.Lock()
 _LAST_CALL_AT = 0.0
-_MIN_INTERVAL_SEC = 0.35
+_MIN_INTERVAL_SEC = 0.12
 
 
 class DeepLNotConfiguredError(RuntimeError):
@@ -145,6 +145,104 @@ def translate_text(
         if not isinstance(out, str):
             raise DeepLError("DeepL returned an unexpected response")
         return out
+
+    raise last_error or DeepLError("DeepL rate limited")
+
+
+def translate_texts(
+    texts: list[str],
+    target_lang: str,
+    *,
+    source_lang: str | None = None,
+    max_retries: int = 3,
+) -> list[str]:
+    """
+    Translate many strings in one DeepL HTTP call (order preserved).
+    Empty inputs are returned as empty strings without counting as API texts.
+    """
+    cleaned_list = [(t or "").strip() for t in texts]
+    if not cleaned_list:
+        return []
+    if all(not t for t in cleaned_list):
+        return [""] * len(cleaned_list)
+
+    auth = (settings.deepl_auth_key or "").strip()
+    if not auth:
+        raise DeepLNotConfiguredError(
+            "DEEPL_AUTH_KEY is not set. Add it to backend/.env to enable machine translation."
+        )
+
+    target_app = normalize_lang(target_lang)
+    target_deepl = _APP_TO_DEEPL.get(target_app)
+    if not target_deepl:
+        logger.warning("DeepL: unsupported target lang %r; returning source texts", target_lang)
+        return list(cleaned_list)
+
+    source_deepl: str | None = None
+    if source_lang:
+        source_app = normalize_lang(source_lang)
+        if source_app == target_app:
+            return list(cleaned_list)
+        source_deepl = _APP_TO_DEEPL.get(source_app)
+
+    # DeepL accepts repeated text= form fields.
+    nonempty_idx = [i for i, t in enumerate(cleaned_list) if t]
+    if not nonempty_idx:
+        return list(cleaned_list)
+
+    base = (settings.deepl_api_url or "https://api-free.deepl.com").rstrip("/")
+    url = f"{base}/v2/translate"
+    # httpx encodes list values as repeated keys.
+    form: list[tuple[str, str]] = [("target_lang", target_deepl)]
+    if source_deepl:
+        form.append(("source_lang", source_deepl))
+    for i in nonempty_idx:
+        form.append(("text", cleaned_list[i]))
+
+    headers = {"Authorization": f"DeepL-Auth-Key {auth}"}
+    timeout = float(getattr(settings, "deepl_http_timeout_seconds", 20.0) or 20.0)
+
+    last_error: Exception | None = None
+    for attempt in range(max(1, max_retries)):
+        _pace()
+        try:
+            with httpx.Client(timeout=timeout) as client:
+                resp = client.post(url, data=form, headers=headers)
+        except httpx.HTTPError as exc:
+            raise DeepLError(f"DeepL request failed: {exc}") from exc
+
+        if resp.status_code == 429:
+            retry_after = resp.headers.get("Retry-After")
+            try:
+                delay = float(retry_after) if retry_after else (1.5 * (attempt + 1))
+            except ValueError:
+                delay = 1.5 * (attempt + 1)
+            delay = min(max(delay, 1.0), 20.0)
+            last_error = DeepLError(f"DeepL HTTP 429: {(resp.text or '').strip()[:200] or 'error'}")
+            logger.warning("DeepL rate limited (batch); retry in %.1fs (attempt %s)", delay, attempt + 1)
+            time.sleep(delay)
+            continue
+
+        if resp.status_code >= 400:
+            detail = (resp.text or "").strip()[:400]
+            raise DeepLError(f"DeepL HTTP {resp.status_code}: {detail or 'error'}")
+
+        try:
+            payload = resp.json()
+            translations = payload.get("translations") or []
+            if len(translations) != len(nonempty_idx):
+                raise DeepLError("DeepL batch size mismatch")
+            outs = list(cleaned_list)
+            for pos, item in zip(nonempty_idx, translations, strict=True):
+                text = (item or {}).get("text")
+                if not isinstance(text, str):
+                    raise DeepLError("DeepL returned an unexpected response")
+                outs[pos] = text
+            return outs
+        except (ValueError, TypeError, IndexError, AttributeError, DeepLError) as exc:
+            if isinstance(exc, DeepLError):
+                raise
+            raise DeepLError("DeepL returned an unexpected response") from exc
 
     raise last_error or DeepLError("DeepL rate limited")
 
@@ -354,7 +452,7 @@ def resolve_tag_list_i18n(
 
     existing map shape: { original_tag: { lang: translation } }
     Persists successful translations into the returned map (dirty=True when changed).
-    Source language is auto-detected by DeepL (tags are often Dutch/EN mix).
+    Missing tags are batched into one DeepL request when possible.
     """
     if not isinstance(tags, list) or not tags:
         return (None if tags is None else []), _tag_map(existing) or None, False
@@ -362,7 +460,8 @@ def resolve_tag_list_i18n(
     target = normalize_lang(target_lang)
     tag_map = _tag_map(existing)
     dirty = False
-    resolved: list[str] = []
+    resolved: list[str | None] = []
+    need_translate: list[tuple[int, str]] = []
 
     for raw in tags:
         if not isinstance(raw, str):
@@ -371,6 +470,7 @@ def resolve_tag_list_i18n(
         if not source:
             continue
 
+        idx = len(resolved)
         memo_key = (source.casefold(), target)
         if memo_key in _TAG_MEMO:
             resolved.append(_TAG_MEMO[memo_key])
@@ -391,20 +491,31 @@ def resolve_tag_list_i18n(
             resolved.append(source)
             continue
 
+        resolved.append(None)  # placeholder for batch translate
+        need_translate.append((idx, source))
+
+    if need_translate:
         if budget is not None and not budget.allow():
-            resolved.append(source)
-            continue
+            for idx, source in need_translate:
+                resolved[idx] = source
+        else:
+            try:
+                translated_list = translate_texts(
+                    [s for _, s in need_translate],
+                    target,
+                    source_lang=None,
+                )
+                for (idx, source), translated in zip(need_translate, translated_list, strict=True):
+                    bucket = tag_map.setdefault(source, {})
+                    bucket[target] = translated
+                    _TAG_MEMO[(source.casefold(), target)] = translated
+                    resolved[idx] = translated
+                    dirty = True
+            except (DeepLNotConfiguredError, DeepLError) as exc:
+                logger.warning("DeepL tag batch failed → %s: %s", target, exc)
+                for idx, source in need_translate:
+                    if resolved[idx] is None:
+                        resolved[idx] = source
 
-        try:
-            translated = translate_text(source, target, source_lang=None)
-        except (DeepLNotConfiguredError, DeepLError) as exc:
-            logger.warning("DeepL tag translate failed for %r → %s: %s", source, target, exc)
-            resolved.append(source)
-            continue
-
-        bucket[target] = translated
-        _TAG_MEMO[memo_key] = translated
-        dirty = True
-        resolved.append(translated)
-
-    return resolved, (tag_map if tag_map else None), dirty
+    out_tags = [t if isinstance(t, str) else "" for t in resolved]
+    return out_tags, (tag_map if tag_map else None), dirty

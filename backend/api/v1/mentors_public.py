@@ -1,6 +1,7 @@
 from datetime import date, datetime, time, timezone
 from decimal import Decimal
 import logging
+import threading
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
@@ -10,6 +11,7 @@ from sqlalchemy.exc import OperationalError, DBAPIError
 
 from api.deps import DbSession, RequestLang
 from core.config import settings
+from db.session import SessionLocal
 from models.availability_slot import AvailabilitySlot
 from models.booking import Booking
 from models.mentor import Mentor
@@ -23,6 +25,7 @@ from services.chat_service import mentor_ids_with_live_chat, mentor_chat_busy
 from services.i18n_service import resolve_i18n_text
 from services.deepl_service import (
     TranslationBudget,
+    deepl_configured,
     ensure_lang_in_i18n_map,
     resolve_tag_list_i18n,
 )
@@ -36,6 +39,69 @@ from services.mentor_unavailability_service import is_unavailable_now, load_unav
 
 router = APIRouter(prefix="/mentors", tags=["mentors-public"])
 logger = logging.getLogger(__name__)
+_WARM_LOCK = threading.Lock()
+_WARM_IN_FLIGHT: set[str] = set()
+
+
+def _warm_mentors_i18n(mentor_ids: list[str], lang: str) -> None:
+    """
+    Background thread: fill missing headline/tag translations so the next list load is instant.
+    Detached from the request lifecycle (does not block the HTTP response).
+    """
+    if not mentor_ids or not deepl_configured():
+        return
+    key = f"{lang}:{','.join(sorted(mentor_ids)[:20])}"
+    with _WARM_LOCK:
+        if key in _WARM_IN_FLIGHT:
+            return
+        _WARM_IN_FLIGHT.add(key)
+
+    db = SessionLocal()
+    try:
+        budget = TranslationBudget(40)
+        rows = db.query(Mentor).filter(Mentor.id.in_(mentor_ids)).all()
+        dirty = False
+        for mentor in rows:
+            if budget.max_calls is not None and budget.used >= budget.max_calls:
+                break
+            if _ensure_mentor_field_i18n(
+                mentor,
+                attr_i18n="headline_i18n",
+                fallback_text=mentor.headline,
+                lang=lang,
+                budget=budget,
+            ):
+                dirty = True
+            _, _, tags_dirty = _ensure_mentor_tags_i18n(
+                mentor,
+                lang=lang,
+                budget=budget,
+                translate=True,
+            )
+            dirty = dirty or tags_dirty
+        if dirty:
+            db.commit()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Background mentor i18n warm failed: %s", exc)
+        try:
+            db.rollback()
+        except Exception:  # noqa: BLE001
+            pass
+    finally:
+        db.close()
+        with _WARM_LOCK:
+            _WARM_IN_FLIGHT.discard(key)
+
+
+def _schedule_mentor_i18n_warm(mentor_ids: list[str], lang: str) -> None:
+    if not mentor_ids or not deepl_configured():
+        return
+    threading.Thread(
+        target=_warm_mentors_i18n,
+        args=(list(mentor_ids), lang),
+        name="mentor-i18n-warm",
+        daemon=True,
+    ).start()
 
 
 def _http_db_unavailable(exc: Exception) -> HTTPException:
@@ -332,31 +398,20 @@ def list_mentors(
         umap = load_unavailability_by_mentor(db, mentor_ids)
         next_windows = _load_next_availability_windows(db, mentor_ids)
         public_rows: list[MentorPublicOut] = []
-        i18n_dirty = False
-        # Cap live DeepL calls per list request (Free tier). Cache + tag memo fill over refreshes.
-        budget = TranslationBudget(36)
+        # Fast path: serve cached i18n only (no live DeepL). Warm missing langs in background.
         for m in rows:
-            row_out, dirty = _mentor_public_out(
+            row_out, _dirty = _mentor_public_out(
                 m,
                 busy,
                 session_pricing_active=active_pricing,
                 lang=lang,
                 unavailability_rows=umap.get(m.id, []),
                 next_window=next_windows.get(m.id),
-                translate_i18n=True,
-                budget=budget,
+                translate_i18n=False,
             )
             public_rows.append(row_out)
-            i18n_dirty = i18n_dirty or dirty
-        if i18n_dirty:
-            try:
-                db.commit()
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("Failed to persist mentor i18n cache: %s", exc)
-                try:
-                    db.rollback()
-                except Exception:  # noqa: BLE001
-                    pass
+        if mentor_ids and deepl_configured():
+            _schedule_mentor_i18n_warm(list(mentor_ids), lang)
         deduped = _dedupe_public_rows(public_rows)
         if sort_by in (None, "relevance", ""):
             return rank_public_mentors(deduped)
@@ -536,7 +591,12 @@ def list_mentor_slots(
     return rows
 
 @router.get("/{mentor_id}/similar", response_model=list[MentorPublicOut])
-def get_similar_mentors(mentor_id: str, db: DbSession, lang: RequestLang, limit: int = 4) -> list[MentorPublicOut]:
+def get_similar_mentors(
+    mentor_id: str,
+    db: DbSession,
+    lang: RequestLang,
+    limit: int = 4,
+) -> list[MentorPublicOut]:
     mentor = db.query(Mentor).filter(Mentor.id == mentor_id).first()
     if not mentor or not _mentor_visible_for_public(mentor):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Coach not found")
@@ -571,28 +631,19 @@ def get_similar_mentors(mentor_id: str, db: DbSession, lang: RequestLang, limit:
     umap = load_unavailability_by_mentor(db, [m.id for m in rows])
     next_windows = _load_next_availability_windows(db, [m.id for m in rows])
     public_rows: list[MentorPublicOut] = []
-    i18n_dirty = False
-    budget = TranslationBudget(10)
+    warm_ids: list[str] = []
     for m in rows:
-        row_out, dirty = _mentor_public_out(
+        row_out, _dirty = _mentor_public_out(
             m,
             busy,
             session_pricing_active=active_pricing,
             lang=lang,
             unavailability_rows=umap.get(m.id, []),
             next_window=next_windows.get(m.id),
-            translate_i18n=True,
-            budget=budget,
+            translate_i18n=False,
         )
         public_rows.append(row_out)
-        i18n_dirty = i18n_dirty or dirty
-    if i18n_dirty:
-        try:
-            db.commit()
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Failed to persist mentor i18n cache: %s", exc)
-            try:
-                db.rollback()
-            except Exception:  # noqa: BLE001
-                pass
+        warm_ids.append(m.id)
+    if warm_ids and deepl_configured():
+        _schedule_mentor_i18n_warm(warm_ids, lang)
     return rank_public_mentors(_dedupe_public_rows(public_rows))[: max(1, min(limit, 12))]

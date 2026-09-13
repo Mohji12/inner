@@ -94,7 +94,7 @@ def test_ensure_lang_in_i18n_map_fills_when_missing():
 
 
 def test_resolve_tag_list_i18n_uses_cache_and_translates():
-    with patch.object(ds, "translate_text", return_value="爱情与关系") as tr:
+    with patch.object(ds, "translate_texts", return_value=["爱情与关系"]) as tr:
         tags, mapping, dirty = ds.resolve_tag_list_i18n(
             ["liefde & relaties"],
             "zh",
@@ -106,7 +106,7 @@ def test_resolve_tag_list_i18n_uses_cache_and_translates():
     assert mapping["liefde & relaties"]["zh"] == "爱情与关系"
     tr.assert_called_once()
 
-    with patch.object(ds, "translate_text") as tr2:
+    with patch.object(ds, "translate_texts") as tr2:
         tags2, _, dirty2 = ds.resolve_tag_list_i18n(
             ["liefde & relaties"],
             "zh",

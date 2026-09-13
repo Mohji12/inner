@@ -7,6 +7,13 @@ Living log of work done on this project.
 
 ## 2026-09-14
 
+### Faster coach list: cache-first DeepL
+**Goal:** Stop blocking coach browse on live DeepL (was 30–40s).
+
+- Mentor **list/similar** return immediately from i18n cache; missing langs warm in a background task
+- Batch tag translation in one DeepL HTTP call; slightly lower request pacing
+- Key paths: `backend/api/v1/mentors_public.py`, `backend/services/deepl_service.py`
+
 ### Coach browse cards: headline + expertise tags via DeepL
 **Goal:** Translate coach card headlines and expertise tags for the viewer language (not only static UI).
 
