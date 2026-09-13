@@ -17,6 +17,7 @@ declare module "*.mp4?url" {
 
 interface ImportMetaEnv {
   readonly VITE_API_URL?: string;
+  readonly VITE_PUBLIC_APP_URL?: string;
   readonly VITE_GOOGLE_CLIENT_ID?: string;
   readonly VITE_HOME_MUSIC_URL?: string;
 }

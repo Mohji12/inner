@@ -7,6 +7,12 @@ Living log of work done on this project.
 
 ## 2026-09-13
 
+### Registration QR uses production URL
+**Goal:** Phone scanners open the live site, not localhost.
+
+- Verify QR / copy link use `https://mijnlevenspad.com` (override with `VITE_PUBLIC_APP_URL`)
+- Key paths: `src/pages/UserRegisterPage.tsx`, `.env.example`
+
 ### Remove gender/DOB from user registration
 **Goal:** Simplify the user signup form.
 

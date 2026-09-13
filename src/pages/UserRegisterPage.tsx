@@ -21,6 +21,10 @@ import OtpEmailHint from "@/components/OtpEmailHint";
 import { composeE164Phone, DEFAULT_DIAL_ISO, dialCodeForIso } from "@/lib/countryDialCodes";
 
 const SUPPORT_EMAIL = "info@mijnlevenspad.com";
+/** Public SPA origin for QR / magic-link verify (phones cannot open localhost). */
+const PUBLIC_APP_ORIGIN = (
+  (import.meta.env.VITE_PUBLIC_APP_URL as string | undefined)?.trim() || "https://mijnlevenspad.com"
+).replace(/\/$/, "");
 
 const LANGUAGE_OPTIONS = Object.keys(languageLabels) as Language[];
 
@@ -50,8 +54,8 @@ const UserRegisterPage = () => {
   }, [language]);
 
   const verifyLinkUrl = useMemo(() => {
-    if (!verificationToken || typeof window === "undefined") return "";
-    return `${window.location.origin}/user/verify-link?token=${encodeURIComponent(verificationToken)}`;
+    if (!verificationToken) return "";
+    return `${PUBLIC_APP_ORIGIN}/user/verify-link?token=${encodeURIComponent(verificationToken)}`;
   }, [verificationToken]);
 
   const finishRegistration = (userId: string) => {
