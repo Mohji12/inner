@@ -192,12 +192,14 @@ def translate_texts(
 
     base = (settings.deepl_api_url or "https://api-free.deepl.com").rstrip("/")
     url = f"{base}/v2/translate"
-    # httpx encodes list values as repeated keys.
-    form: list[tuple[str, str]] = [("target_lang", target_deepl)]
+    # httpx repeats keys when a value is a list. Do NOT pass a list of (k,v) tuples —
+    # that path can stream incorrectly and crash request encoding (TypeError in h11).
+    form: dict[str, Any] = {
+        "target_lang": target_deepl,
+        "text": [cleaned_list[i] for i in nonempty_idx],
+    }
     if source_deepl:
-        form.append(("source_lang", source_deepl))
-    for i in nonempty_idx:
-        form.append(("text", cleaned_list[i]))
+        form["source_lang"] = source_deepl
 
     headers = {"Authorization": f"DeepL-Auth-Key {auth}"}
     timeout = float(getattr(settings, "deepl_http_timeout_seconds", 20.0) or 20.0)
@@ -511,7 +513,7 @@ def resolve_tag_list_i18n(
                     _TAG_MEMO[(source.casefold(), target)] = translated
                     resolved[idx] = translated
                     dirty = True
-            except (DeepLNotConfiguredError, DeepLError) as exc:
+            except Exception as exc:  # noqa: BLE001 — never break public coach responses
                 logger.warning("DeepL tag batch failed → %s: %s", target, exc)
                 for idx, source in need_translate:
                     if resolved[idx] is None:

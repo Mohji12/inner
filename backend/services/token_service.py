@@ -7,6 +7,13 @@ from core.security import create_raw_refresh_token, hash_refresh_token, new_uuid
 from models.refresh_token import RefreshToken
 
 
+def _aware(dt: datetime) -> datetime:
+    """MySQL DATETIME often comes back naive; treat naive values as UTC."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
 def store_refresh_token(db: Session, *, subject_id: str, role: str) -> str:
     raw = create_raw_refresh_token()
     now = datetime.now(timezone.utc)
@@ -40,6 +47,9 @@ def validate_refresh_token(db: Session, raw: str, role: str) -> str | None:
         .first()
     )
     if not row:
+        return None
+    # Defense in depth: driver may return naive expires_at; re-check in Python.
+    if _aware(row.expires_at) <= now:
         return None
     return row.subject_id
 
@@ -91,6 +101,8 @@ def rotate_refresh_token(db: Session, raw: str, role: str) -> tuple[str, str] | 
         )
         .first()
     )
+    if row and _aware(row.expires_at) <= now:
+        row = None
     if not row:
         # Grace period: token just rotated by another tab.
         grace_seconds = 45
@@ -103,27 +115,28 @@ def rotate_refresh_token(db: Session, raw: str, role: str) -> tuple[str, str] | 
             )
             .first()
         )
-        if revoked and revoked.revoked_at is not None and revoked.expires_at > now:
-            revoked_at = revoked.revoked_at
-            if revoked_at.tzinfo is None:
-                revoked_at = revoked_at.replace(tzinfo=timezone.utc)
-            if (now - revoked_at).total_seconds() <= grace_seconds:
-                subject_id = revoked.subject_id
-                new_raw = create_raw_refresh_token()
-                expires = now + timedelta(days=settings.refresh_token_expire_days)
-                db.add(
-                    RefreshToken(
-                        id=new_uuid(),
-                        subject_id=subject_id,
-                        role=role,
-                        token_hash=hash_refresh_token(new_raw),
-                        expires_at=expires,
-                        revoked_at=None,
-                        created_at=now,
-                    )
+        if (
+            revoked
+            and revoked.revoked_at is not None
+            and _aware(revoked.expires_at) > now
+            and (now - _aware(revoked.revoked_at)).total_seconds() <= grace_seconds
+        ):
+            subject_id = revoked.subject_id
+            new_raw = create_raw_refresh_token()
+            expires = now + timedelta(days=settings.refresh_token_expire_days)
+            db.add(
+                RefreshToken(
+                    id=new_uuid(),
+                    subject_id=subject_id,
+                    role=role,
+                    token_hash=hash_refresh_token(new_raw),
+                    expires_at=expires,
+                    revoked_at=None,
+                    created_at=now,
                 )
-                db.commit()
-                return subject_id, new_raw
+            )
+            db.commit()
+            return subject_id, new_raw
         return None
 
     subject_id = row.subject_id

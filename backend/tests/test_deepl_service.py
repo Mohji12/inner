@@ -150,3 +150,38 @@ def test_translate_text_retries_on_429():
         out = ds.translate_text("Hello", "fr", source_lang="en")
     assert out == "Bonjour"
     assert mock_client.post.call_count == 2
+
+
+def test_translate_texts_posts_repeated_text_as_list():
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "translations": [{"text": "A"}, {"text": "B"}],
+    }
+    mock_client = MagicMock()
+    mock_client.__enter__.return_value = mock_client
+    mock_client.post.return_value = mock_resp
+
+    with (
+        patch("services.deepl_service.httpx.Client", return_value=mock_client),
+        patch("services.deepl_service._pace"),
+    ):
+        out = ds.translate_texts(["one", "two"], "fr", source_lang="en")
+
+    assert out == ["A", "B"]
+    _, kwargs = mock_client.post.call_args
+    assert kwargs["data"]["target_lang"] == "FR"
+    assert kwargs["data"]["text"] == ["one", "two"]
+    assert isinstance(kwargs["data"], dict)
+
+
+def test_resolve_tag_list_i18n_soft_fails_on_unexpected_errors():
+    with patch.object(ds, "translate_texts", side_effect=TypeError("boom")):
+        tags, _, dirty = ds.resolve_tag_list_i18n(
+            ["listening"],
+            "fr",
+            existing=None,
+            budget=ds.TranslationBudget(5),
+        )
+    assert tags == ["listening"]
+    assert dirty is False

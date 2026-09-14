@@ -7,6 +7,19 @@ Living log of work done on this project.
 
 ## 2026-09-14
 
+### Fix mentor refresh 500 (naive vs aware datetimes)
+**Goal:** Stop `rotate_refresh_token` crashing on multi-tab refresh grace path.
+
+- MySQL returns naive `expires_at` / `revoked_at`; compare after normalizing to UTC
+- Key paths: `backend/services/token_service.py`, `backend/tests/test_token_service.py`
+
+### Fix coach profile 500 (DeepL batch form)
+**Goal:** Coach detail page was showing “Coach not found” because `GET /mentors/{id}` crashed.
+
+- `translate_texts` posted form data as a list of tuples; httpx/h11 raised `TypeError` during request encoding
+- Use dict + list `text` values (repeated keys) instead; soft-fail unexpected tag-batch errors
+- Key paths: `backend/services/deepl_service.py`, `backend/tests/test_deepl_service.py`
+
 ### Faster coach list: cache-first DeepL
 **Goal:** Stop blocking coach browse on live DeepL (was 30–40s).
 
