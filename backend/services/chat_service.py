@@ -86,30 +86,27 @@ def mentor_chat_busy(db: Session, mentor_id: str) -> bool:
 
 
 def mentor_ids_with_live_chat(db: Session) -> set[str]:
+    """Mentor IDs currently in a live or waiting chat (single round-trip)."""
     now = _utcnow()
-    active_ids = {
-        r[0]
-        for r in (
-            db.query(ChatSession.mentor_id)
-            .filter(
-                ChatSession.status == CHAT_SESSION_ACTIVE,
-                ChatSession.ends_at > now,
-            )
-            .distinct()
-            .all()
-        )
-    }
-    waiting = (
+    rows = (
         db.query(ChatSession)
         .filter(
-            ChatSession.status == CHAT_SESSION_PAUSED,
-            ChatSession.allocated_duration_minutes.isnot(None),
-            ChatSession.timer_started_at.is_(None),
+            (
+                (ChatSession.status == CHAT_SESSION_ACTIVE) & (ChatSession.ends_at > now)
+            )
+            | (
+                (ChatSession.status == CHAT_SESSION_PAUSED)
+                & ChatSession.allocated_duration_minutes.isnot(None)
+                & ChatSession.timer_started_at.is_(None)
+            )
         )
         .all()
     )
-    for row in waiting:
-        if not join_deadline_expired(row):
+    active_ids: set[str] = set()
+    for row in rows:
+        if row.status == CHAT_SESSION_ACTIVE:
+            active_ids.add(row.mentor_id)
+        elif not join_deadline_expired(row):
             active_ids.add(row.mentor_id)
     return active_ids
 

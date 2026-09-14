@@ -13,8 +13,9 @@ const UserMentorsBrowsePage = () => {
   const { data: mentors = [], isLoading } = useQuery({
     queryKey: ["mentors", "public", language],
     queryFn: () => listMentors(true),
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
     refetchOnWindowFocus: true,
+    staleTime: 15_000,
   });
   const { data: pricing } = useQuery({
     queryKey: ["platform-pricing", language],

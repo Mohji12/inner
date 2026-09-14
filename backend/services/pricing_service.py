@@ -1,4 +1,5 @@
 from decimal import ROUND_HALF_UP, Decimal
+import time
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -12,6 +13,10 @@ _LEGACY_DEFAULT_CHAT_EUR_PER_MIN = Decimal("0.10")
 # When DB and env are both still at legacy €0.10 (e.g. stale Settings cache), use current product default.
 # Keep aligned with `Settings.session_price_eur_per_minute` default in `core.config`.
 _POLICY_CHAT_EUR_PER_MIN = Decimal("0.90")
+
+# Public browse hits pricing on every list/detail; cache briefly to cut remote-RDS RTTs.
+_PRICING_CACHE_TTL_SEC = 60.0
+_pricing_cache: tuple[float, PlatformPricing] | None = None
 
 
 def effective_chat_price_per_minute_eur(mentor: Any) -> Decimal:
@@ -43,10 +48,21 @@ class PricingError(Exception):
 
 
 def get_platform_pricing(db: Session) -> PlatformPricing:
+    global _pricing_cache
+    now = time.monotonic()
+    cached = _pricing_cache
+    if cached is not None and (now - cached[0]) < _PRICING_CACHE_TTL_SEC:
+        return cached[1]
     pricing = db.query(PlatformPricing).order_by(PlatformPricing.created_at.asc()).first()
     if not pricing:
         raise PricingError("Platform pricing is not configured", "pricing_not_configured")
+    _pricing_cache = (now, pricing)
     return pricing
+
+
+def clear_platform_pricing_cache() -> None:
+    global _pricing_cache
+    _pricing_cache = None
 
 
 def get_active_platform_pricing(db: Session) -> PlatformPricing:

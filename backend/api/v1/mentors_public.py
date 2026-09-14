@@ -45,7 +45,7 @@ _WARM_IN_FLIGHT: set[str] = set()
 
 def _warm_mentors_i18n(mentor_ids: list[str], lang: str) -> None:
     """
-    Background thread: fill missing headline/tag translations so the next list load is instant.
+    Background thread: fill missing headline/bio/tag translations so the next load is instant.
     Detached from the request lifecycle (does not block the HTTP response).
     """
     if not mentor_ids or not deepl_configured():
@@ -68,6 +68,14 @@ def _warm_mentors_i18n(mentor_ids: list[str], lang: str) -> None:
                 mentor,
                 attr_i18n="headline_i18n",
                 fallback_text=mentor.headline,
+                lang=lang,
+                budget=budget,
+            ):
+                dirty = True
+            if _ensure_mentor_field_i18n(
+                mentor,
+                attr_i18n="bio_i18n",
+                fallback_text=mentor.bio,
                 lang=lang,
                 budget=budget,
             ):
@@ -473,35 +481,17 @@ def get_mentor(mentor_id: str, db: DbSession, lang: RequestLang) -> MentorDetail
     pricing = get_platform_pricing(db)
     umap = load_unavailability_by_mentor(db, [mentor.id])
     next_windows = _load_next_availability_windows(db, [mentor.id])
-    out, dirty = _mentor_public_out(
+    # Cache-first like list: never block the profile on live DeepL.
+    out, _dirty = _mentor_public_out(
         mentor,
         busy,
         session_pricing_active=bool(pricing.is_active),
         lang=lang,
         unavailability_rows=umap.get(mentor.id, []),
         next_window=next_windows.get(mentor.id),
-        translate_i18n=True,
-        budget=TranslationBudget(None),
+        translate_i18n=False,
     )
-
-    bio_dirty = _ensure_mentor_field_i18n(
-        mentor,
-        attr_i18n="bio_i18n",
-        fallback_text=mentor.bio,
-        lang=lang,
-        budget=TranslationBudget(None),
-    )
-    if dirty or bio_dirty:
-        try:
-            db.add(mentor)
-            db.commit()
-            db.refresh(mentor)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Failed to persist mentor i18n cache: %s", exc)
-            try:
-                db.rollback()
-            except Exception:  # noqa: BLE001
-                pass
+    _schedule_mentor_i18n_warm([mentor.id], lang)
 
     base_detail = MentorDetailOut.model_validate(mentor)
     detail = {**base_detail.model_dump(), **out.model_dump()}

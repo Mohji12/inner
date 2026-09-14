@@ -24,8 +24,9 @@ const MentorsPage = () => {
   } = useQuery({
     queryKey: ["mentors", "public", "page", import.meta.env.PROD, filters, language],
     queryFn: () => listMentors(import.meta.env.PROD, filters),
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
     refetchOnWindowFocus: true,
+    staleTime: 15_000,
   });
   const { data: pricing } = useQuery({
     queryKey: ["platform-pricing", language],

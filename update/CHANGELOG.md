@@ -7,6 +7,14 @@ Living log of work done on this project.
 
 ## 2026-09-14
 
+### Faster coach browse / profile API load
+**Goal:** Cut slow frontend waits on coach list and profile (remote RDS + over-fetch).
+
+- Cache platform pricing ~60s; single-query live-chat busy check; larger DB pool
+- Coach **detail** is cache-first for DeepL (warm bio/headline/tags in background)
+- Stop presence heartbeat from re-fetching all coaches; list/detail poll less often
+- Key paths: `backend/services/pricing_service.py`, `backend/api/v1/mentors_public.py`, `backend/services/chat_service.py`, `backend/db/session.py`, `src/components/MentorPresenceHeartbeat.tsx`, `src/pages/MentorsPage.tsx`, `src/pages/MentorDetailPage.tsx`
+
 ### Fix mentor refresh 500 (naive vs aware datetimes)
 **Goal:** Stop `rotate_refresh_token` crashing on multi-tab refresh grace path.
 

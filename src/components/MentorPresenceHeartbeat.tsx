@@ -41,8 +41,6 @@ export default function MentorPresenceHeartbeat() {
         if (disposed) return;
         failCountRef.current = 0;
         toastShownRef.current = false;
-        void queryClient.invalidateQueries({ queryKey: ["mentors"] });
-        void queryClient.invalidateQueries({ queryKey: ["mentor"] });
         void queryClient.invalidateQueries({ queryKey: ["mentor", "presence-status"] });
       } catch {
         if (disposed) return;

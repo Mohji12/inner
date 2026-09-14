@@ -17,8 +17,9 @@ const CoachesSection = () => {
   const { data: mentors = [], isLoading, isError } = useQuery({
     queryKey: ["mentors", "public", "home", import.meta.env.PROD, language],
     queryFn: () => listMentors(import.meta.env.PROD),
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
     refetchOnWindowFocus: true,
+    staleTime: 15_000,
   });
 
   const { data: pricing } = useQuery({

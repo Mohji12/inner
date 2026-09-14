@@ -93,8 +93,9 @@ const MentorDetailPage = () => {
     queryKey: ["mentor", mentorId, language],
     queryFn: () => getMentor(mentorId!),
     enabled: Boolean(mentorId),
-    refetchInterval: 8_000,
+    refetchInterval: 20_000,
     refetchOnWindowFocus: true,
+    staleTime: 8_000,
   });
 
   const availability = mentor ? getMentorAvailabilityStatus(mentor) : "offline";
