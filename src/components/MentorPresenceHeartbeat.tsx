@@ -6,7 +6,9 @@ import { useAuthOptional } from "@/auth/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { toast } from "sonner";
 
-const HEARTBEAT_MS = 30_000;
+/** Visible-tab interval — mobile Safari throttles long setIntervals hard. */
+const HEARTBEAT_VISIBLE_MS = 15_000;
+const HEARTBEAT_HIDDEN_MS = 45_000;
 const FAILURES_BEFORE_TOAST = 3;
 
 export default function MentorPresenceHeartbeat() {
@@ -18,6 +20,7 @@ export default function MentorPresenceHeartbeat() {
   const d = t.app.dashboardMentor;
   const failCountRef = useRef(0);
   const toastShownRef = useRef(false);
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
   const presenceQuery = useQuery({
     queryKey: ["mentor", "presence-status"],
@@ -31,17 +34,49 @@ export default function MentorPresenceHeartbeat() {
   const heartbeatEnabled = role === "mentor" && Boolean(mentorAccessToken) && presenceMode !== "offline";
 
   useEffect(() => {
-    if (!heartbeatEnabled) return;
+    if (!heartbeatEnabled) {
+      void wakeLockRef.current?.release().catch(() => undefined);
+      wakeLockRef.current = null;
+      return;
+    }
 
     let disposed = false;
+    let timeoutId = 0;
+
+    const releaseWakeLock = () => {
+      void wakeLockRef.current?.release().catch(() => undefined);
+      wakeLockRef.current = null;
+    };
+
+    const requestWakeLock = async () => {
+      if (typeof navigator === "undefined" || !("wakeLock" in navigator) || document.hidden) return;
+      try {
+        wakeLockRef.current = await navigator.wakeLock.request("screen");
+        wakeLockRef.current.addEventListener("release", () => {
+          wakeLockRef.current = null;
+        });
+      } catch {
+        // Not supported / denied — heartbeats still run.
+      }
+    };
+
+    const scheduleNext = () => {
+      if (disposed) return;
+      const delay = document.hidden ? HEARTBEAT_HIDDEN_MS : HEARTBEAT_VISIBLE_MS;
+      timeoutId = window.setTimeout(() => {
+        void ping();
+      }, delay);
+    };
+
     const ping = async () => {
       try {
-        await ensureFreshAccessToken();
+        await ensureFreshAccessToken("mentor");
         await heartbeatMentorPresence();
         if (disposed) return;
         failCountRef.current = 0;
         toastShownRef.current = false;
         void queryClient.invalidateQueries({ queryKey: ["mentor", "presence-status"] });
+        if (!document.hidden) void requestWakeLock();
       } catch {
         if (disposed) return;
         failCountRef.current += 1;
@@ -49,25 +84,41 @@ export default function MentorPresenceHeartbeat() {
           toastShownRef.current = true;
           toast.warning(d.presenceHeartbeatFailed, { duration: 10_000 });
         }
+      } finally {
+        scheduleNext();
+      }
+    };
+
+    const onVisible = () => {
+      if (document.hidden) {
+        releaseWakeLock();
+        return;
+      }
+      window.clearTimeout(timeoutId);
+      void ping();
+    };
+
+    const onPageShow = () => {
+      if (!document.hidden) {
+        window.clearTimeout(timeoutId);
+        void ping();
       }
     };
 
     void ping();
-    const intervalId = window.setInterval(() => {
-      void ping();
-    }, HEARTBEAT_MS);
-
-    const onVisibilityChange = () => {
-      if (!document.hidden) void ping();
-    };
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    window.addEventListener("online", () => void ping());
-    window.addEventListener("focus", () => void ping());
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", onVisible);
+    window.addEventListener("focus", onVisible);
+    window.addEventListener("pageshow", onPageShow);
 
     return () => {
       disposed = true;
-      window.clearInterval(intervalId);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.clearTimeout(timeoutId);
+      releaseWakeLock();
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", onVisible);
+      window.removeEventListener("focus", onVisible);
+      window.removeEventListener("pageshow", onPageShow);
     };
   }, [heartbeatEnabled, queryClient, d.presenceHeartbeatFailed]);
 

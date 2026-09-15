@@ -449,6 +449,9 @@ def login_mentor(request: Request, db: DbSession, payload: MentorLogin, response
 
     mentor.last_seen_at = datetime.now(timezone.utc)
     apply_client_timezone(mentor, payload.timezone)
+    from services.mentor_presence_mode_service import touch_mentor_presence_on_auth
+
+    touch_mentor_presence_on_auth(mentor)
     db.commit()
     raw_refresh = store_refresh_token(db, subject_id=mentor.id, role="mentor")
     _set_refresh_cookie(response, raw_refresh)
@@ -510,6 +513,9 @@ def login_mentor_2fa(db: DbSession, payload: TwoFactorLoginRequest, response: Re
     if two_factor_service.verify_otp(mentor.totp_secret, payload.code):
         mentor.last_seen_at = datetime.now(timezone.utc)
         apply_client_timezone(mentor, payload.timezone)
+        from services.mentor_presence_mode_service import touch_mentor_presence_on_auth
+
+        touch_mentor_presence_on_auth(mentor)
         db.commit()
         raw_refresh = store_refresh_token(db, subject_id=mentor.id, role="mentor")
         _set_refresh_cookie(response, raw_refresh)
@@ -581,11 +587,11 @@ def login_mentor_google(db: DbSession, payload: SocialLoginRequest, response: Re
             "Your coach account is pending admin approval. Please wait until an admin approves your registration.",
         )
     
-    mentor.last_seen_at = datetime.now(timezone.utc)
     apply_client_timezone(mentor, payload.timezone)
-    db.commit()
-    
+
     if mentor.is_totp_enabled:
+        mentor.last_seen_at = datetime.now(timezone.utc)
+        db.commit()
         temp_token = create_2fa_temp_token(mentor.id, "mentor")
         return LoginResponse(
             access_token="",
@@ -593,6 +599,11 @@ def login_mentor_google(db: DbSession, payload: SocialLoginRequest, response: Re
             two_factor_required=True,
             temp_token=temp_token
         )
+
+    from services.mentor_presence_mode_service import touch_mentor_presence_on_auth
+
+    touch_mentor_presence_on_auth(mentor)
+    db.commit()
 
     raw_refresh = store_refresh_token(db, subject_id=mentor.id, role="mentor")
     _set_refresh_cookie(response, raw_refresh)
@@ -613,6 +624,15 @@ def refresh_mentor_token(db: DbSession, request: Request, response: Response) ->
     if not rotated:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid refresh token")
     subject_id, new_raw = rotated
+    mentor = db.query(Mentor).filter(Mentor.id == subject_id).first()
+    if mentor:
+        from services.mentor_presence_mode_service import touch_mentor_presence_on_auth
+
+        touch_mentor_presence_on_auth(mentor)
+        try:
+            db.commit()
+        except Exception:  # noqa: BLE001 — refresh must still succeed
+            db.rollback()
     _set_refresh_cookie(response, new_raw)
     access = create_access_token(subject_id, "mentor")
     return AccessTokenResponse(

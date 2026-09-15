@@ -38,7 +38,7 @@ export function CoachPresenceBanner({ className }: { className?: string }) {
   });
 
   const status = (data?.status ?? "offline") as PresenceStatus;
-  const selectedMode = (data?.presence_mode ?? "offline") as MentorPresenceMode;
+  const selectedMode = (data?.presence_mode ?? "online") as MentorPresenceMode;
   const title = mentorPresenceLabel(status, d);
   const hint = mentorPresenceHint(status, d);
   const busy = Boolean(data?.chat_busy);

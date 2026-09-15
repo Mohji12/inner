@@ -67,12 +67,13 @@ export function OnlineStatusBadge() {
     return (
       <div
         className={cn(
-          "inline-flex min-w-0 max-w-[9.5rem] items-center gap-2 rounded-full border px-2 py-1 sm:max-w-[16rem] sm:px-3 sm:py-1.5",
+          "inline-flex min-w-0 max-w-[9.5rem] shrink-0 items-center gap-2 rounded-full border px-2 py-1 sm:max-w-[16rem] sm:px-3 sm:py-1.5",
           status === "online" && "border-emerald-500/40 bg-emerald-500/10",
           status === "busy" && "border-amber-500/40 bg-amber-500/10",
           status === "occupied" && "border-orange-500/40 bg-orange-500/10",
           status === "unavailable" && "border-sky-500/40 bg-sky-500/10",
           status === "offline" && "border-border/60 bg-muted/40",
+          status === "paused" && "border-violet-500/40 bg-violet-500/10",
         )}
         title={hint}
         role="status"
@@ -86,6 +87,7 @@ export function OnlineStatusBadge() {
               status === "online" && "text-emerald-700 dark:text-emerald-400",
               status === "busy" && "text-amber-800 dark:text-amber-400",
               status === "occupied" && "text-orange-800 dark:text-orange-400",
+              status === "paused" && "text-violet-800 dark:text-violet-400",
               status === "unavailable" && "text-sky-800 dark:text-sky-400",
               status === "offline" && "text-muted-foreground",
             )}

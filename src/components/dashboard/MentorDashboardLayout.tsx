@@ -198,7 +198,7 @@ function MentorDashboardSidebar() {
           <SidebarTrigger className="shrink-0 transition-transform duration-200 hover:scale-105 active:scale-95" />
           <Separator orientation="vertical" className="hidden h-6 sm:block" />
           <span className="hidden min-w-0 flex-1 truncate text-sm text-muted-foreground sm:inline">{d.hub}</span>
-          <div className="ml-auto flex min-w-0 shrink items-center gap-1 sm:gap-2">
+          <div className="ml-auto flex min-w-0 shrink-0 items-center gap-1 sm:gap-2">
             <Button variant="outline" size="sm" className="hidden sm:inline-flex gap-1.5" asChild>
               <Link to="/" title={d.viewWebsiteHint}>
                 <Home className="h-3.5 w-3.5" />
@@ -206,7 +206,9 @@ function MentorDashboardSidebar() {
               </Link>
             </Button>
             <LanguageSwitcher compact />
-            <OnlineStatusBadge />
+            <div className="shrink-0">
+              <OnlineStatusBadge />
+            </div>
             <NotificationBell />
           </div>
         </header>

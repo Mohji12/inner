@@ -5,6 +5,16 @@ Living log of work done on this project.
 
 ---
 
+## 2026-09-15
+
+### Mobile coach presence / online status
+**Goal:** Coaches logging in on mobile should show online status (self + public).
+
+- Mark coach online on login / token refresh (not only SPA heartbeat)
+- Mobile-hardened heartbeat: shorter visible interval, `pageshow`/`focus`, Wake Lock, setTimeout chain
+- Keep status chip visible on narrow headers; banner defaults to online while loading
+- Key paths: `backend/services/mentor_presence_mode_service.py`, `backend/api/v1/auth_mentor.py`, `src/components/MentorPresenceHeartbeat.tsx`, `src/components/dashboard/MentorDashboardLayout.tsx`
+
 ## 2026-09-14
 
 ### Faster coach browse / profile API load

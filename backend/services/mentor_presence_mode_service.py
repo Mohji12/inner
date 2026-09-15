@@ -55,6 +55,26 @@ def apply_presence_mode(mentor: Mentor, mode: str, *, now: datetime | None = Non
     return resolved
 
 
+def touch_mentor_presence_on_auth(mentor: Mentor, *, now: datetime | None = None) -> None:
+    """
+    Call on login / token refresh so the coach appears online immediately.
+
+    Mobile browsers often throttle JS timers; waiting for the SPA heartbeat alone
+    leaves coaches looking offline right after sign-in.
+    Respects an explicit Offline mode (does not force them visible).
+    """
+    stamp = now or datetime.now(timezone.utc)
+    mode = normalize_presence_mode(
+        getattr(mentor, "presence_mode", None),
+        manual_occupied=bool(getattr(mentor, "manual_occupied", False)),
+    )
+    if mode == "offline":
+        presence_service.set_offline(mentor.id, "mentor")
+        return
+    presence_service.set_online(mentor.id, "mentor")
+    mentor.last_seen_at = stamp
+
+
 def effective_is_online(mentor: Mentor) -> bool:
     mode = normalize_presence_mode(
         getattr(mentor, "presence_mode", None),
